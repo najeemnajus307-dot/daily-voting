@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Login</title>
+    <style>
+        body{
+            font-family: Arial;
+            background:#f1f5f9;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+        .box{
+            background:white;
+            padding:25px;
+            width:300px;
+            border-radius:10px;
+            text-align:center;
+            box-shadow:0 0 10px rgba(0,0,0,0.2);
+        }
+        input{
+            width:100%;
+            padding:10px;
+            margin-top:10px;
+        }
+        button{
+            width:100%;
+            padding:10px;
+            margin-top:15px;
+            background:#dc2626;
+            color:white;
+            border:none;
+            cursor:pointer;
+            font-size:16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>Admin Login</h2>
+
+    <input type="password" id="pass" placeholder="Enter Admin Password">
+    <button onclick="login()">Login</button>
+</div>
+
+<script>
+function login(){
+    let p = document.getElementById("pass").value;
+
+    if(p === "1234"){   // 🔑 ADMIN PASSWORD
+        sessionStorage.setItem("admin","yes");
+        window.location.href = "admin.html";
+    }else{
+        alert("Wrong Admin Password ❌");
+    }
+}
+</script>
+
+</body>
+</html>
