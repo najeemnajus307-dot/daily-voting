@@ -1,164 +1,68 @@
 <!DOCTYPE html>
-<html lang="ml">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Admin Panel</title>
-    <style>
-        body{
-            font-family: Arial;
-            background:#f1f5f9;
-            padding:30px;
-        }
-        .box{
-            max-width:1000px;
-            margin:auto;
-            background:white;
-            padding:20px;
-            border-radius:10px;
-        }
-        h2{text-align:center;}
-        table{
-            width:100%;
-            border-collapse:collapse;
-            margin-top:15px;
-            text-align:center;
-        }
-        th,td{
-            border:1px solid #ccc;
-            padding:8px;
-            font-size:14px;
-        }
-        th{
-            background:#e5e7eb;
-        }
-        .total{
-            margin-top:15px;
-            font-weight:bold;
-            text-align:center;
-        }
-        button{
-            width:100%;
-            padding:10px;
-            margin-top:15px;
-            background:#dc2626;
-            color:white;
-            border:none;
-            cursor:pointer;
-            font-size:16px;
-            border-radius:6px;
-        }
-    </style>
+  <title>Admin Panel</title>
 </head>
 <body>
+  <h2>Admin Panel</h2>
 
-<div class="box">
-    <h2>Admin – User Task Summary</h2>
+  <table border="1">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Water</th>
+        <th>Warmup</th>
+        <th>Steps</th>
+        <th>Pushup</th>
+      </tr>
+    </thead>
+    <tbody id="data"></tbody>
+  </table>
 
-    <table>
-        <thead>
-            <tr>
-                <th>User</th>
-                <th>Phone</th>
-                <th>Water</th>
-                <th>Warm up</th>
-                <th>Sugar cut</th>
-                <th>Steps</th>
-                <th>Pushup</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+  <button onclick="clearAll()">Clear All</button>
 
-    <div class="total" id="grand"></div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, deleteDoc, doc } 
+    from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-    <button onclick="clearVotes()">Clear All Votes</button>
-</div>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+      authDomain: "daily-voting-793ee.firebaseapp.com",
+      projectId: "daily-voting-793ee",
+      storageBucket: "daily-voting-793ee.appspot.com",
+      messagingSenderId: "1065830068376",
+      appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
+    };
 
-<script>
-/* 🔐 ADMIN LOGIN CHECK */
-if(sessionStorage.getItem("admin") !== "yes"){
-    alert("Admin login required");
-    window.location.href = "admin-login.html";
-}
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-/* 📊 COLLECT DATA */
-let table = document.getElementById("tableBody");
-let users = {};
-let grandTotal = 0;
-
-for(let i = 0; i < localStorage.length; i++){
-    let key = localStorage.key(i);
-
-    if(key.startsWith("vote_")){
-        let data;
-        try{
-            data = JSON.parse(localStorage.getItem(key));
-        }catch(e){
-            continue;
-        }
-
-        if(!data.name || !data.phone || !data.tasks) continue;
-
-        let id = data.phone; // unique user by phone
-
-        if(!users[id]){
-            users[id] = {
-                name: data.name,
-                phone: data.phone,
-                water: 0,
-                warmup: 0,
-                sugar: 0,
-                steps: 0,
-                pushup: 0
-            };
-        }
-
-        if(data.tasks.water){ users[id].water++; grandTotal++; }
-        if(data.tasks.warmup){ users[id].warmup++; grandTotal++; }
-        if(data.tasks.sugar){ users[id].sugar++; grandTotal++; }
-        if(data.tasks.steps){ users[id].steps++; grandTotal++; }
-        if(data.tasks.pushup){ users[id].pushup++; grandTotal++; }
+    async function loadData() {
+      const snap = await getDocs(collection(db, "votes"));
+      data.innerHTML = "";
+      snap.forEach(d => {
+        const v = d.data();
+        data.innerHTML += `
+          <tr>
+            <td>${v.name}</td>
+            <td>${v.phone}</td>
+            <td>${v.water}</td>
+            <td>${v.warmup}</td>
+            <td>${v.steps}</td>
+            <td>${v.pushup}</td>
+          </tr>`;
+      });
     }
-}
 
-/* 🧾 DISPLAY */
-for(let id in users){
-    let u = users[id];
-    let total =
-        u.water + u.warmup + u.sugar + u.steps + u.pushup;
-
-    let tr = document.createElement("tr");
-    tr.innerHTML = `
-        <td>${u.name}</td>
-        <td>${u.phone}</td>
-        <td>${u.water}</td>
-        <td>${u.warmup}</td>
-        <td>${u.sugar}</td>
-        <td>${u.steps}</td>
-        <td>${u.pushup}</td>
-        <td><b>${total}</b></td>
-    `;
-    table.appendChild(tr);
-}
-
-if(Object.keys(users).length === 0){
-    let tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="8">No data yet</td>`;
-    table.appendChild(tr);
-}
-
-document.getElementById("grand").innerText =
-    "GRAND TOTAL TASKS = " + grandTotal;
-
-/* 🧹 CLEAR */
-function clearVotes(){
-    if(confirm("Clear all votes?")){
-        localStorage.clear();
-        location.reload();
+    window.clearAll = async function () {
+      const snap = await getDocs(collection(db, "votes"));
+      snap.forEach(d => deleteDoc(doc(db, "votes", d.id)));
+      loadData();
     }
-}
-</script>
 
+    loadData();
+  </script>
 </body>
 </html>
