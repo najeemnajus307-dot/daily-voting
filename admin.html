@@ -1,68 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Admin Panel</title>
+
+  <style>
+    body{
+      font-family: Arial;
+      background:#f5f5f5;
+      padding:20px;
+    }
+    h2{text-align:center;}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      background:white;
+    }
+    th,td{
+      border:1px solid #ccc;
+      padding:8px;
+      text-align:center;
+    }
+    th{
+      background:#222;
+      color:white;
+    }
+    button{
+      margin:10px 0;
+      padding:8px 15px;
+      cursor:pointer;
+    }
+  </style>
 </head>
+
 <body>
-  <h2>Admin Panel</h2>
 
-  <table border="1">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Water</th>
-        <th>Warmup</th>
-        <th>Steps</th>
-        <th>Pushup</th>
-      </tr>
-    </thead>
-    <tbody id="data"></tbody>
-  </table>
+<h2>Admin Panel</h2>
 
-  <button onclick="clearAll()">Clear All</button>
+<button onclick="clearAll()">Clear All</button>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, deleteDoc, doc } 
-    from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Phone</th>
+      <th>Water</th>
+      <th>Warmup</th>
+      <th>Steps</th>
+      <th>Pushup</th>
+    </tr>
+  </thead>
+  <tbody id="dataBody">
+  </tbody>
+</table>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
-      authDomain: "daily-voting-793ee.firebaseapp.com",
-      projectId: "daily-voting-793ee",
-      storageBucket: "daily-voting-793ee.appspot.com",
-      messagingSenderId: "1065830068376",
-      appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
-    };
+<!-- 🔥 FIREBASE -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  const firebaseConfig = {
+    apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+    authDomain: "daily-voting-793ee.firebaseapp.com",
+    projectId: "daily-voting-793ee",
+    storageBucket: "daily-voting-793ee.appspot.com",
+    messagingSenderId: "1065830068376",
+    appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
+  };
 
-    async function loadData() {
-      const snap = await getDocs(collection(db, "votes"));
-      data.innerHTML = "";
-      snap.forEach(d => {
-        const v = d.data();
-        data.innerHTML += `
-          <tr>
-            <td>${v.name}</td>
-            <td>${v.phone}</td>
-            <td>${v.water}</td>
-            <td>${v.warmup}</td>
-            <td>${v.steps}</td>
-            <td>${v.pushup}</td>
-          </tr>`;
-      });
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const tbody = document.getElementById("dataBody");
+
+  async function loadData(){
+    tbody.innerHTML = "";
+    const snap = await getDocs(collection(db,"votes"));
+
+    snap.forEach(d=>{
+      const v = d.data();
+      const row = `
+        <tr>
+          <td>${v.name || ""}</td>
+          <td>${v.phone || ""}</td>
+          <td>${v.water || ""}</td>
+          <td>${v.warmup || ""}</td>
+          <td>${v.steps || ""}</td>
+          <td>${v.pushup || ""}</td>
+        </tr>`;
+      tbody.innerHTML += row;
+    });
+  }
+
+  loadData();
+
+  window.clearAll = async function(){
+    if(!confirm("Delete all data?")) return;
+    const snap = await getDocs(collection(db,"votes"));
+    for(const d of snap.docs){
+      await deleteDoc(doc(db,"votes",d.id));
     }
-
-    window.clearAll = async function () {
-      const snap = await getDocs(collection(db, "votes"));
-      snap.forEach(d => deleteDoc(doc(db, "votes", d.id)));
-      loadData();
-    }
-
     loadData();
-  </script>
+  }
+</script>
+
 </body>
 </html>
