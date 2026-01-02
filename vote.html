@@ -1,191 +1,62 @@
 <!DOCTYPE html>
-<html lang="ml">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Daily Voting</title>
-    <style>
-        body{
-            font-family: Arial;
-            background:#f1f5f9;
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            height:100vh;
-        }
-        .box{
-            background:white;
-            padding:25px;
-            width:360px;
-            border-radius:10px;
-            box-shadow:0 0 10px rgba(0,0,0,0.2);
-            position:relative;
-        }
-        h2{text-align:center;}
-        .info{
-            text-align:center;
-            font-size:14px;
-            margin-bottom:6px;
-        }
-        label{
-            display:block;
-            margin:6px 0;
-        }
-        button{
-            width:100%;
-            padding:10px;
-            margin-top:15px;
-            background:#16a34a;
-            color:white;
-            border:none;
-            font-size:16px;
-            cursor:pointer;
-            border-radius:6px;
-        }
-        button:disabled{
-            background:#9ca3af;
-            cursor:not-allowed;
-        }
-        .logout{
-            position:absolute;
-            top:10px;
-            right:10px;
-            background:#dc2626;
-            width:auto;
-            padding:6px 10px;
-            font-size:14px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Daily Voting</title>
+  <style>
+    body { font-family: Arial; background:#f2f2f2; padding:20px; }
+    .box { background:#fff; padding:20px; max-width:400px; margin:auto; border-radius:8px; }
+    label { display:block; margin-top:10px; }
+    button { margin-top:15px; padding:10px; width:100%; }
+  </style>
 </head>
 <body>
 
 <div class="box">
-    <!-- LOGOUT BUTTON -->
-    <button class="logout" onclick="logout()">Logout</button>
+  <h2>Daily Task</h2>
 
-    <h2>Daily Tasks</h2>
+  <label>Name</label>
+  <input id="name">
 
-    <div class="info" id="user"></div>
-    <div class="info" id="date"></div>
+  <label>Phone</label>
+  <input id="phone">
 
-    <div id="tasks">
-        <label><input type="checkbox" id="water"> വെള്ളം കുടിച്ചു</label>
-        <label><input type="checkbox" id="warmup"> Warm up & Stretching</label>
-        <label><input type="checkbox" id="sugar"> Sugar cut</label>
-        <label><input type="checkbox" id="steps"> 100 Steps</label>
-        <label><input type="checkbox" id="pushup"> Push up + Squat</label>
-    </div>
+  <label><input type="checkbox" id="water"> Water</label>
+  <label><input type="checkbox" id="warmup"> Warm up</label>
+  <label><input type="checkbox" id="steps"> Steps</label>
+  <label><input type="checkbox" id="pushup"> Pushup</label>
 
-    <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
+  <button onclick="submitData()">Submit</button>
 </div>
 
-<script>
-/* 🔐 LOGIN CHECK */
-let user  = localStorage.getItem("currentUser");
-let phone = localStorage.getItem("currentPhone");
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-if(!user || !phone){
-    alert("Login first");
-    window.location.href = "index.html";
-}
-
-/* 📅 DATE */
-let today = new Date().toISOString().split("T")[0];
-let voteKey  = "vote_"  + phone + "_" + today;
-let draftKey = "draft_" + phone + "_" + today;
-
-document.getElementById("user").innerText = "Welcome " + user;
-document.getElementById("date").innerText = "Date : " + today;
-
-let inputs = {
-    water:  document.getElementById("water"),
-    warmup: document.getElementById("warmup"),
-    sugar:  document.getElementById("sugar"),
-    steps:  document.getElementById("steps"),
-    pushup: document.getElementById("pushup")
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee",
 };
 
-let btn = document.getElementById("submitBtn");
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-/* 🔒 FINAL SUBMIT CHECK */
-let finalData = localStorage.getItem(voteKey);
-if(finalData){
-    let data = JSON.parse(finalData);
-    loadTasks(data.tasks);
-    lockPage("Already submitted today");
-}
+window.submitData = async function () {
+  const data = {
+    name: name.value,
+    phone: phone.value,
+    water: water.checked ? 1 : 0,
+    warmup: warmup.checked ? 1 : 0,
+    steps: steps.checked ? 1 : 0,
+    pushup: pushup.checked ? 1 : 0,
+    time: Date.now()
+  };
 
-/* ✏️ LOAD DRAFT (EDITABLE) */
-else{
-    let draft = localStorage.getItem(draftKey);
-    if(draft){
-        let data = JSON.parse(draft);
-        loadTasks(data.tasks);
-    }
-
-    Object.values(inputs).forEach(input=>{
-        input.addEventListener("change", saveDraft);
-    });
-}
-
-/* FUNCTIONS */
-function loadTasks(tasks){
-    inputs.water.checked  = tasks.water;
-    inputs.warmup.checked = tasks.warmup;
-    inputs.sugar.checked  = tasks.sugar;
-    inputs.steps.checked  = tasks.steps;
-    inputs.pushup.checked = tasks.pushup;
-}
-
-function saveDraft(){
-    let taskData = getTaskData();
-    localStorage.setItem(draftKey, JSON.stringify({tasks:taskData}));
-}
-
-function getTaskData(){
-    return {
-        water:  inputs.water.checked,
-        warmup: inputs.warmup.checked,
-        sugar:  inputs.sugar.checked,
-        steps:  inputs.steps.checked,
-        pushup: inputs.pushup.checked
-    };
-}
-
-function lockPage(msg){
-    Object.values(inputs).forEach(i => i.disabled = true);
-    btn.disabled = true;
-    btn.innerText = msg;
-}
-
-function submitVote(){
-    if(finalData){
-        alert("Already submitted ❌");
-        return;
-    }
-
-    let taskData = getTaskData();
-
-    let data = {
-        name: user,
-        phone: phone,
-        date: today,
-        tasks: taskData
-    };
-
-    localStorage.setItem(voteKey, JSON.stringify(data));
-    localStorage.removeItem(draftKey);
-
-    alert("Vote submitted successfully 👍");
-    location.reload();
-}
-
-function logout(){
-    if(confirm("Logout cheyyano?")){
-        localStorage.removeItem("currentUser");
-        localStorage.removeItem("currentPhone");
-        window.location.href = "index.html";
-    }
-}
+  await addDoc(collection(db, "votes"), data);
+  alert("Submitted successfully ✅");
+};
 </script>
 
 </body>
