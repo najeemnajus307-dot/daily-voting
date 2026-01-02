@@ -1,4 +1,4 @@
-async function submitVote(){
+async function submitVote() {
 
     let taskData = getTaskData();
 
@@ -13,15 +13,14 @@ async function submitVote(){
         time: new Date()
     };
 
-    /* 🔥 SAVE TO FIREBASE (GLOBAL) */
+    // 🔥 SAVE TO FIREBASE (GLOBAL)
     let docId = phone + "_" + today;
     await setDoc(doc(db, "votes", docId), data);
 
-    /* 🔒 SAVE LOCAL (LOCK PURPOSE) */
+    // 🔒 SAVE LOCAL (LOCK PURPOSE)
     localStorage.setItem(voteKey, JSON.stringify(data));
     localStorage.removeItem(draftKey);
 
     alert("Vote submitted successfully 👍");
     location.reload();
 }
-</script>
