@@ -1,91 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Admin Panel</title>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f2f2f2;
-      padding: 20px;
-    }
-    h2 {
-      text-align: center;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background: #333;
-      color: white;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Admin – Voting Result</title>
+<style>
+body{font-family:Arial;background:#f1f5f9;padding:20px}
+.box{background:#fff;max-width:520px;margin:auto;padding:20px;border-radius:10px}
+h2{text-align:center}
+ul{list-style:none;padding:0}
+li{padding:6px 0;border-bottom:1px solid #ddd}
+.total{font-weight:bold;margin-top:10px}
+</style>
 </head>
-
 <body>
 
-<h2>Admin Panel</h2>
+<div class="box">
+<h2>Admin Voting Result</h2>
+<ul id="list"></ul>
+</div>
 
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Phone</th>
-      <th>Water</th>
-      <th>Warmup</th>
-      <th>Steps</th>
-      <th>Pushup</th>
-      <th>Time</th>
-    </tr>
-  </thead>
-  <tbody id="data"></tbody>
-</table>
-
-<!-- FIREBASE + FIRESTORE -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-  import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
-    authDomain: "daily-voting-793ee.firebaseapp.com",
-    projectId: "daily-voting-793ee",
-    storageBucket: "daily-voting-793ee.firebasestorage.app",
-    messagingSenderId: "1065830068376",
-    appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee",
+  storageBucket: "daily-voting-793ee.firebasestorage.app",
+  messagingSenderId: "1065830068376",
+  appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-  const table = document.getElementById("data");
+let list = document.getElementById("list");
+let total = 0;
 
-  // REAL-TIME DATA
-  onSnapshot(collection(db, "votes"), (snapshot) => {
-    table.innerHTML = "";
-    snapshot.forEach(doc => {
-      const d = doc.data();
-      table.innerHTML += `
-        <tr>
-          <td>${d.name}</td>
-          <td>${d.phone}</td>
-          <td>${d.water ? "✔" : ""}</td>
-          <td>${d.warmup ? "✔" : ""}</td>
-          <td>${d.steps ? "✔" : ""}</td>
-          <td>${d.pushup ? "✔" : ""}</td>
-          <td>${d.time?.toDate?.().toLocaleString() || ""}</td>
-        </tr>
-      `;
-    });
-  });
+const snap = await getDocs(collection(db,"votes"));
+snap.forEach(d=>{
+  let v = d.data();
+  total += 1;
+
+  let li = document.createElement("li");
+  li.innerText = `${v.name} (${v.phone}) – ${v.date}`;
+  list.appendChild(li);
+});
+
+let li = document.createElement("li");
+li.className="total";
+li.innerText = "TOTAL VOTES = " + total;
+list.appendChild(li);
 </script>
 
 </body>
