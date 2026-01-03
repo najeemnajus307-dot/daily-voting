@@ -59,7 +59,6 @@
 <body>
 
 <div class="box">
-    <!-- LOGOUT BUTTON -->
     <button class="logout" onclick="logout()">Logout</button>
 
     <h2>Daily Tasks</h2>
@@ -67,19 +66,33 @@
     <div class="info" id="user"></div>
     <div class="info" id="date"></div>
 
-    <div id="tasks">
-        <label><input type="checkbox" id="water"> വെള്ളം കുടിച്ചു</label>
-        <label><input type="checkbox" id="warmup"> Warm up & Stretching</label>
-        <label><input type="checkbox" id="sugar"> Sugar cut</label>
-        <label><input type="checkbox" id="steps"> 100 Steps</label>
-        <label><input type="checkbox" id="pushup"> Push up + Squat</label>
-    </div>
+    <label><input type="checkbox" id="water"> വെള്ളം കുടിച്ചു</label>
+    <label><input type="checkbox" id="warmup"> Warm up & Stretching</label>
+    <label><input type="checkbox" id="sugar"> Sugar cut</label>
+    <label><input type="checkbox" id="steps"> 100 Steps</label>
+    <label><input type="checkbox" id="pushup"> Push up + Squat</label>
 
     <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
 </div>
 
-<script>
-/* 🔐 LOGIN CHECK */
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* 🔥 FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee",
+  storageBucket: "daily-voting-793ee.firebasestorage.app",
+  messagingSenderId: "1065830068376",
+  appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* 🔐 LOGIN CHECK (login page sets these) */
 let user  = localStorage.getItem("currentUser");
 let phone = localStorage.getItem("currentPhone");
 
@@ -90,9 +103,9 @@ if(!user || !phone){
 
 /* 📅 DATE */
 let today = new Date().toISOString().split("T")[0];
-let voteKey  = "vote_"  + phone + "_" + today;
-let draftKey = "draft_" + phone + "_" + today;
+let voteRef = doc(db, "votes", phone + "_" + today);
 
+/* UI */
 document.getElementById("user").innerText = "Welcome " + user;
 document.getElementById("date").innerText = "Date : " + today;
 
@@ -103,28 +116,13 @@ let inputs = {
     steps:  document.getElementById("steps"),
     pushup: document.getElementById("pushup")
 };
-
 let btn = document.getElementById("submitBtn");
 
-/* 🔒 FINAL SUBMIT CHECK */
-let finalData = localStorage.getItem(voteKey);
-if(finalData){
-    let data = JSON.parse(finalData);
-    loadTasks(data.tasks);
+/* 🔒 CHECK ALREADY SUBMITTED (ONLINE) */
+const snap = await getDoc(voteRef);
+if(snap.exists()){
+    loadTasks(snap.data().tasks);
     lockPage("Already submitted today");
-}
-
-/* ✏️ LOAD DRAFT (EDITABLE) */
-else{
-    let draft = localStorage.getItem(draftKey);
-    if(draft){
-        let data = JSON.parse(draft);
-        loadTasks(data.tasks);
-    }
-
-    Object.values(inputs).forEach(input=>{
-        input.addEventListener("change", saveDraft);
-    });
 }
 
 /* FUNCTIONS */
@@ -136,56 +134,42 @@ function loadTasks(tasks){
     inputs.pushup.checked = tasks.pushup;
 }
 
-function saveDraft(){
-    let taskData = getTaskData();
-    localStorage.setItem(draftKey, JSON.stringify({tasks:taskData}));
-}
-
-function getTaskData(){
-    return {
-        water:  inputs.water.checked,
-        warmup: inputs.warmup.checked,
-        sugar:  inputs.sugar.checked,
-        steps:  inputs.steps.checked,
-        pushup: inputs.pushup.checked
-    };
-}
-
 function lockPage(msg){
     Object.values(inputs).forEach(i => i.disabled = true);
     btn.disabled = true;
     btn.innerText = msg;
 }
 
-function submitVote(){
-    if(finalData){
-        alert("Already submitted ❌");
-        return;
-    }
+/* ✅ SUBMIT VOTE (FIREBASE) */
+window.submitVote = async function(){
+    let taskData = {
+        water:  inputs.water.checked,
+        warmup: inputs.warmup.checked,
+        sugar:  inputs.sugar.checked,
+        steps:  inputs.steps.checked,
+        pushup: inputs.pushup.checked
+    };
 
-    let taskData = getTaskData();
-
-    let data = {
+    await setDoc(voteRef, {
         name: user,
         phone: phone,
         date: today,
-        tasks: taskData
-    };
-
-    localStorage.setItem(voteKey, JSON.stringify(data));
-    localStorage.removeItem(draftKey);
+        tasks: taskData,
+        submittedAt: new Date().toISOString()
+    });
 
     alert("Vote submitted successfully 👍");
     location.reload();
-}
+};
 
-function logout(){
+/* 🚪 LOGOUT */
+window.logout = function(){
     if(confirm("Logout cheyyano?")){
         localStorage.removeItem("currentUser");
         localStorage.removeItem("currentPhone");
         window.location.href = "index.html";
     }
-}
+};
 </script>
 
 </body>
