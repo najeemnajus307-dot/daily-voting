@@ -2,27 +2,83 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin – Voting Result</title>
+<title>Admin – Voting Report</title>
+
 <style>
-body{font-family:Arial;background:#f1f5f9;padding:20px}
-.box{background:#fff;max-width:520px;margin:auto;padding:20px;border-radius:10px}
+body{
+  font-family:Arial;
+  background:#f1f5f9;
+  padding:20px
+}
+.box{
+  background:#fff;
+  max-width:800px;
+  margin:auto;
+  padding:20px;
+  border-radius:10px
+}
 h2{text-align:center}
-ul{list-style:none;padding:0}
-li{padding:6px 0;border-bottom:1px solid #ddd}
-.total{font-weight:bold;margin-top:10px}
+
+.filters{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  margin-bottom:15px
+}
+
+table{
+  width:100%;
+  border-collapse:collapse
+}
+th,td{
+  border:1px solid #ddd;
+  padding:8px;
+  text-align:center
+}
+th{
+  background:#f3f4f6
+}
+.total{
+  font-weight:bold;
+  margin-top:15px;
+  text-align:right
+}
 </style>
 </head>
+
 <body>
 
 <div class="box">
-<h2>Admin Voting Result</h2>
-<ul id="list"></ul>
+  <h2>Admin Voting Report</h2>
+
+  <!-- DATE FILTER -->
+  <div class="filters">
+    <input type="date" id="fromDate">
+    <input type="date" id="toDate">
+    <button onclick="applyFilter()">Filter</button>
+  </div>
+
+  <!-- TABLE -->
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Tasks Done</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div class="total" id="total">TOTAL VOTES : 0</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -35,23 +91,41 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let list = document.getElementById("list");
-let total = 0;
+let allVotes = [];
 
+/* LOAD ALL DATA ONCE */
 const snap = await getDocs(collection(db,"votes"));
-snap.forEach(d=>{
-  let v = d.data();
-  total += 1;
+snap.forEach(d => allVotes.push(d.data()));
 
-  let li = document.createElement("li");
-  li.innerText = `${v.name} (${v.phone}) – ${v.date}`;
-  list.appendChild(li);
-});
+/* FILTER FUNCTION */
+window.applyFilter = function(){
+  let from = document.getElementById("fromDate").value;
+  let to   = document.getElementById("toDate").value;
 
-let li = document.createElement("li");
-li.className="total";
-li.innerText = "TOTAL VOTES = " + total;
-list.appendChild(li);
+  let rows = document.getElementById("rows");
+  rows.innerHTML = "";
+  let total = 0;
+
+  allVotes.forEach(v=>{
+    if(from && v.date < from) return;
+    if(to && v.date > to) return;
+
+    let taskCount = Object.values(v.tasks).filter(x=>x).length;
+    total++;
+
+    let tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${v.name}</td>
+      <td>${v.phone}</td>
+      <td>${taskCount}</td>
+      <td>${v.date}</td>
+    `;
+    rows.appendChild(tr);
+  });
+
+  document.getElementById("total").innerText =
+    "TOTAL VOTES : " + total;
+}
 </script>
 
 </body>
