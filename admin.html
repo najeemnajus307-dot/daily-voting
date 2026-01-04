@@ -17,7 +17,12 @@ body{
   max-width:1200px;
   margin:auto;
 }
-h2{text-align:center}
+h2,h3{text-align:center}
+input,button{
+  padding:6px 10px;
+  margin:5px;
+}
+button{cursor:pointer}
 table{
   width:100%;
   border-collapse:collapse;
@@ -29,12 +34,20 @@ th,td{
   text-align:center;
 }
 th{background:#f3f4f6}
-.rank1{background:#fff7cc;font-weight:bold}
-button{cursor:pointer;padding:5px 10px}
-.del{background:#dc2626;color:#fff;border:none}
+
+.rank1{background:#fde68a;font-weight:bold}
+.rank2{background:#e5e7eb}
+.rank3{background:#fcd34d}
+
 .bonus{background:#16a34a;color:#fff;border:none}
-.top{font-weight:bold;margin-top:10px}
-.controls{text-align:center;margin-bottom:10px}
+.delBonus{background:#dc2626;color:#fff;border:none}
+.delVote{background:#991b1b;color:#fff;border:none}
+
+.total{
+  text-align:right;
+  font-weight:bold;
+  margin-top:10px;
+}
 </style>
 </head>
 
@@ -43,15 +56,16 @@ button{cursor:pointer;padding:5px 10px}
 
 <h2>Admin Voting Report</h2>
 
-<div class="controls">
-  From <input type="date" id="from">
-  To <input type="date" id="to">
-  <button onclick="applyFilter()">Apply Filter</button>
-  <button onclick="exportExcel()">Date-wise Excel</button>
-</div>
+<!-- DATE FILTER -->
+From <input type="date" id="fromDate">
+To <input type="date" id="toDate">
+<button onclick="applyFilter()">Apply Filter</button>
+<button onclick="exportExcel()">Export Excel</button>
 
-<h3>User Summary (Total Votes)</h3>
-<table id="summary">
+<!-- SUMMARY -->
+<h3>User Summary (Ranking + Bonus)</h3>
+<table>
+<thead>
 <tr>
   <th>Rank</th>
   <th>Name</th>
@@ -59,10 +73,15 @@ button{cursor:pointer;padding:5px 10px}
   <th>Total Points</th>
   <th>Bonus</th>
 </tr>
+</thead>
+<tbody id="summaryBody"></tbody>
 </table>
+<div class="total" id="grandTotal"></div>
 
+<!-- DETAILS -->
 <h3>Detailed Votes</h3>
-<table id="details">
+<table>
+<thead>
 <tr>
   <th>Name</th>
   <th>Phone</th>
@@ -70,6 +89,8 @@ button{cursor:pointer;padding:5px 10px}
   <th>Date</th>
   <th>Delete</th>
 </tr>
+</thead>
+<tbody id="detailBody"></tbody>
 </table>
 
 </div>
@@ -83,7 +104,7 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 Firebase */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -94,10 +115,8 @@ const db = getFirestore(app);
 
 let allVotes = [];
 
-/* LOAD */
+/* LOAD DATA */
 loadData();
-
-/* 📥 Load Firestore */
 async function loadData(){
   allVotes=[];
   const snap = await getDocs(collection(db,"votes"));
@@ -105,64 +124,82 @@ async function loadData(){
   applyFilter();
 }
 
-/* 📅 Filter */
-function applyFilter(){
-  let f = from.value;
-  let t = to.value;
+/* APPLY FILTER */
+window.applyFilter = function(){
+  let f = fromDate.value;
+  let t = toDate.value;
+
   let filtered = allVotes.filter(v=>{
     return (!f || v.date>=f) && (!t || v.date<=t);
   });
+
   buildSummary(filtered);
   buildDetails(filtered);
-}
-window.applyFilter = applyFilter;
+};
 
-/* 📊 Summary + Ranking */
+/* SUMMARY + BONUS */
 async function buildSummary(data){
   let map={};
 
   data.forEach(v=>{
+    let c = Object.values(v.tasks).filter(x=>x).length;
     if(!map[v.phone]){
-      map[v.phone]={name:v.name,phone:v.phone,total:0};
+      map[v.phone]={name:v.name, phone:v.phone, total:0};
     }
-    map[v.phone].total += Object.values(v.tasks).filter(x=>x).length;
+    map[v.phone].total += c;
   });
 
-  /* BONUS */
-  const bSnap = await getDocs(collection(db,"bonus"));
-  bSnap.forEach(b=>{
+  /* FETCH BONUS */
+  const bonusSnap = await getDocs(collection(db,"bonus"));
+  let bonusMap={};
+  bonusSnap.forEach(b=>{
     let d=b.data();
-    if(map[d.phone]) map[d.phone].total+=d.points;
+    bonusMap[d.phone]=b.id;
+    if(map[d.phone]) map[d.phone].total += d.points;
   });
 
-  let users=Object.values(map).sort((a,b)=>b.total-a.total);
+  let arr = Object.values(map).sort((a,b)=>b.total-a.total);
+  let topScore = arr.length ? arr[0].total : 0;
 
-  let table=document.getElementById("summary");
-  table.innerHTML=table.rows[0].outerHTML;
+  let tbody=document.getElementById("summaryBody");
+  tbody.innerHTML="";
 
-  let rank=0,prev=null;
-  users.forEach((u,i)=>{
-    if(prev!==u.total){rank=i+1;prev=u.total}
+  let rank=0,last=null,totalAll=0;
+
+  arr.forEach((u,i)=>{
+    if(u.total!==last){rank=i+1;last=u.total}
+    totalAll+=u.total;
+
     let tr=document.createElement("tr");
     if(rank===1) tr.className="rank1";
+    else if(rank===2) tr.className="rank2";
+    else if(rank===3) tr.className="rank3";
 
     tr.innerHTML=`
       <td>${rank}</td>
       <td>${u.name}</td>
       <td>${u.phone}</td>
       <td>${u.total}</td>
-      <td>${rank===1?
-        `<button class="bonus" onclick="addBonus('${u.phone}')">+10</button>`
-        :""}
-      </td>`;
-    table.appendChild(tr);
+      <td>
+        ${
+          u.total===topScore && !bonusMap[u.phone]
+            ? `<button class="bonus" onclick="addBonus('${u.phone}')">+10</button>`
+            : bonusMap[u.phone]
+              ? `<button class="delBonus" onclick="removeBonus('${u.phone}')">Remove</button>`
+              : ""
+        }
+      </td>
+    `;
+    tbody.appendChild(tr);
   });
+
+  grandTotal.innerText="TOTAL POINTS : "+totalAll;
 }
 
-/* 📋 Details */
+/* DETAILS */
 function buildDetails(data){
-  let table=document.getElementById("details");
-  table.innerHTML=table.rows[0].outerHTML;
+  let body=document.getElementById("detailBody");
+  body.innerHTML="";
 
   data.forEach(v=>{
     let tr=document.createElement("tr");
@@ -171,12 +208,13 @@ function buildDetails(data){
       <td>${v.phone}</td>
       <td>${Object.values(v.tasks).filter(x=>x).length}</td>
       <td>${v.date}</td>
-      <td><button class="del" onclick="delVote('${v.id}')">X</button></td>`;
-    table.appendChild(tr);
+      <td><button class="delVote" onclick="delVote('${v.id}')">X</button></td>
+    `;
+    body.appendChild(tr);
   });
 }
 
-/* ❌ Delete vote */
+/* DELETE VOTE */
 window.delVote = async function(id){
   if(confirm("Delete vote?")){
     await deleteDoc(doc(db,"votes",id));
@@ -184,32 +222,42 @@ window.delVote = async function(id){
   }
 };
 
-/* 🎁 Bonus */
+/* ADD BONUS */
 window.addBonus = async function(phone){
-  let w = getWeekKey(new Date());
-  await setDoc(doc(db,"bonus",phone+"_"+w),{
-    phone,week:w,points:10
+  let week = getWeekKey(new Date());
+  await setDoc(doc(db,"bonus",phone+"_"+week),{
+    phone,week,points:10
   });
   alert("Bonus added");
   loadData();
 };
 
-/* 📅 Week key */
+/* REMOVE BONUS */
+window.removeBonus = async function(phone){
+  let week = getWeekKey(new Date());
+  if(confirm("Remove bonus?")){
+    await deleteDoc(doc(db,"bonus",phone+"_"+week));
+    loadData();
+  }
+};
+
+/* WEEK KEY */
 function getWeekKey(d){
   let y=d.getFullYear();
   let w=Math.ceil((((d-new Date(y,0,1))/86400000)+1)/7);
   return y+"-W"+w;
 }
 
-/* 📤 Excel */
+/* EXCEL */
 window.exportExcel=function(){
-  let csv="Name,Phone,Tasks,Date\n";
-  allVotes.forEach(v=>{
-    csv+=`${v.name},${v.phone},${Object.values(v.tasks).filter(x=>x).length},${v.date}\n`;
+  let rows=[["Rank","Name","Phone","Total"]];
+  document.querySelectorAll("#summaryBody tr").forEach(tr=>{
+    rows.push([...tr.children].slice(0,4).map(td=>td.innerText));
   });
+  let csv=rows.map(r=>r.join(",")).join("\n");
   let a=document.createElement("a");
   a.href="data:text/csv,"+encodeURIComponent(csv);
-  a.download="report.csv";
+  a.download="admin-summary.csv";
   a.click();
 };
 </script>
