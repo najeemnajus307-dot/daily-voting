@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin – Weekly Voting & Bonus</title>
+<title>Admin Voting Report</title>
 
 <style>
 body{
@@ -12,209 +12,254 @@ body{
 }
 .box{
   background:#fff;
+  max-width:1100px;
+  margin:auto;
   padding:20px;
   border-radius:10px;
-  max-width:1200px;
-  margin:auto;
 }
-h2{text-align:center;margin-bottom:20px}
+h2,h3{
+  text-align:center;
+}
+.controls{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-bottom:15px;
+}
+input,button{
+  padding:6px 10px;
+  font-size:14px;
+}
+button{
+  cursor:pointer;
+}
 table{
   width:100%;
   border-collapse:collapse;
-  margin-top:15px;
+  margin-top:10px;
 }
 th,td{
   border:1px solid #ddd;
   padding:8px;
   text-align:center;
 }
-th{background:#f3f4f6}
-.rank1{background:#fde68a}
-.rank2{background:#dbeafe}
-.rank3{background:#fef3c7}
-button{
-  padding:5px 10px;
-  border:none;
-  cursor:pointer;
-  border-radius:4px;
+th{
+  background:#f3f4f6;
 }
-.add{background:#16a34a;color:#fff}
-.remove{background:#dc2626;color:#fff}
-input[type=number]{width:70px}
-.small{font-size:13px;color:#555}
+.delete{
+  background:#dc2626;
+  color:#fff;
+  border:none;
+  padding:4px 8px;
+  cursor:pointer;
+}
+
+/* Rank colors */
+.rank-1{ background:#fff7cc; font-weight:bold; }
+.rank-2{ background:#e5e7eb; }
+.rank-3{ background:#fde68a; }
+
+.total{
+  margin-top:10px;
+  font-weight:bold;
+  text-align:right;
+}
 </style>
 </head>
 
 <body>
+
 <div class="box">
+  <h2>Admin Voting Report</h2>
 
-<h2>Admin – Weekly Voting & Bonus</h2>
+  <!-- FILTER CONTROLS -->
+  <div class="controls">
+    <input type="date" id="from">
+    <input type="date" id="to">
+    <button onclick="loadData()">Filter</button>
+    <button onclick="exportCSV()">Export Excel</button>
+  </div>
 
-From
-<input type="date" id="from">
-To
-<input type="date" id="to">
-<button onclick="applyFilter()">Apply</button>
+  <!-- TOP 3 RANK TABLE -->
+  <h3>🏆 Top 3 Ranks (Dense Ranking)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Total Votes</th>
+      </tr>
+    </thead>
+    <tbody id="summaryBody"></tbody>
+  </table>
 
-<p class="small">
-✔ Bonus = once per user per selected week  
-✔ Bonus points = admin decides  
-✔ Votes add anytime → total auto update  
-</p>
+  <!-- INFO BOXES -->
+  <div class="total" id="rankInfo"></div>
+  <div class="total" id="remainingBox"></div>
 
-<h3>Summary (Dense Ranking)</h3>
-
-<table>
-<thead>
-<tr>
-<th>Rank</th>
-<th>Name</th>
-<th>Phone</th>
-<th>Week Points</th>
-<th>Date Range</th>
-<th>Total (with Bonus)</th>
-<th>Bonus</th>
-</tr>
-</thead>
-<tbody id="summary"></tbody>
-</table>
-
-<h3>Detailed Votes</h3>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Phone</th>
-<th>Points</th>
-<th>Date</th>
-</tr>
-</thead>
-<tbody id="details"></tbody>
-</table>
-
+  <!-- DETAIL TABLE -->
+  <h3 style="margin-top:25px">Detailed Votes</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Tasks Done</th>
+        <th>Date</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
 </div>
 
-<script>
-// ================== SAMPLE VOTES DATA ==================
-// (ഇത് vote.html നിന്നു normally വരും)
-let votes = JSON.parse(localStorage.getItem("votes") || "[]");
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/*
-vote object example:
-{ name:"User A", phone:"999", points:5, date:"2026-01-03" }
-*/
+/* Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
 
-// ================== BONUS STORAGE ==================
-let bonuses = JSON.parse(localStorage.getItem("weeklyBonus") || "{}");
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-// ================== APPLY FILTER ==================
-function applyFilter(){
-  const from = document.getElementById("from").value;
-  const to   = document.getElementById("to").value;
-  if(!from || !to){ alert("Select dates"); return; }
+const tbody = document.getElementById("tbody");
+const summaryBody = document.getElementById("summaryBody");
+const rankInfo = document.getElementById("rankInfo");
+const remainingBox = document.getElementById("remainingBox");
 
-  const filtered = votes.filter(v => v.date >= from && v.date <= to);
+/* LOAD DATA */
+window.loadData = async function(){
+  tbody.innerHTML = "";
+  summaryBody.innerHTML = "";
+  rankInfo.innerText = "";
+  remainingBox.innerText = "";
 
-  renderDetails(filtered);
-  renderSummary(filtered, from, to);
-}
+  let from = document.getElementById("from").value;
+  let to   = document.getElementById("to").value;
 
-// ================== DETAILS ==================
-function renderDetails(list){
-  const tb = document.getElementById("details");
-  tb.innerHTML = "";
-  list.forEach(v=>{
-    tb.innerHTML += `
-      <tr>
-        <td>${v.name}</td>
-        <td>${v.phone}</td>
-        <td>${v.points}</td>
-        <td>${v.date}</td>
-      </tr>
+  let snap = await getDocs(collection(db,"votes"));
+
+  let userMap = {}; // phone → {name, phone, totalVotes}
+
+  snap.forEach(d=>{
+    let v = d.data();
+    let date = v.date;
+
+    if(from && date < from) return;
+    if(to && date > to) return;
+
+    // Count tasks for that day
+    let taskCount = Object.values(v.tasks).filter(t=>t).length;
+
+    /* Detail table */
+    let tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${v.name}</td>
+      <td>${v.phone}</td>
+      <td>${taskCount}</td>
+      <td>${date}</td>
+      <td><button class="delete" onclick="deleteVote('${d.id}')">❌</button></td>
     `;
-  });
-}
+    tbody.appendChild(tr);
 
-// ================== SUMMARY ==================
-function renderSummary(list, from, to){
-  const map = {};
-  list.forEach(v=>{
-    if(!map[v.phone]){
-      map[v.phone] = {name:v.name, phone:v.phone, points:0};
+    /* User-wise total vote sum */
+    if(!userMap[v.phone]){
+      userMap[v.phone] = {
+        name: v.name,
+        phone: v.phone,
+        totalVotes: 0
+      };
     }
-    map[v.phone].points += Number(v.points);
+    userMap[v.phone].totalVotes += taskCount;
   });
 
-  let arr = Object.values(map);
-  arr.sort((a,b)=>b.points - a.points);
+  /* ---- DENSE RANKING LOGIC ---- */
+  let sortedUsers = Object.values(userMap)
+    .sort((a,b) => b.totalVotes - a.totalVotes);
 
-  // Dense ranking
-  let rank = 0, prev = null, pos = 0;
+  let rank = 0;
+  let lastVotes = null;
+  let shownUsers = 0;
+  let totalRanks = 0;
 
-  const tb = document.getElementById("summary");
-  tb.innerHTML = "";
+  for(let i=0;i<sortedUsers.length;i++){
+    let u = sortedUsers[i];
 
-  arr.forEach(u=>{
-    pos++;
-    if(prev === null || u.points < prev) rank = pos;
-    prev = u.points;
+    if(u.totalVotes !== lastVotes){
+      rank += 1;
+      lastVotes = u.totalVotes;
+      totalRanks = rank;   // keep updating till end
+    }
 
-    const key = u.phone+"_"+from+"_"+to;
-    const bonus = bonuses[key]?.points || 0;
-    const total = u.points + bonus;
-
-    let cls = rank==1?"rank1":rank==2?"rank2":rank==3?"rank3":"";
-
-    tb.innerHTML += `
-      <tr class="${cls}">
-        <td>${rank}</td>
+    // Show only TOP 3 ranks
+    if(rank <= 3){
+      let tr = document.createElement("tr");
+      tr.classList.add(`rank-${rank}`);
+      tr.innerHTML = `
+        <td>${rank === 1 ? "🥇 1" : rank === 2 ? "🥈 2" : "🥉 3"}</td>
         <td>${u.name}</td>
         <td>${u.phone}</td>
-        <td>${u.points}</td>
-        <td>${from} to ${to}</td>
-        <td>${total}</td>
-        <td>
-          <input type="number" id="b_${key}" placeholder="pts">
-          <button class="add" onclick="addBonus('${key}')">Add</button>
-          ${bonus ? `<button class="remove" onclick="removeBonus('${key}')">Remove</button>` : ``}
-        </td>
-      </tr>
-    `;
+        <td>${u.totalVotes}</td>
+      `;
+      summaryBody.appendChild(tr);
+      shownUsers++;
+    }
+  }
+
+  rankInfo.innerText =
+    "Top Ranks Shown : 3 | Total Ranks : " + totalRanks;
+
+  let remaining =
+    Object.keys(userMap).length - shownUsers;
+
+  remainingBox.innerText =
+    remaining > 0 ? "Remaining Users : " + remaining : "";
+};
+
+/* DELETE VOTE */
+window.deleteVote = async function(id){
+  if(confirm("Delete this vote?")){
+    await deleteDoc(doc(db,"votes",id));
+    loadData();
+  }
+};
+
+/* EXPORT SUMMARY TO CSV */
+window.exportCSV = function(){
+  let rows = [["Rank","Name","Phone","Total Votes"]];
+  document.querySelectorAll("#summaryBody tr").forEach(tr=>{
+    let tds = tr.querySelectorAll("td");
+    rows.push([
+      tds[0].innerText,
+      tds[1].innerText,
+      tds[2].innerText,
+      tds[3].innerText
+    ]);
   });
-}
 
-// ================== ADD BONUS ==================
-function addBonus(key){
-  const inp = document.getElementById("b_"+key);
-  const val = parseInt(inp.value);
-  if(!val || val<=0){ alert("Valid bonus kodukku"); return; }
+  let csv = rows.map(r=>r.join(",")).join("\n");
+  let blob = new Blob([csv],{type:"text/csv"});
+  let a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "top_ranks_report.csv";
+  a.click();
+};
 
-  bonuses[key] = {
-    points: val,
-    addedOn: new Date().toISOString().split("T")[0]
-  };
-
-  localStorage.setItem("weeklyBonus", JSON.stringify(bonuses));
-  applyFilter();
-}
-
-// ================== REMOVE BONUS ==================
-function removeBonus(key){
-  delete bonuses[key];
-  localStorage.setItem("weeklyBonus", JSON.stringify(bonuses));
-  applyFilter();
-}
-
-// ================== DEMO DATA (remove later) ==================
-if(votes.length==0){
-  votes = [
-    {name:"User A", phone:"111", points:5, date:"2026-01-03"},
-    {name:"User A", phone:"111", points:3, date:"2026-01-04"},
-    {name:"User B", phone:"222", points:5, date:"2026-01-03"},
-    {name:"User C", phone:"333", points:4, date:"2026-01-04"}
-  ];
-  localStorage.setItem("votes", JSON.stringify(votes));
-}
+/* AUTO LOAD */
+loadData();
 </script>
 
 </body>
