@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Task Editor</title>
+
+<style>
+body{
+  font-family:Arial;
+  background:#f1f5f9;
+  padding:20px;
+}
+.box{
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  max-width:400px;
+  margin:auto;
+}
+input{
+  width:100%;
+  padding:8px;
+  margin-bottom:8px;
+}
+button{
+  padding:8px;
+  width:100%;
+  background:#2563eb;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
+ul{padding-left:18px}
+li{margin-bottom:6px}
+.del{
+  color:red;
+  cursor:pointer;
+  margin-left:8px;
+}
+</style>
+</head>
+
+<body>
+<div class="box">
+<h3>Add Voting Tasks</h3>
+
+<input id="taskInput" placeholder="Type task and click Add">
+<button onclick="addTask()">Add Task</button>
+
+<ul id="taskList"></ul>
+</div>
+
+<script>
+let tasks = JSON.parse(localStorage.getItem("tasks_master")) || [];
+
+function save(){
+  localStorage.setItem("tasks_master", JSON.stringify(tasks));
+  render();
+}
+
+function render(){
+  const ul = document.getElementById("taskList");
+  ul.innerHTML="";
+  tasks.forEach((t,i)=>{
+    ul.innerHTML += `
+      <li>${t}
+        <span class="del" onclick="removeTask(${i})">❌</span>
+      </li>`;
+  });
+}
+
+function addTask(){
+  const val = taskInput.value.trim();
+  if(!val) return;
+  tasks.push(val);
+  taskInput.value="";
+  save();
+}
+
+function removeTask(i){
+  tasks.splice(i,1);
+  save();
+}
+
+render();
+</script>
+</body>
+</html>
