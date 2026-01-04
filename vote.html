@@ -14,59 +14,40 @@ body{
   height:100vh;
 }
 .box{
-  background:white;
+  background:#fff;
   padding:25px;
   width:380px;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,0.2);
   position:relative;
 }
-h2{
-  text-align:center;
-  margin-bottom:5px;
-}
-h4{
-  text-align:center;
-  margin-top:0;
-  color:#16a34a;
-}
-.info{
-  text-align:center;
-  font-size:14px;
-  margin-bottom:6px;
-}
-label{
-  display:block;
-  margin:8px 0;
-}
-.points{
-  font-size:13px;
-  color:green;
-  margin-left:22px;
-}
+h2{text-align:center;margin-bottom:4px;}
+h4{text-align:center;color:#16a34a;margin-top:0;}
+.info{text-align:center;font-size:14px;margin-bottom:6px;}
+label{display:block;margin:8px 0;}
+.points{font-size:13px;color:green;margin-left:22px;}
 button{
   width:100%;
   padding:10px;
   margin-top:15px;
   background:#16a34a;
-  color:white;
+  color:#fff;
   border:none;
   font-size:16px;
-  cursor:pointer;
   border-radius:6px;
 }
 button:disabled{
   background:#9ca3af;
-  cursor:not-allowed;
 }
 .logout{
   position:absolute;
   top:10px;
   right:10px;
   background:#dc2626;
-  width:auto;
+  color:#fff;
+  border:none;
   padding:6px 10px;
-  font-size:14px;
+  border-radius:6px;
 }
 </style>
 </head>
@@ -76,14 +57,12 @@ button:disabled{
 <div class="box">
   <button class="logout" onclick="logout()">Logout</button>
 
-  <!-- 🔝 HEADER -->
   <h2>Welcome Faith & Fitness</h2>
   <h4>Daily Tasks</h4>
 
   <div class="info" id="user"></div>
   <div class="info" id="date"></div>
 
-  <!-- TASKS -->
   <div id="taskList"></div>
 
   <button id="submitBtn">Submit</button>
@@ -105,7 +84,6 @@ const db  = getFirestore(app);
 
 async function init(){
 
-  /* 🔐 LOGIN CHECK */
   const user  = localStorage.getItem("currentUser");
   const phone = localStorage.getItem("currentPhone");
   if(!user || !phone){
@@ -113,7 +91,6 @@ async function init(){
     return;
   }
 
-  /* 📅 DATE */
   const today = new Date().toISOString().split("T")[0];
   const voteRef = doc(db,"votes", phone + "_" + today);
 
@@ -123,7 +100,7 @@ async function init(){
   const taskBox = document.getElementById("taskList");
   const btn = document.getElementById("submitBtn");
 
-  /* 🔽 LOAD TASKS */
+  /* LOAD TASKS */
   const taskSnap = await getDoc(doc(db,"tasks","daily"));
   if(!taskSnap.exists()){
     taskBox.innerHTML = "<p>No tasks added</p>";
@@ -150,7 +127,7 @@ async function init(){
     };
   });
 
-  /* 🔒 CHECK ALREADY SUBMITTED */
+  /* ALREADY SUBMITTED CHECK */
   const snap = await getDoc(voteRef);
   if(snap.exists()){
     const old = snap.data().tasks || {};
@@ -161,12 +138,12 @@ async function init(){
   }
 
   function lockPage(msg){
-    Object.values(inputs).forEach(i=>i.el.disabled = true);
+    Object.values(inputs).forEach(i=>i.el.disabled=true);
     btn.disabled = true;
     btn.innerText = msg;
   }
 
-  /* ✅ SUBMIT */
+  /* SUBMIT */
   btn.onclick = async ()=>{
     let result = {};
     let total = 0;
@@ -175,7 +152,7 @@ async function init(){
       const checked = inputs[i].el.checked;
       result[i] = checked;
       if(checked){
-        total += inputs[i].pts; // ✅ correct total
+        total += inputs[i].pts; // ✅ CORRECT TOTAL
       }
     });
 
@@ -188,17 +165,15 @@ async function init(){
       submittedAt:new Date().toISOString()
     });
 
-    alert("Vote saved ✅  Total points : " + total);
+    alert("Vote saved ✅ Total points : " + total);
     lockPage("Already submitted");
   };
 }
 
-/* 🚪 LOGOUT */
+/* LOGOUT */
 window.logout = function(){
-  if(confirm("Logout cheyyano?")){
-    localStorage.clear();
-    location.replace("index.html");
-  }
+  localStorage.clear();
+  location.replace("index.html");
 };
 
 init();
