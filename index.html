@@ -2,7 +2,14 @@
 <html>
 <head>
     <meta charset="UTF-8">
+
+    <!-- 🔒 IMPORTANT: prevent browser cache -->
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <title>Login / Signup</title>
+
     <style>
         body{
             font-family:Arial;
@@ -43,6 +50,7 @@
         }
     </style>
 </head>
+
 <body>
 
 <div class="box">
@@ -120,15 +128,14 @@ function login(){
         return;
     }
 
-    // Save session
     localStorage.setItem("currentUser", user.name);
     localStorage.setItem("currentPhone", user.phone);
 
-    // 🔒 IMPORTANT: replace() prevents back to login
+    // 🔑 replace() = no back to login
     window.location.replace("vote.html");
 }
 
-// 🚫 Prevent going back to previous page
+// 🚫 Block back on login page
 history.pushState(null, null, location.href);
 window.onpopstate = function () {
     history.go(1);
