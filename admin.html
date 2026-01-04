@@ -88,7 +88,7 @@ th{background:#f3f4f6}
   <button onclick="exportExcel()">Export Excel</button>
 </div>
 
-<h3>User Summary (Ranking + Bonus)</h3>
+<h3>User Summary (Dense Ranking + Bonus)</h3>
 <table>
 <thead>
 <tr>
@@ -129,7 +129,7 @@ import {
   doc, deleteDoc, getDoc, setDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -148,8 +148,8 @@ window.loadReport = async function(){
   const to   = document.getElementById("to").value;
 
   let snap = await getDocs(collection(db,"votes"));
-
   let votes = [];
+
   snap.forEach(d=>{
     let v = d.data();
     if((!from || v.date>=from) && (!to || v.date<=to)){
@@ -164,7 +164,7 @@ window.loadReport = async function(){
 /* ================= DETAILS ================= */
 function renderDetails(votes){
   let body = document.getElementById("details");
-  body.innerHTML = "";
+  body.innerHTML="";
 
   votes.forEach(v=>{
     let tr = document.createElement("tr");
@@ -179,62 +179,63 @@ function renderDetails(votes){
   });
 }
 
-/* ================= SUMMARY + RANK ================= */
+/* ================= SUMMARY + DENSE RANK ================= */
 async function renderSummary(votes){
   let map = {};
   votes.forEach(v=>{
-    let key = v.phone;
-    let points = Object.values(v.tasks).filter(x=>x).length;
-    if(!map[key]){
-      map[key] = {name:v.name, phone:v.phone, taskPoints:0};
+    let pts = Object.values(v.tasks).filter(x=>x).length;
+    if(!map[v.phone]){
+      map[v.phone]={name:v.name, phone:v.phone, base:0};
     }
-    map[key].taskPoints += points;
+    map[v.phone].base += pts;
   });
 
-  let users = [];
+  let users=[];
   for(let p in map){
-    let bonusSnap = await getDoc(doc(db,"bonuses",p));
-    let bonus = bonusSnap.exists() ? bonusSnap.data().points : 0;
+    let bSnap = await getDoc(doc(db,"bonuses",p));
+    let bonus = bSnap.exists()? bSnap.data().points:0;
     users.push({
-      ...map[p],
-      bonus,
-      total: map[p].taskPoints + bonus
+      name:map[p].name,
+      phone:p,
+      total:map[p].base + bonus,
+      bonus
     });
   }
 
   users.sort((a,b)=>b.total-a.total);
 
-  let rank=0, prev=null, pos=0;
+  /* 🔥 DENSE RANK LOGIC */
+  let rank=0, prev=null;
   users.forEach(u=>{
-    pos++;
-    if(prev===null || u.total<prev) rank=pos;
-    prev=u.total;
+    if(prev===null || u.total<prev){
+      rank++;
+    }
     u.rank=rank;
+    prev=u.total;
   });
 
-  let tbody = document.getElementById("summary");
-  tbody.innerHTML="";
+  let body=document.getElementById("summary");
+  body.innerHTML="";
   let totalPoints=0;
 
   users.forEach(u=>{
-    totalPoints += u.total;
-    let tr = document.createElement("tr");
-    tr.className = u.rank<=3 ? `rank-${u.rank}` : "";
-    tr.innerHTML = `
+    totalPoints+=u.total;
+    let tr=document.createElement("tr");
+    tr.className = u.rank<=3 ? `rank-${u.rank}`:"";
+    tr.innerHTML=`
       <td>${u.rank}</td>
       <td>${u.name}</td>
       <td>${u.phone}</td>
       <td>${u.total}</td>
       <td>
         <button class="bonus-btn" onclick="addBonus('${u.phone}','${u.name}')">+ Bonus</button>
-        ${u.bonus>0 ? `<button class="remove-btn" onclick="removeBonus('${u.phone}')">Remove</button>`:""}
+        ${u.bonus>0?`<button class="remove-btn" onclick="removeBonus('${u.phone}')">Remove</button>`:""}
       </td>
     `;
-    tbody.appendChild(tr);
+    body.appendChild(tr);
   });
 
-  document.getElementById("totalPoints").innerText =
-    "TOTAL POINTS : "+totalPoints;
+  document.getElementById("totalPoints").innerText="TOTAL POINTS : "+totalPoints;
 }
 
 /* ================= BONUS ================= */
@@ -262,8 +263,8 @@ window.exportExcel = function(){
   let table = document.querySelector("table");
   let html = table.outerHTML.replace(/ /g,"%20");
   let a = document.createElement("a");
-  a.href = "data:application/vnd.ms-excel," + html;
-  a.download = "voting-report.xls";
+  a.href="data:application/vnd.ms-excel,"+html;
+  a.download="voting-report.xls";
   a.click();
 };
 
