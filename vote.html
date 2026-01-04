@@ -67,19 +67,15 @@ button:disabled{
   <div class="info" id="user"></div>
   <div class="info" id="date"></div>
 
-  <!-- 🔽 TASKS LOAD HERE -->
   <div id="taskList"></div>
 
-  <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
+  <button id="submitBtn">Submit Vote</button>
 </div>
 
+<!-- ✅ STABLE FIREBASE v9 -->
 <script type="module">
-/* 🔒 BLOCK BACK BUTTON */
-history.pushState(null,null,location.href);
-window.onpopstate=()=>history.go(1);
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
@@ -96,26 +92,26 @@ async function init(){
   /* 🔐 LOGIN CHECK */
   const user  = localStorage.getItem("currentUser");
   const phone = localStorage.getItem("currentPhone");
+
   if(!user || !phone){
     location.replace("index.html");
     return;
   }
 
-  /* 📅 DATE */
   const today = new Date().toISOString().split("T")[0];
-  const voteRef = doc(db,"votes", phone+"_"+today);
+  const voteRef = doc(db,"votes", phone + "_" + today);
 
   document.getElementById("user").innerText = "Welcome " + user;
   document.getElementById("date").innerText = "Date : " + today;
 
   const taskBox = document.getElementById("taskList");
-  const btn = document.getElementById("submitBtn");
+  const submitBtn = document.getElementById("submitBtn");
 
-  /* 🔽 LOAD TASKS FROM FIRESTORE */
+  /* 🔽 LOAD TASKS */
   const taskSnap = await getDoc(doc(db,"tasks","daily"));
   if(!taskSnap.exists()){
     taskBox.innerHTML = "<p>No tasks added</p>";
-    btn.disabled = true;
+    submitBtn.disabled = true;
     return;
   }
 
@@ -124,12 +120,13 @@ async function init(){
 
   taskBox.innerHTML = "";
   tasks.forEach((t,i)=>{
+    const id = "task_"+i;
     taskBox.innerHTML += `
       <label>
-        <input type="checkbox" id="task${i}"> ${t}
+        <input type="checkbox" id="${id}"> ${t}
       </label>
     `;
-    inputs[i] = document.getElementById("task"+i);
+    inputs[i] = document.getElementById(id);
   });
 
   /* 🔒 CHECK ALREADY SUBMITTED */
@@ -144,12 +141,11 @@ async function init(){
 
   function lockPage(msg){
     Object.values(inputs).forEach(i=>i.disabled=true);
-    btn.disabled = true;
-    btn.innerText = msg;
+    submitBtn.disabled = true;
+    submitBtn.innerText = msg;
   }
 
-  /* ✅ SUBMIT */
-  window.submitVote = async function(){
+  submitBtn.onclick = async () => {
     const taskData = {};
     Object.keys(inputs).forEach(i=>{
       taskData[i] = inputs[i].checked;
@@ -166,18 +162,16 @@ async function init(){
     alert("Vote submitted successfully ✅");
     location.reload();
   };
-
-  /* 🚪 LOGOUT */
-  window.logout = function(){
-    if(confirm("Logout cheyyano?")){
-      localStorage.removeItem("currentUser");
-      localStorage.removeItem("currentPhone");
-      location.replace("index.html");
-    }
-  };
 }
 
-init(); // 🚀 VERY IMPORTANT
+/* 🚪 LOGOUT */
+window.logout = function(){
+  localStorage.removeItem("currentUser");
+  localStorage.removeItem("currentPhone");
+  location.replace("index.html");
+};
+
+init(); // 🚀 IMPORTANT
 </script>
 
 </body>
