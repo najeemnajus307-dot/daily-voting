@@ -6,7 +6,7 @@
 
 <style>
 body{
-  font-family: Arial;
+  font-family:Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
@@ -16,13 +16,9 @@ body{
 .box{
   background:#fff;
   padding:25px;
-  width:380px;
+  width:400px;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
-}
-h3{
-  text-align:center;
-  margin-bottom:10px;
 }
 input,button{
   width:100%;
@@ -34,12 +30,8 @@ button{
   color:#fff;
   border:none;
   border-radius:6px;
-  cursor:pointer;
 }
-ul{
-  list-style:none;
-  padding:0;
-}
+ul{list-style:none;padding:0;}
 li{
   display:flex;
   justify-content:space-between;
@@ -49,24 +41,24 @@ li{
   padding:6px;
   border-radius:6px;
 }
-li button{
-  width:auto;
+small{color:#555;}
+.del{
   background:#dc2626;
+  width:auto;
   padding:4px 8px;
-  font-size:14px;
 }
-.save{
-  background:#16a34a;
-}
+.save{background:#16a34a;}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h3>Daily Task Editor</h3>
+  <h3>Task Editor (with Points)</h3>
 
-  <input id="taskInput" placeholder="Enter new task">
+  <input id="taskText" placeholder="Task text">
+  <input id="taskPoints" type="number" placeholder="Points (eg: 5)">
+
   <button onclick="addTask()">Add Task</button>
 
   <ul id="taskList"></ul>
@@ -75,10 +67,10 @@ li button{
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG (same as vote.html) */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -88,58 +80,56 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ELEMENTS */
-const input = document.getElementById("taskInput");
-const list  = document.getElementById("taskList");
+const textInp = document.getElementById("taskText");
+const pointInp = document.getElementById("taskPoints");
+const list = document.getElementById("taskList");
 
 let tasks = [];
 
-/* 🔽 LOAD EXISTING TASKS */
+/* LOAD TASKS */
 const snap = await getDoc(doc(db,"tasks","daily"));
 if(snap.exists()){
   tasks = snap.data().list || [];
   render();
 }
 
-/* RENDER TASK LIST */
 function render(){
   list.innerHTML="";
   tasks.forEach((t,i)=>{
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <span>${t}</span>
-      <button onclick="delTask(${i})">❌</button>
+    list.innerHTML += `
+      <li>
+        <span>${t.text} <small>(${t.points} pts)</small></span>
+        <button class="del" onclick="delTask(${i})">❌</button>
+      </li>
     `;
-    list.appendChild(li);
   });
 }
 
-/* ADD TASK */
 window.addTask = function(){
-  const val = input.value.trim();
-  if(!val){
-    alert("Task text enter ചെയ്യൂ");
+  const text = textInp.value.trim();
+  const pts  = Number(pointInp.value);
+
+  if(!text || !pts){
+    alert("Task & points enter ചെയ്യൂ");
     return;
   }
-  tasks.push(val);
-  input.value="";
+
+  tasks.push({ text:text, points:pts });
+  textInp.value="";
+  pointInp.value="";
   render();
 };
 
-/* DELETE TASK */
 window.delTask = function(i){
-  if(confirm("Delete this task?")){
+  if(confirm("Delete task?")){
     tasks.splice(i,1);
     render();
   }
 };
 
-/* SAVE TO FIREBASE */
 window.saveTasks = async function(){
-  await setDoc(doc(db,"tasks","daily"),{
-    list: tasks
-  });
-  alert("Tasks saved successfully ✅");
+  await setDoc(doc(db,"tasks","daily"),{ list:tasks });
+  alert("Tasks saved with points ✅");
 };
 </script>
 
