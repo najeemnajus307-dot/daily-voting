@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Login / Signup</title>
     <style>
         body{
@@ -17,6 +18,7 @@
             width:300px;
             border-radius:10px;
             text-align:center;
+            box-shadow:0 0 10px rgba(0,0,0,0.2);
         }
         input{
             width:100%;
@@ -31,10 +33,11 @@
             color:white;
             border:none;
             cursor:pointer;
+            border-radius:6px;
         }
         .link{
             margin-top:10px;
-            color:blue;
+            color:#2563eb;
             cursor:pointer;
             font-size:14px;
         }
@@ -66,6 +69,7 @@
 </div>
 
 <script>
+// 🔄 Toggle forms
 function showLogin(){
     signupBox.style.display="none";
     loginBox.style.display="block";
@@ -76,10 +80,11 @@ function showSignup(){
     loginBox.style.display="none";
 }
 
+// 📝 SIGNUP
 function signup(){
-    let name = su_name.value;
-    let phone = su_phone.value;
-    let pass = su_pass.value;
+    let name = su_name.value.trim();
+    let phone = su_phone.value.trim();
+    let pass = su_pass.value.trim();
 
     if(name=="" || phone=="" || pass==""){
         alert("All fields required");
@@ -98,9 +103,10 @@ function signup(){
     showLogin();
 }
 
+// 🔐 LOGIN (BACK SAFE)
 function login(){
-    let phone = li_phone.value;
-    let pass = li_pass.value;
+    let phone = li_phone.value.trim();
+    let pass = li_pass.value.trim();
 
     let data = localStorage.getItem("user_"+phone);
     if(!data){
@@ -114,12 +120,20 @@ function login(){
         return;
     }
 
+    // Save session
     localStorage.setItem("currentUser", user.name);
-localStorage.setItem("currentPhone", user.phone);
-window.location.href = "vote.html";
+    localStorage.setItem("currentPhone", user.phone);
+
+    // 🔒 IMPORTANT: replace() prevents back to login
+    window.location.replace("vote.html");
 }
+
+// 🚫 Prevent going back to previous page
+history.pushState(null, null, location.href);
+window.onpopstate = function () {
+    history.go(1);
+};
 </script>
 
 </body>
 </html>
-
