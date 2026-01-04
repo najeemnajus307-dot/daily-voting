@@ -1,165 +1,96 @@
 <!DOCTYPE html>
-<html lang="ml">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Daily Voting</title>
-
+<title>Task Editor</title>
 <style>
 body{
-    font-family:Arial;
-    background:#f1f5f9;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
+  font-family:Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
 .box{
-    background:#fff;
-    padding:25px;
-    width:360px;
-    border-radius:10px;
-    box-shadow:0 0 10px rgba(0,0,0,0.2);
-    position:relative;
+  background:#fff;
+  padding:25px;
+  width:360px;
+  border-radius:10px;
 }
-h2{text-align:center;}
-.info{text-align:center;font-size:14px;margin-bottom:6px;}
-label{display:block;margin:6px 0;}
+input,button{
+  width:100%;
+  padding:8px;
+  margin:6px 0;
+}
 button{
-    width:100%;
-    padding:10px;
-    margin-top:15px;
-    background:#16a34a;
-    color:white;
-    border:none;
-    font-size:16px;
-    cursor:pointer;
-    border-radius:6px;
+  background:#2563eb;
+  color:#fff;
+  border:none;
 }
-button:disabled{background:#9ca3af;}
-.logout{
-    position:absolute;
-    top:10px;
-    right:10px;
-    background:#dc2626;
-    padding:6px 10px;
-    font-size:14px;
-}
-.task-edit{
-    position:absolute;
-    top:10px;
-    left:10px;
-    font-size:13px;
-}
+li{margin:4px 0;}
 </style>
 </head>
 
 <body>
-
 <div class="box">
+<h3>Task Editor (Firebase)</h3>
 
-<a class="task-edit" href="task-editor.html">Task Edit</a>
-<button class="logout" onclick="logout()">Logout</button>
+<input id="taskInput" placeholder="Enter task">
+<button onclick="addTask()">Add Task</button>
 
-<h2>Daily Tasks</h2>
+<ul id="list"></ul>
 
-<div class="info" id="user"></div>
-<div class="info" id="date"></div>
-
-<!-- TASKS WILL LOAD HERE -->
-<div id="taskArea"></div>
-
-<button id="submitBtn" onclick="submitVote()">Submit Vote</button>
-
+<button style="background:#16a34a" onclick="save()">Save Tasks</button>
 </div>
 
 <script type="module">
-/* 🔒 BACK BUTTON BLOCK */
-history.pushState(null,null,location.href);
-window.onpopstate=()=>history.go(1);
-
-/* 🔥 FIREBASE */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-const firebaseConfig={
- apiKey:"AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
- authDomain:"daily-voting-793ee.firebaseapp.com",
- projectId:"daily-voting-793ee",
- storageBucket:"daily-voting-793ee.firebasestorage.app",
- messagingSenderId:"1065830068376",
- appId:"1:1065830068376:web:9d3858939d07056a5fa0ed"
+/* 🔥 FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
 };
 
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK */
-let user=localStorage.getItem("currentUser");
-let phone=localStorage.getItem("currentPhone");
-if(!user||!phone) location.replace("index.html");
+let tasks=[];
+const list=document.getElementById("list");
 
-/* DATE */
-let today=new Date().toISOString().split("T")[0];
-document.getElementById("user").innerText="Welcome "+user;
-document.getElementById("date").innerText="Date : "+today;
-
-/* TASK LOAD FROM EDITOR */
-let taskArea=document.getElementById("taskArea");
-let dailyTasks=JSON.parse(localStorage.getItem("dailyTasks"))||[];
-let inputs={};
-
-if(dailyTasks.length===0){
-    taskArea.innerHTML="<p style='color:red;text-align:center'>No tasks added</p>";
-}else{
-    dailyTasks.forEach(t=>{
-        let id=t.replace(/\s+/g,"_");
-        let lbl=document.createElement("label");
-        lbl.innerHTML=`<input type="checkbox" id="${id}"> ${t}`;
-        taskArea.appendChild(lbl);
-        inputs[id]=document.getElementById(id);
-    });
-}
-
-/* FIRESTORE REF */
-let voteRef=doc(db,"votes",phone+"_"+today);
-
-/* CHECK ALREADY VOTED */
-const snap=await getDoc(voteRef);
+/* LOAD EXISTING TASKS */
+const snap = await getDoc(doc(db,"tasks","daily"));
 if(snap.exists()){
-    let saved=snap.data().tasks;
-    Object.keys(saved).forEach(k=>{
-        if(inputs[k]) inputs[k].checked=saved[k];
-    });
-    Object.values(inputs).forEach(i=>i.disabled=true);
-    submitBtn.disabled=true;
-    submitBtn.innerText="Already Submitted";
+  tasks = snap.data().list || [];
+  render();
 }
 
-/* SUBMIT */
-window.submitVote=async function(){
-    let taskData={};
-    Object.keys(inputs).forEach(k=>taskData[k]=inputs[k].checked);
+function render(){
+  list.innerHTML="";
+  tasks.forEach((t,i)=>{
+    let li=document.createElement("li");
+    li.innerHTML=`${t} <button onclick="del(${i})">❌</button>`;
+    list.appendChild(li);
+  });
+}
 
-    await setDoc(voteRef,{
-        name:user,
-        phone:phone,
-        date:today,
-        tasks:taskData,
-        submittedAt:new Date().toISOString()
-    });
+window.addTask=function(){
+  let v=taskInput.value.trim();
+  if(v){ tasks.push(v); taskInput.value=""; render(); }
+}
 
-    alert("Vote submitted 👍");
-    location.reload();
-};
+window.del=function(i){
+  tasks.splice(i,1);
+  render();
+}
 
-/* LOGOUT */
-window.logout=function(){
-    if(confirm("Logout cheyyano?")){
-        localStorage.clear();
-        location.replace("index.html");
-    }
-};
+window.save=async function(){
+  await setDoc(doc(db,"tasks","daily"),{list:tasks});
+  alert("Tasks saved to Firebase ✅");
+}
 </script>
-
 </body>
 </html>
