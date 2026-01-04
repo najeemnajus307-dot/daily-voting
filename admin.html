@@ -17,11 +17,9 @@ body{
   padding:20px;
   border-radius:10px;
 }
-h2{
+h2,h3{
   text-align:center;
 }
-
-/* controls */
 .controls{
   display:flex;
   gap:10px;
@@ -36,8 +34,6 @@ input,button{
 button{
   cursor:pointer;
 }
-
-/* table */
 table{
   width:100%;
   border-collapse:collapse;
@@ -51,46 +47,60 @@ th,td{
 th{
   background:#f3f4f6;
 }
+.delete{
+  background:#dc2626;
+  color:#fff;
+  border:none;
+  padding:4px 8px;
+  cursor:pointer;
+}
+
+/* Rank colors */
+.rank-1{ background:#fff7cc; font-weight:bold; }
+.rank-2{ background:#e5e7eb; }
+.rank-3{ background:#fde68a; }
 
 .total{
   margin-top:10px;
   font-weight:bold;
   text-align:right;
 }
-
-.logout{
-  background:#dc2626;
-  color:white;
-  border:none;
-  padding:6px 12px;
-  float:right;
-}
 </style>
 </head>
 
 <body>
 
-<!-- 🔐 ADMIN LOGIN CHECK -->
-<script>
-let role = localStorage.getItem("adminRole");
-if(!role){
-  window.location.replace("admin-login.html");
-}
-</script>
-
 <div class="box">
-  <button class="logout" onclick="logout()">Logout</button>
   <h2>Admin Voting Report</h2>
 
-  <!-- DATE FILTER -->
+  <!-- FILTER CONTROLS -->
   <div class="controls">
     <input type="date" id="from">
     <input type="date" id="to">
-    <button onclick="loadData()">Apply Filter</button>
-    <button onclick="exportDateWise()">Date-wise Excel</button>
+    <button onclick="loadData()">Filter</button>
+    <button onclick="exportCSV()">Export Excel</button>
   </div>
 
-  <!-- TABLE -->
+  <!-- TOP 3 RANK TABLE -->
+  <h3>🏆 Top 3 Ranks (Dense Ranking)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Total Votes</th>
+      </tr>
+    </thead>
+    <tbody id="summaryBody"></tbody>
+  </table>
+
+  <!-- INFO BOXES -->
+  <div class="total" id="rankInfo"></div>
+  <div class="total" id="remainingBox"></div>
+
+  <!-- DETAIL TABLE -->
+  <h3 style="margin-top:25px">Detailed Votes</h3>
   <table>
     <thead>
       <tr>
@@ -98,19 +108,24 @@ if(!role){
         <th>Phone</th>
         <th>Tasks Done</th>
         <th>Date</th>
+        <th>Delete</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
   </table>
-
-  <div class="total" id="totalBox"></div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -121,19 +136,23 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const tbody = document.getElementById("tbody");
-const totalBox = document.getElementById("totalBox");
+const summaryBody = document.getElementById("summaryBody");
+const rankInfo = document.getElementById("rankInfo");
+const remainingBox = document.getElementById("remainingBox");
 
-/* LOAD TABLE DATA */
+/* LOAD DATA */
 window.loadData = async function(){
-  tbody.innerHTML="";
-  totalBox.innerText="";
+  tbody.innerHTML = "";
+  summaryBody.innerHTML = "";
+  rankInfo.innerText = "";
+  remainingBox.innerText = "";
 
   let from = document.getElementById("from").value;
   let to   = document.getElementById("to").value;
 
   let snap = await getDocs(collection(db,"votes"));
 
-  let totalVotes = 0;
+  let userMap = {}; // phone → {name, phone, totalVotes}
 
   snap.forEach(d=>{
     let v = d.data();
@@ -142,62 +161,104 @@ window.loadData = async function(){
     if(from && date < from) return;
     if(to && date > to) return;
 
+    // Count tasks for that day
     let taskCount = Object.values(v.tasks).filter(t=>t).length;
-    totalVotes += taskCount;
 
+    /* Detail table */
     let tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${v.name}</td>
       <td>${v.phone}</td>
       <td>${taskCount}</td>
       <td>${date}</td>
+      <td><button class="delete" onclick="deleteVote('${d.id}')">❌</button></td>
     `;
     tbody.appendChild(tr);
+
+    /* User-wise total vote sum */
+    if(!userMap[v.phone]){
+      userMap[v.phone] = {
+        name: v.name,
+        phone: v.phone,
+        totalVotes: 0
+      };
+    }
+    userMap[v.phone].totalVotes += taskCount;
   });
 
-  totalBox.innerText = "TOTAL VOTES : " + totalVotes;
+  /* ---- DENSE RANKING LOGIC ---- */
+  let sortedUsers = Object.values(userMap)
+    .sort((a,b) => b.totalVotes - a.totalVotes);
+
+  let rank = 0;
+  let lastVotes = null;
+  let shownUsers = 0;
+  let totalRanks = 0;
+
+  for(let i=0;i<sortedUsers.length;i++){
+    let u = sortedUsers[i];
+
+    if(u.totalVotes !== lastVotes){
+      rank += 1;
+      lastVotes = u.totalVotes;
+      totalRanks = rank;   // keep updating till end
+    }
+
+    // Show only TOP 3 ranks
+    if(rank <= 3){
+      let tr = document.createElement("tr");
+      tr.classList.add(`rank-${rank}`);
+      tr.innerHTML = `
+        <td>${rank === 1 ? "🥇 1" : rank === 2 ? "🥈 2" : "🥉 3"}</td>
+        <td>${u.name}</td>
+        <td>${u.phone}</td>
+        <td>${u.totalVotes}</td>
+      `;
+      summaryBody.appendChild(tr);
+      shownUsers++;
+    }
+  }
+
+  rankInfo.innerText =
+    "Top Ranks Shown : 3 | Total Ranks : " + totalRanks;
+
+  let remaining =
+    Object.keys(userMap).length - shownUsers;
+
+  remainingBox.innerText =
+    remaining > 0 ? "Remaining Users : " + remaining : "";
 };
 
-/* DATE-WISE EXCEL (SAME FILTER) */
-window.exportDateWise = async function(){
-  let from = document.getElementById("from").value;
-  let to   = document.getElementById("to").value;
+/* DELETE VOTE */
+window.deleteVote = async function(id){
+  if(confirm("Delete this vote?")){
+    await deleteDoc(doc(db,"votes",id));
+    loadData();
+  }
+};
 
-  let snap = await getDocs(collection(db,"votes"));
-
-  let dateMap = {}; // date → total votes
-
-  snap.forEach(d=>{
-    let v = d.data();
-    let date = v.date;
-
-    if(from && date < from) return;
-    if(to && date > to) return;
-
-    let taskCount = Object.values(v.tasks).filter(t=>t).length;
-    dateMap[date] = (dateMap[date] || 0) + taskCount;
-  });
-
-  let rows = [["Date","Total Votes"]];
-  Object.keys(dateMap).sort().forEach(d=>{
-    rows.push([d, dateMap[d]]);
+/* EXPORT SUMMARY TO CSV */
+window.exportCSV = function(){
+  let rows = [["Rank","Name","Phone","Total Votes"]];
+  document.querySelectorAll("#summaryBody tr").forEach(tr=>{
+    let tds = tr.querySelectorAll("td");
+    rows.push([
+      tds[0].innerText,
+      tds[1].innerText,
+      tds[2].innerText,
+      tds[3].innerText
+    ]);
   });
 
   let csv = rows.map(r=>r.join(",")).join("\n");
-  let blob = new Blob([csv], {type:"text/csv"});
+  let blob = new Blob([csv],{type:"text/csv"});
   let a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "date_wise_vote_report.csv";
+  a.download = "top_ranks_report.csv";
   a.click();
 };
 
-/* LOGOUT */
-window.logout = function(){
-  localStorage.removeItem("adminRole");
-  window.location.replace("admin-login.html");
-};
-
-/* AUTO LOAD ALL DATA */
+/* AUTO LOAD */
 loadData();
 </script>
 
