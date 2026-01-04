@@ -76,6 +76,12 @@
 </div>
 
 <script type="module">
+/* 🔒 BACK BUTTON BLOCK (MOST IMPORTANT) */
+history.pushState(null, null, location.href);
+window.onpopstate = function () {
+    history.go(1);
+};
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
@@ -92,13 +98,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK (login page sets these) */
+/* 🔐 LOGIN CHECK */
 let user  = localStorage.getItem("currentUser");
 let phone = localStorage.getItem("currentPhone");
 
 if(!user || !phone){
-    alert("Login first");
-    window.location.href = "index.html";
+    window.location.replace("index.html"); // 🔑 replace, not href
 }
 
 /* 📅 DATE */
@@ -118,7 +123,7 @@ let inputs = {
 };
 let btn = document.getElementById("submitBtn");
 
-/* 🔒 CHECK ALREADY SUBMITTED (ONLINE) */
+/* 🔒 CHECK ALREADY SUBMITTED */
 const snap = await getDoc(voteRef);
 if(snap.exists()){
     loadTasks(snap.data().tasks);
@@ -140,7 +145,7 @@ function lockPage(msg){
     btn.innerText = msg;
 }
 
-/* ✅ SUBMIT VOTE (FIREBASE) */
+/* ✅ SUBMIT VOTE */
 window.submitVote = async function(){
     let taskData = {
         water:  inputs.water.checked,
@@ -167,7 +172,7 @@ window.logout = function(){
     if(confirm("Logout cheyyano?")){
         localStorage.removeItem("currentUser");
         localStorage.removeItem("currentPhone");
-        window.location.href = "index.html";
+        window.location.replace("index.html"); // 🔑 replace
     }
 };
 </script>
