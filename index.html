@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
 
-    <!-- 🔒 IMPORTANT: prevent browser cache -->
+    <!-- 🔒 Prevent browser cache -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -77,7 +77,14 @@
 </div>
 
 <script>
-// 🔄 Toggle forms
+/* 🔁 AUTO REDIRECT IF ALREADY LOGGED IN */
+let u = localStorage.getItem("currentUser");
+let p = localStorage.getItem("currentPhone");
+if(u && p){
+    window.location.replace("vote.html");
+}
+
+/* 🔄 Toggle forms */
 function showLogin(){
     signupBox.style.display="none";
     loginBox.style.display="block";
@@ -88,7 +95,7 @@ function showSignup(){
     loginBox.style.display="none";
 }
 
-// 📝 SIGNUP
+/* 📝 SIGNUP */
 function signup(){
     let name = su_name.value.trim();
     let phone = su_phone.value.trim();
@@ -111,7 +118,7 @@ function signup(){
     showLogin();
 }
 
-// 🔐 LOGIN (BACK SAFE)
+/* 🔐 LOGIN (BACK SAFE) */
 function login(){
     let phone = li_phone.value.trim();
     let pass = li_pass.value.trim();
@@ -131,11 +138,11 @@ function login(){
     localStorage.setItem("currentUser", user.name);
     localStorage.setItem("currentPhone", user.phone);
 
-    // 🔑 replace() = no back to login
+    // 🔑 replace() avoids back to login
     window.location.replace("vote.html");
 }
 
-// 🚫 Block back on login page
+/* 🚫 Block back button on login page */
 history.pushState(null, null, location.href);
 window.onpopstate = function () {
     history.go(1);
