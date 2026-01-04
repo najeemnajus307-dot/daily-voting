@@ -1,49 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Admin – Voting & Weekly Bonus</title>
 
 <style>
-body{font-family:Arial;background:#f1f5f9;padding:20px}
-.container{background:#fff;padding:20px;border-radius:12px;max-width:1200px;margin:auto}
+body{
+  font-family:Arial;
+  background:#f1f5f9;
+  padding:20px;
+}
+.box{
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  max-width:1200px;
+  margin:auto;
+}
 h2,h3{text-align:center}
-.controls{text-align:center;margin-bottom:12px}
-input,button{padding:6px 10px;margin:4px}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border:1px solid #ddd;padding:8px;text-align:center}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:8px;
+  text-align:center;
+}
 th{background:#f3f4f6}
-.rank-1{background:#ffe066;font-weight:bold}
-.rank-2{background:#dbeafe}
-.rank-3{background:#fde68a}
-.scroll{max-height:360px;overflow-y:auto;margin-top:8px}
-.bonus{background:#16a34a;color:#fff;border:none;padding:4px 8px;cursor:pointer}
-.remove{background:#b91c1c;color:#fff;border:none;padding:4px 8px;cursor:pointer}
-.del{background:#dc2626;color:#fff;border:none;padding:4px 8px;cursor:pointer}
-.total{text-align:right;font-weight:bold;margin-top:6px}
-.note{font-size:13px;color:#374151;text-align:center;margin-bottom:6px}
-.topbar{display:flex;justify-content:space-between;align-items:center}
-.link{background:#2563eb;color:#fff;border:none;padding:6px 10px;cursor:pointer}
+
+.rank1{background:#fde68a}
+.rank2{background:#dbeafe}
+.rank3{background:#fde68a}
+
+button{
+  padding:5px 10px;
+  border:none;
+  cursor:pointer;
+  border-radius:4px;
+}
+.bonus{background:#16a34a;color:#fff}
+.remove{background:#dc2626;color:#fff}
+.delete{background:#ef4444;color:#fff}
+
+.controls{
+  text-align:center;
+  margin-bottom:10px;
+}
 </style>
 </head>
 
 <body>
-<div class="container">
 
-<div class="topbar">
-  <h2>Admin – Voting & Weekly Bonus</h2>
-  <button class="link" onclick="goBonusHistory()">Bonus History</button>
-</div>
+<div class="box">
+<h2>Admin – Voting & Weekly Bonus</h2>
 
 <div class="controls">
-  From <input type="date" id="fromDate">
-  To <input type="date" id="toDate">
-  <button onclick="applyRange()">Apply</button>
+  From <input type="date" id="from">
+  To <input type="date" id="to">
+  <button onclick="applyFilter()">Apply</button>
   <button onclick="exportExcel()">Export Excel</button>
-</div>
-
-<div class="note">
-  Bonus applies only to the selected date range (weekly). Rank-1 users only (tie allowed).
 </div>
 
 <h3>Summary (Dense Ranking + Weekly Bonus)</h3>
@@ -62,10 +80,7 @@ th{background:#f3f4f6}
 <tbody id="summary"></tbody>
 </table>
 
-<div class="total" id="grandTotal"></div>
-
-<h3>Detailed Votes (Selected Dates)</h3>
-<div class="scroll">
+<h3>Detailed Votes</h3>
 <table>
 <thead>
 <tr>
@@ -73,177 +88,161 @@ th{background:#f3f4f6}
   <th>Phone</th>
   <th>Tasks</th>
   <th>Date</th>
-  <th>Delete Vote</th>
+  <th>Delete</th>
 </tr>
 </thead>
 <tbody id="details"></tbody>
 </table>
 </div>
 
-</div>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, collection, getDocs, doc, setDoc, deleteDoc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+  projectId: "daily-voting-793ee",
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 DELETE PASSWORD (VOTE ONLY) */
-const ADMIN_DELETE_PASSWORD = "admin@123";
+let votes = [];
+let bonuses = {};
 
-/* ===== APPLY DATE RANGE ===== */
-window.applyRange = async function(){
-  const from = fromDate.value;
-  const to   = toDate.value;
-  if(!from || !to){ alert("Select From & To dates"); return; }
+async function loadData(){
+  votes=[];
+  bonuses={};
 
-  const snap = await getDocs(collection(db,"votes"));
-  let votes=[];
-  snap.forEach(d=>{
-    let v=d.data();
-    if(v.date>=from && v.date<=to){
-      votes.push({id:d.id,...v});
-    }
-  });
+  const vSnap = await getDocs(collection(db,"votes"));
+  vSnap.forEach(d=>votes.push({id:d.id,...d.data()}));
 
-  renderDetails(votes);
-  await renderSummary(votes, from, to);
+  const bSnap = await getDocs(collection(db,"weekly_bonus"));
+  bSnap.forEach(d=>bonuses[d.id]=d.data());
+}
+await loadData();
+
+window.applyFilter = function(){
+  let from = fromInput.value;
+  let to = toInput.value;
+  if(!from||!to){alert("Select dates");return;}
+  render(from,to);
 };
 
-/* ===== DETAILS ===== */
-function renderDetails(votes){
-  const body=document.getElementById("details");
-  body.innerHTML="";
-  votes.forEach(v=>{
+const fromInput=document.getElementById("from");
+const toInput=document.getElementById("to");
+const summary=document.getElementById("summary");
+const details=document.getElementById("details");
+
+function render(from,to){
+  summary.innerHTML="";
+  details.innerHTML="";
+
+  let filtered = votes.filter(v=>v.date>=from && v.date<=to);
+
+  // DETAILS
+  filtered.forEach(v=>{
     let tr=document.createElement("tr");
     tr.innerHTML=`
       <td>${v.name}</td>
       <td>${v.phone}</td>
       <td>${Object.values(v.tasks).filter(x=>x).length}</td>
       <td>${v.date}</td>
-      <td><button class="del" onclick="deleteVote('${v.id}')">X</button></td>
+      <td><button class="delete" onclick="deleteVote('${v.id}')">X</button></td>
     `;
-    body.appendChild(tr);
+    details.appendChild(tr);
   });
-}
 
-/* ===== SUMMARY + DENSE RANK ===== */
-async function renderSummary(votes, from, to){
+  // SUMMARY
   let map={};
-  votes.forEach(v=>{
+  filtered.forEach(v=>{
     let pts=Object.values(v.tasks).filter(x=>x).length;
-    if(!map[v.phone]) map[v.phone]={name:v.name, phone:v.phone, total:0};
+    if(!map[v.phone]){
+      map[v.phone]={name:v.name,phone:v.phone,total:0};
+    }
     map[v.phone].total+=pts;
   });
 
-  let users=Object.values(map).sort((a,b)=>b.total-a.total);
+  let arr=Object.values(map).sort((a,b)=>b.total-a.total);
 
-  // Dense ranking (1,1,2,2,3…)
-  let rank=0, prev=null;
-  users.forEach(u=>{
-    if(prev===null || u.total<prev) rank++;
+  // Dense ranking
+  let rank=0,prev=null;
+  arr.forEach((u,i)=>{
+    if(u.total!==prev){rank=i+1;prev=u.total;}
     u.rank=rank;
-    prev=u.total;
   });
 
-  // Fetch weekly bonuses
-  const bSnap = await getDocs(collection(db,"weekly_bonus"));
-  let bonusMap={};
-  bSnap.forEach(b=>{
-    let d=b.data();
-    bonusMap[d.phone+"_"+d.fromDate+"_"+d.toDate]=d;
-  });
+  let keyRange=`${from}_${to}`;
+  let topScore=arr.length?arr[0].total:0;
 
-  const body=document.getElementById("summary");
-  body.innerHTML="";
-  let topScore = users.length? users[0].total:0;
-  let sum=0;
-
-  users.forEach(u=>{
-    sum+=u.total;
-    let key = u.phone+"_"+from+"_"+to;
-    let b = bonusMap[key];
+  arr.forEach(u=>{
+    let bKey=u.phone+"_"+keyRange;
+    let b=bonuses[bKey];
+    let bonusPts=b?b.bonus:0;
+    let finalTotal=u.total+bonusPts;
 
     let tr=document.createElement("tr");
-    tr.className = u.rank<=3?`rank-${u.rank}`:"";
+    tr.className=u.rank<=3?`rank${u.rank}`:"";
     tr.innerHTML=`
       <td>${u.rank}</td>
       <td>${u.name}</td>
       <td>${u.phone}</td>
-      <td>${u.total}</td>
+      <td>${finalTotal}</td>
       <td>${from} to ${to}</td>
       <td>
         ${
           u.total===topScore && !b
-          ? `<button class="bonus" onclick="addWeeklyBonus('${u.phone}','${from}','${to}')">+10</button>`
+          ? `<button class="bonus" onclick="addBonus('${u.phone}','${from}','${to}')">+10</button>`
           : b
-            ? `<button class="remove" onclick="removeWeeklyBonus('${u.phone}','${from}','${to}')">Remove</button>`
+            ? `<button class="remove" onclick="removeBonus('${u.phone}','${from}','${to}')">Remove</button>`
             : ""
         }
       </td>
-      <td>${b ? b.addedOn : "-"}</td>
+      <td>${b?b.addedOn:"-"}</td>
     `;
-    body.appendChild(tr);
+    summary.appendChild(tr);
   });
-
-  grandTotal.innerText="TOTAL WEEK POINTS : "+sum;
 }
 
-/* ===== WEEKLY BONUS ===== */
-window.addWeeklyBonus = async function(phone, from, to){
-  const today = new Date().toISOString().slice(0,10);
-  const id = phone+"_"+from+"_"+to;
-
+window.addBonus = async function(phone,from,to){
+  let id=phone+"_"+from+"_"+to;
   await setDoc(doc(db,"weekly_bonus",id),{
     phone,
+    from,
+    to,
     bonus:10,
-    fromDate:from,
-    toDate:to,
-    addedOn:today
+    addedOn:new Date().toISOString().split("T")[0]
   });
-  applyRange();
+  await loadData();
+  render(from,to);
 };
 
-window.removeWeeklyBonus = async function(phone, from, to){
-  const id = phone+"_"+from+"_"+to;
+window.removeBonus = async function(phone,from,to){
+  let id=phone+"_"+from+"_"+to;
   await deleteDoc(doc(db,"weekly_bonus",id));
-  applyRange();
+  await loadData();
+  render(from,to);
 };
 
-/* ===== DELETE VOTE (SAFE) ===== */
 window.deleteVote = async function(id){
-  const pass = prompt("Enter admin password to delete this vote");
-  if(pass!==ADMIN_DELETE_PASSWORD){ alert("Wrong password"); return; }
+  if(!confirm("Delete this vote?"))return;
   await deleteDoc(doc(db,"votes",id));
-  applyRange();
+  await loadData();
+  applyFilter();
 };
 
-/* ===== EXCEL EXPORT ===== */
 window.exportExcel = function(){
-  let rows=[["Rank","Name","Phone","Week Points","Date Range","Bonus","Bonus Added On"]];
-  document.querySelectorAll("#summary tr").forEach(tr=>{
-    rows.push([...tr.children].map(td=>td.innerText));
-  });
-  let csv=rows.map(r=>r.join(",")).join("\n");
+  let rows=[...document.querySelectorAll("table tr")].map(r=>
+    [...r.children].map(td=>td.innerText).join(",")
+  ).join("\n");
+  let blob=new Blob([rows],{type:"text/csv"});
   let a=document.createElement("a");
-  a.href="data:text/csv,"+encodeURIComponent(csv);
-  a.download="weekly-admin-report.csv";
+  a.href=URL.createObjectURL(blob);
+  a.download="report.csv";
   a.click();
 };
-
-/* ===== NAV ===== */
-window.goBonusHistory = function(){
-  window.location.href="admin-bonus-history.html";
-};
 </script>
+
 </body>
 </html>
