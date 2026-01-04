@@ -6,7 +6,7 @@
 
 <style>
 body{
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
@@ -14,23 +14,50 @@ body{
   height:100vh;
 }
 .box{
-  background:#fff;
+  background:white;
   padding:25px;
   width:380px;
   border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
+  box-shadow:0 0 10px rgba(0,0,0,0.2);
   position:relative;
 }
-label{display:block;margin:6px 0;}
-.points{color:green;font-size:13px;}
+h2{
+  text-align:center;
+  margin-bottom:5px;
+}
+h4{
+  text-align:center;
+  margin-top:0;
+  color:#16a34a;
+}
+.info{
+  text-align:center;
+  font-size:14px;
+  margin-bottom:6px;
+}
+label{
+  display:block;
+  margin:8px 0;
+}
+.points{
+  font-size:13px;
+  color:green;
+  margin-left:22px;
+}
 button{
   width:100%;
   padding:10px;
   margin-top:15px;
   background:#16a34a;
-  color:#fff;
+  color:white;
   border:none;
+  font-size:16px;
+  cursor:pointer;
   border-radius:6px;
+}
+button:disabled{
+  background:#9ca3af;
+  cursor:not-allowed;
 }
 .logout{
   position:absolute;
@@ -39,6 +66,7 @@ button{
   background:#dc2626;
   width:auto;
   padding:6px 10px;
+  font-size:14px;
 }
 </style>
 </head>
@@ -48,7 +76,14 @@ button{
 <div class="box">
   <button class="logout" onclick="logout()">Logout</button>
 
-  <h3>Daily Tasks</h3>
+  <!-- 🔝 HEADER -->
+  <h2>Welcome Faith & Fitness</h2>
+  <h4>Daily Tasks</h4>
+
+  <div class="info" id="user"></div>
+  <div class="info" id="date"></div>
+
+  <!-- TASKS -->
   <div id="taskList"></div>
 
   <button id="submitBtn">Submit</button>
@@ -58,6 +93,7 @@ button{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -65,10 +101,11 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db  = getFirestore(app);
 
 async function init(){
 
+  /* 🔐 LOGIN CHECK */
   const user  = localStorage.getItem("currentUser");
   const phone = localStorage.getItem("currentPhone");
   if(!user || !phone){
@@ -76,19 +113,30 @@ async function init(){
     return;
   }
 
+  /* 📅 DATE */
   const today = new Date().toISOString().split("T")[0];
-  const voteRef = doc(db,"votes", phone+"_"+today);
+  const voteRef = doc(db,"votes", phone + "_" + today);
+
+  document.getElementById("user").innerText = "User : " + user;
+  document.getElementById("date").innerText = "Date : " + today;
 
   const taskBox = document.getElementById("taskList");
   const btn = document.getElementById("submitBtn");
 
+  /* 🔽 LOAD TASKS */
   const taskSnap = await getDoc(doc(db,"tasks","daily"));
-  const tasks = taskSnap.data().list || [];
+  if(!taskSnap.exists()){
+    taskBox.innerHTML = "<p>No tasks added</p>";
+    btn.disabled = true;
+    return;
+  }
 
+  const tasks = taskSnap.data().list || [];
   const inputs = {};
 
+  taskBox.innerHTML = "";
   tasks.forEach((t,i)=>{
-    const id = "t"+i;
+    const id = "task_"+i;
     taskBox.innerHTML += `
       <label>
         <input type="checkbox" id="${id}">
@@ -96,9 +144,29 @@ async function init(){
         <div class="points">${t.points} points</div>
       </label>
     `;
-    inputs[i] = { el:document.getElementById(id), pts:t.points };
+    inputs[i] = {
+      el: document.getElementById(id),
+      pts: Number(t.points)
+    };
   });
 
+  /* 🔒 CHECK ALREADY SUBMITTED */
+  const snap = await getDoc(voteRef);
+  if(snap.exists()){
+    const old = snap.data().tasks || {};
+    Object.keys(old).forEach(i=>{
+      if(inputs[i]) inputs[i].el.checked = old[i];
+    });
+    lockPage("Already submitted");
+  }
+
+  function lockPage(msg){
+    Object.values(inputs).forEach(i=>i.el.disabled = true);
+    btn.disabled = true;
+    btn.innerText = msg;
+  }
+
+  /* ✅ SUBMIT */
   btn.onclick = async ()=>{
     let result = {};
     let total = 0;
@@ -106,7 +174,9 @@ async function init(){
     Object.keys(inputs).forEach(i=>{
       const checked = inputs[i].el.checked;
       result[i] = checked;
-      if(checked) total += inputs[i].pts;
+      if(checked){
+        total += inputs[i].pts; // ✅ correct total
+      }
     });
 
     await setDoc(voteRef,{
@@ -114,17 +184,21 @@ async function init(){
       phone:phone,
       date:today,
       tasks:result,
-      totalPoints:total
+      totalPoints:total,
+      submittedAt:new Date().toISOString()
     });
 
-    alert("Vote saved ✅ Total points: " + total);
-    location.reload();
+    alert("Vote saved ✅  Total points : " + total);
+    lockPage("Already submitted");
   };
 }
 
-window.logout = ()=>{
-  localStorage.clear();
-  location.replace("index.html");
+/* 🚪 LOGOUT */
+window.logout = function(){
+  if(confirm("Logout cheyyano?")){
+    localStorage.clear();
+    location.replace("index.html");
+  }
 };
 
 init();
