@@ -31,6 +31,7 @@ button{
   color:white;
   border:none;
   cursor:pointer;
+  border-radius:6px;
 }
 </style>
 </head>
@@ -45,15 +46,15 @@ button{
 </div>
 
 <script>
-// 🔑 DEFAULT SUPER ADMIN (first time only)
+/* 🔑 DEFAULT SUPER ADMIN (FIRST TIME AUTO CREATE) */
 if(!localStorage.getItem("superAdmin")){
   localStorage.setItem("superAdmin", JSON.stringify({
-    user:"admin",
-    pass:"admin123"
+    user: "admin",
+    pass: "admin123"
   }));
 }
 
-// LOGIN
+/* 🔐 ADMIN LOGIN */
 function login(){
   let u = user.value.trim();
   let p = pass.value.trim();
@@ -61,20 +62,22 @@ function login(){
   let superAdmin = JSON.parse(localStorage.getItem("superAdmin"));
   let admins = JSON.parse(localStorage.getItem("admins") || "[]");
 
-  if(superAdmin.user===u && superAdmin.pass===p){
-    localStorage.setItem("adminRole","super");
-    location.href="admin-panel.html";
+  // SUPER ADMIN LOGIN
+  if(superAdmin.user === u && superAdmin.pass === p){
+    localStorage.setItem("adminRole", "super");
+    window.location.replace("admin.html");   // ✅ DIRECT TO ADMIN VOTING REPORT
     return;
   }
 
-  let found = admins.find(a=>a.user===u && a.pass===p);
+  // NORMAL ADMIN LOGIN
+  let found = admins.find(a => a.user === u && a.pass === p);
   if(found){
-    localStorage.setItem("adminRole","admin");
-    location.href="admin-panel.html";
+    localStorage.setItem("adminRole", "admin");
+    window.location.replace("admin.html");   // ✅ DIRECT TO ADMIN VOTING REPORT
     return;
   }
 
-  alert("Invalid admin login");
+  alert("Invalid admin username or password");
 }
 </script>
 
