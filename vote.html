@@ -1,9 +1,85 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+<meta charset="UTF-8">
+<title>Daily Voting</title>
+
+<style>
+body{
+  font-family: Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.box{
+  background:white;
+  padding:25px;
+  width:360px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,0.2);
+  position:relative;
+}
+h2{text-align:center;}
+.info{
+  text-align:center;
+  font-size:14px;
+  margin-bottom:6px;
+}
+label{
+  display:block;
+  margin:6px 0;
+}
+button{
+  width:100%;
+  padding:10px;
+  margin-top:15px;
+  background:#16a34a;
+  color:white;
+  border:none;
+  font-size:16px;
+  cursor:pointer;
+  border-radius:6px;
+}
+button:disabled{
+  background:#9ca3af;
+  cursor:not-allowed;
+}
+.logout{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:#dc2626;
+  width:auto;
+  padding:6px 10px;
+  font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+  <button class="logout" onclick="logout()">Logout</button>
+
+  <h2>Daily Tasks</h2>
+  <div class="info" id="user"></div>
+  <div class="info" id="date"></div>
+
+  <!-- 🔽 TASKS LOAD HERE -->
+  <div id="taskList"></div>
+
+  <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
+</div>
+
 <script type="module">
-history.pushState(null, null, location.href);
-window.onpopstate = () => history.go(1);
+/* 🔒 BLOCK BACK BUTTON */
+history.pushState(null,null,location.href);
+window.onpopstate=()=>history.go(1);
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
@@ -13,36 +89,40 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db  = getFirestore(app);
 
-/* 🔐 LOGIN CHECK */
-let user  = localStorage.getItem("currentUser");
-let phone = localStorage.getItem("currentPhone");
-if(!user || !phone) location.replace("index.html");
+async function init(){
 
-/* 📅 DATE */
-let today = new Date().toISOString().split("T")[0];
-let voteRef = doc(db,"votes", phone+"_"+today);
+  /* 🔐 LOGIN CHECK */
+  const user  = localStorage.getItem("currentUser");
+  const phone = localStorage.getItem("currentPhone");
+  if(!user || !phone){
+    location.replace("index.html");
+    return;
+  }
 
-/* UI */
-document.getElementById("user").innerText = "Welcome " + user;
-document.getElementById("date").innerText = "Date : " + today;
+  /* 📅 DATE */
+  const today = new Date().toISOString().split("T")[0];
+  const voteRef = doc(db,"votes", phone+"_"+today);
 
-const taskBox = document.getElementById("taskList");
-const btn = document.getElementById("submitBtn");
+  document.getElementById("user").innerText = "Welcome " + user;
+  document.getElementById("date").innerText = "Date : " + today;
 
-let tasks = [];
-let inputs = {};
+  const taskBox = document.getElementById("taskList");
+  const btn = document.getElementById("submitBtn");
 
-/* 🔽 LOAD TASKS FROM FIRESTORE */
-const taskSnap = await getDoc(doc(db,"tasks","daily"));
-if(taskSnap.exists()){
-  tasks = taskSnap.data().list || [];
-  renderTasks();
-}
+  /* 🔽 LOAD TASKS FROM FIRESTORE */
+  const taskSnap = await getDoc(doc(db,"tasks","daily"));
+  if(!taskSnap.exists()){
+    taskBox.innerHTML = "<p>No tasks added</p>";
+    btn.disabled = true;
+    return;
+  }
 
-function renderTasks(){
-  taskBox.innerHTML="";
+  const tasks = taskSnap.data().list || [];
+  const inputs = {};
+
+  taskBox.innerHTML = "";
   tasks.forEach((t,i)=>{
     taskBox.innerHTML += `
       <label>
@@ -51,46 +131,54 @@ function renderTasks(){
     `;
     inputs[i] = document.getElementById("task"+i);
   });
+
+  /* 🔒 CHECK ALREADY SUBMITTED */
+  const snap = await getDoc(voteRef);
+  if(snap.exists()){
+    const old = snap.data().tasks || {};
+    Object.keys(old).forEach(i=>{
+      if(inputs[i]) inputs[i].checked = old[i];
+    });
+    lockPage("Already submitted today");
+  }
+
+  function lockPage(msg){
+    Object.values(inputs).forEach(i=>i.disabled=true);
+    btn.disabled = true;
+    btn.innerText = msg;
+  }
+
+  /* ✅ SUBMIT */
+  window.submitVote = async function(){
+    const taskData = {};
+    Object.keys(inputs).forEach(i=>{
+      taskData[i] = inputs[i].checked;
+    });
+
+    await setDoc(voteRef,{
+      name:user,
+      phone:phone,
+      date:today,
+      tasks:taskData,
+      submittedAt:new Date().toISOString()
+    });
+
+    alert("Vote submitted successfully ✅");
+    location.reload();
+  };
+
+  /* 🚪 LOGOUT */
+  window.logout = function(){
+    if(confirm("Logout cheyyano?")){
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("currentPhone");
+      location.replace("index.html");
+    }
+  };
 }
 
-/* 🔒 CHECK ALREADY SUBMITTED */
-const snap = await getDoc(voteRef);
-if(snap.exists()){
-  let old = snap.data().tasks;
-  Object.keys(old).forEach(i=>{
-    if(inputs[i]) inputs[i].checked = old[i];
-  });
-  lockPage("Already submitted today");
-}
-
-function lockPage(msg){
-  Object.values(inputs).forEach(i=>i.disabled=true);
-  btn.disabled=true;
-  btn.innerText=msg;
-}
-
-/* ✅ SUBMIT */
-window.submitVote = async function(){
-  let taskData = {};
-  Object.keys(inputs).forEach(i=>{
-    taskData[i] = inputs[i].checked;
-  });
-
-  await setDoc(voteRef,{
-    name:user,
-    phone:phone,
-    date:today,
-    tasks:taskData,
-    submittedAt:new Date().toISOString()
-  });
-
-  alert("Vote submitted successfully 👍");
-  location.reload();
-};
-
-/* 🚪 LOGOUT */
-window.logout = function(){
-  localStorage.clear();
-  location.replace("index.html");
-};
+init(); // 🚀 VERY IMPORTANT
 </script>
+
+</body>
+</html>
