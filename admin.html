@@ -6,260 +6,211 @@
 
 <style>
 body{
-  font-family: Arial;
-  background:#f1f5f9;
-  padding:20px;
+    font-family:Arial;
+    background:#f1f5f9;
+    padding:20px;
 }
 .box{
-  background:#fff;
-  max-width:1100px;
-  margin:auto;
-  padding:20px;
-  border-radius:10px;
+    background:#fff;
+    max-width:1100px;
+    margin:auto;
+    padding:20px;
+    border-radius:10px;
 }
-h2,h3{
-  text-align:center;
-}
-.controls{
-  display:flex;
-  gap:10px;
-  justify-content:center;
-  flex-wrap:wrap;
-  margin-bottom:15px;
-}
+h2{text-align:center}
+
 input,button{
-  padding:6px 10px;
-  font-size:14px;
+    padding:6px 10px;
+    margin:5px;
 }
-button{
-  cursor:pointer;
-}
+button{cursor:pointer}
+
 table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:10px;
+    width:100%;
+    border-collapse:collapse;
+    margin-top:15px;
 }
 th,td{
-  border:1px solid #ddd;
-  padding:8px;
-  text-align:center;
+    border:1px solid #ddd;
+    padding:8px;
+    text-align:center;
 }
-th{
-  background:#f3f4f6;
-}
-.delete{
-  background:#dc2626;
-  color:#fff;
-  border:none;
-  padding:4px 8px;
-  cursor:pointer;
-}
+th{background:#f3f4f6}
 
-/* Rank colors */
-.rank-1{ background:#fff7cc; font-weight:bold; }
-.rank-2{ background:#e5e7eb; }
-.rank-3{ background:#fde68a; }
+.rank1{background:#fde68a;font-weight:bold}
+.rank2{background:#e5e7eb}
+.rank3{background:#fcd34d}
 
-.total{
-  margin-top:10px;
-  font-weight:bold;
-  text-align:right;
+.logout{
+    float:right;
+    background:#dc2626;
+    color:white;
+    border:none;
 }
+.hidden{display:none}
 </style>
 </head>
-
 <body>
 
-<div class="box">
-  <h2>Admin Voting Report</h2>
+<!-- 🔐 LOGIN -->
+<div class="box" id="loginBox">
+    <h2>Admin Login</h2>
+    <input id="adminUser" placeholder="Username"><br>
+    <input id="adminPass" type="password" placeholder="Password"><br>
+    <button onclick="adminLogin()">Login</button>
+</div>
 
-  <!-- FILTER CONTROLS -->
-  <div class="controls">
-    <input type="date" id="from">
-    <input type="date" id="to">
-    <button onclick="loadData()">Filter</button>
-    <button onclick="exportCSV()">Export Excel</button>
-  </div>
+<!-- 📊 REPORT -->
+<div class="box hidden" id="reportBox">
+    <button class="logout" onclick="logout()">Logout</button>
+    <h2>Admin Voting Report</h2>
 
-  <!-- TOP 3 RANK TABLE -->
-  <h3>🏆 Top 3 Ranks (Dense Ranking)</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Rank</th>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Total Votes</th>
-      </tr>
-    </thead>
-    <tbody id="summaryBody"></tbody>
-  </table>
+    <input type="date" id="fromDate">
+    <input type="date" id="toDate">
+    <button onclick="applyFilter()">Apply Filter</button>
+    <button onclick="exportExcel()">Date-wise Excel</button>
 
-  <!-- INFO BOXES -->
-  <div class="total" id="rankInfo"></div>
-  <div class="total" id="remainingBox"></div>
+    <table>
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Total Tasks</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
 
-  <!-- DETAIL TABLE -->
-  <h3 style="margin-top:25px">Detailed Votes</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Tasks Done</th>
-        <th>Date</th>
-        <th>Delete</th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
+    <h3 id="totalVotes"></h3>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  deleteDoc,
-  doc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* Firebase config */
+/* 🔥 Firebase */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+  projectId: "daily-voting-793ee",
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const tbody = document.getElementById("tbody");
-const summaryBody = document.getElementById("summaryBody");
-const rankInfo = document.getElementById("rankInfo");
-const remainingBox = document.getElementById("remainingBox");
+/* 🔐 ADMIN CREDENTIALS */
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "admin123";
 
-/* LOAD DATA */
-window.loadData = async function(){
-  tbody.innerHTML = "";
-  summaryBody.innerHTML = "";
-  rankInfo.innerText = "";
-  remainingBox.innerText = "";
+/* 🔐 LOGIN CHECK */
+if(localStorage.getItem("adminLogged")==="yes"){
+    showReport();
+}
 
-  let from = document.getElementById("from").value;
-  let to   = document.getElementById("to").value;
-
-  let snap = await getDocs(collection(db,"votes"));
-
-  let userMap = {}; // phone → {name, phone, totalVotes}
-
-  snap.forEach(d=>{
-    let v = d.data();
-    let date = v.date;
-
-    if(from && date < from) return;
-    if(to && date > to) return;
-
-    // Count tasks for that day
-    let taskCount = Object.values(v.tasks).filter(t=>t).length;
-
-    /* Detail table */
-    let tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${v.name}</td>
-      <td>${v.phone}</td>
-      <td>${taskCount}</td>
-      <td>${date}</td>
-      <td><button class="delete" onclick="deleteVote('${d.id}')">❌</button></td>
-    `;
-    tbody.appendChild(tr);
-
-    /* User-wise total vote sum */
-    if(!userMap[v.phone]){
-      userMap[v.phone] = {
-        name: v.name,
-        phone: v.phone,
-        totalVotes: 0
-      };
+window.adminLogin = function(){
+    if(adminUser.value===ADMIN_USER && adminPass.value===ADMIN_PASS){
+        localStorage.setItem("adminLogged","yes");
+        showReport();
+    }else{
+        alert("Wrong admin credentials");
     }
-    userMap[v.phone].totalVotes += taskCount;
-  });
-
-  /* ---- DENSE RANKING LOGIC ---- */
-  let sortedUsers = Object.values(userMap)
-    .sort((a,b) => b.totalVotes - a.totalVotes);
-
-  let rank = 0;
-  let lastVotes = null;
-  let shownUsers = 0;
-  let totalRanks = 0;
-
-  for(let i=0;i<sortedUsers.length;i++){
-    let u = sortedUsers[i];
-
-    if(u.totalVotes !== lastVotes){
-      rank += 1;
-      lastVotes = u.totalVotes;
-      totalRanks = rank;   // keep updating till end
-    }
-
-    // Show only TOP 3 ranks
-    if(rank <= 3){
-      let tr = document.createElement("tr");
-      tr.classList.add(`rank-${rank}`);
-      tr.innerHTML = `
-        <td>${rank === 1 ? "🥇 1" : rank === 2 ? "🥈 2" : "🥉 3"}</td>
-        <td>${u.name}</td>
-        <td>${u.phone}</td>
-        <td>${u.totalVotes}</td>
-      `;
-      summaryBody.appendChild(tr);
-      shownUsers++;
-    }
-  }
-
-  rankInfo.innerText =
-    "Top Ranks Shown : 3 | Total Ranks : " + totalRanks;
-
-  let remaining =
-    Object.keys(userMap).length - shownUsers;
-
-  remainingBox.innerText =
-    remaining > 0 ? "Remaining Users : " + remaining : "";
 };
 
-/* DELETE VOTE */
-window.deleteVote = async function(id){
-  if(confirm("Delete this vote?")){
-    await deleteDoc(doc(db,"votes",id));
+function showReport(){
+    loginBox.classList.add("hidden");
+    reportBox.classList.remove("hidden");
     loadData();
-  }
+}
+
+window.logout = function(){
+    localStorage.removeItem("adminLogged");
+    location.reload();
 };
 
-/* EXPORT SUMMARY TO CSV */
-window.exportCSV = function(){
-  let rows = [["Rank","Name","Phone","Total Votes"]];
-  document.querySelectorAll("#summaryBody tr").forEach(tr=>{
-    let tds = tr.querySelectorAll("td");
-    rows.push([
-      tds[0].innerText,
-      tds[1].innerText,
-      tds[2].innerText,
-      tds[3].innerText
-    ]);
-  });
+/* 📊 LOAD & FILTER */
+let allVotes = [];
 
-  let csv = rows.map(r=>r.join(",")).join("\n");
-  let blob = new Blob([csv],{type:"text/csv"});
-  let a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "top_ranks_report.csv";
-  a.click();
+async function loadData(){
+    allVotes=[];
+    const snap = await getDocs(collection(db,"votes"));
+    snap.forEach(d=>allVotes.push(d.data()));
+    applyFilter();
+}
+
+window.applyFilter = function(){
+    let from = fromDate.value;
+    let to   = toDate.value;
+
+    let filtered = allVotes.filter(v=>{
+        if(!from || !to) return true;
+        return v.date >= from && v.date <= to;
+    });
+
+    buildRanking(filtered);
 };
 
-/* AUTO LOAD */
-loadData();
+/* 🏆 USER TOTAL + RANKING */
+function buildRanking(data){
+    let map = {};
+
+    data.forEach(v=>{
+        let key = v.phone;
+        let count = Object.values(v.tasks).filter(x=>x).length;
+        if(!map[key]){
+            map[key]={name:v.name, phone:v.phone, total:0};
+        }
+        map[key].total += count;
+    });
+
+    let arr = Object.values(map).sort((a,b)=>b.total-a.total);
+
+    let tbody = document.getElementById("tableBody");
+    tbody.innerHTML="";
+
+    let rank=0, lastScore=null, displayRank=0;
+    let grandTotal=0;
+
+    arr.forEach(u=>{
+        grandTotal+=u.total;
+
+        if(u.total!==lastScore){
+            rank++;
+            displayRank=rank;
+            lastScore=u.total;
+        }
+
+        let tr=document.createElement("tr");
+        if(displayRank===1) tr.className="rank1";
+        else if(displayRank===2) tr.className="rank2";
+        else if(displayRank===3) tr.className="rank3";
+
+        tr.innerHTML=`
+            <td>${displayRank}</td>
+            <td>${u.name}</td>
+            <td>${u.phone}</td>
+            <td>${u.total}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    totalVotes.innerText="TOTAL TASKS : "+grandTotal;
+}
+
+/* 📤 EXCEL */
+window.exportExcel = function(){
+    let rows=[["Rank","Name","Phone","Total Tasks"]];
+    document.querySelectorAll("#tableBody tr").forEach(tr=>{
+        let cols=[...tr.children].map(td=>td.innerText);
+        rows.push(cols);
+    });
+
+    let csv = rows.map(r=>r.join(",")).join("\n");
+    let blob = new Blob([csv],{type:"text/csv"});
+    let a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="admin-report.csv";
+    a.click();
+};
 </script>
 
 </body>
