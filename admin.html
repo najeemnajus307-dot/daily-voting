@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Admin Voting Report</title>
@@ -10,23 +10,28 @@ body{
   background:#f1f5f9;
   padding:20px;
 }
-.box{
+.container{
   background:#fff;
   padding:20px;
-  border-radius:10px;
+  border-radius:12px;
   max-width:1200px;
   margin:auto;
 }
 h2,h3{text-align:center}
+
+.controls{
+  text-align:center;
+  margin-bottom:15px;
+}
 input,button{
   padding:6px 10px;
-  margin:5px;
+  margin:4px;
 }
-button{cursor:pointer}
+
 table{
   width:100%;
   border-collapse:collapse;
-  margin-top:15px;
+  margin-top:10px;
 }
 th,td{
   border:1px solid #ddd;
@@ -35,34 +40,54 @@ th,td{
 }
 th{background:#f3f4f6}
 
-.rank1{background:#fde68a;font-weight:bold}
-.rank2{background:#e5e7eb}
-.rank3{background:#fcd34d}
+.rank-1{background:#ffe066;font-weight:bold}
+.rank-2{background:#dbeafe}
+.rank-3{background:#fde68a}
 
-.bonus{background:#16a34a;color:#fff;border:none}
-.delBonus{background:#dc2626;color:#fff;border:none}
-.delVote{background:#991b1b;color:#fff;border:none}
-
-.total{
-  text-align:right;
-  font-weight:bold;
+.scroll-box{
+  max-height:400px;
+  overflow-y:auto;
   margin-top:10px;
+}
+
+.delete-btn{
+  background:#dc2626;
+  color:white;
+  border:none;
+  padding:4px 8px;
+  cursor:pointer;
+}
+
+.bonus-btn{
+  background:#16a34a;
+  color:white;
+  border:none;
+  padding:4px 8px;
+  cursor:pointer;
+}
+
+.remove-btn{
+  background:#b91c1c;
+  color:white;
+  border:none;
+  padding:4px 8px;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
-<div class="box">
+<div class="container">
 
 <h2>Admin Voting Report</h2>
 
-<!-- DATE FILTER -->
-From <input type="date" id="fromDate">
-To <input type="date" id="toDate">
-<button onclick="applyFilter()">Apply Filter</button>
-<button onclick="exportExcel()">Export Excel</button>
+<div class="controls">
+  From <input type="date" id="from">
+  To <input type="date" id="to">
+  <button onclick="loadReport()">Apply Filter</button>
+  <button onclick="exportExcel()">Export Excel</button>
+</div>
 
-<!-- SUMMARY -->
 <h3>User Summary (Ranking + Bonus)</h3>
 <table>
 <thead>
@@ -74,12 +99,11 @@ To <input type="date" id="toDate">
   <th>Bonus</th>
 </tr>
 </thead>
-<tbody id="summaryBody"></tbody>
+<tbody id="summary"></tbody>
 </table>
-<div class="total" id="grandTotal"></div>
 
-<!-- DETAILS -->
-<h3>Detailed Votes</h3>
+<h3 style="margin-top:25px">Detailed Votes</h3>
+<div class="scroll-box">
 <table>
 <thead>
 <tr>
@@ -90,177 +114,160 @@ To <input type="date" id="toDate">
   <th>Delete</th>
 </tr>
 </thead>
-<tbody id="detailBody"></tbody>
+<tbody id="details"></tbody>
 </table>
+</div>
+
+<p style="text-align:right;font-weight:bold" id="totalPoints"></p>
 
 </div>
 
 <script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs,
-  doc, deleteDoc, setDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+  doc, deleteDoc, getDoc, setDoc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* 🔥 FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee",
+  storageBucket: "daily-voting-793ee.firebasestorage.app",
+  messagingSenderId: "1065830068376",
+  appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let allVotes = [];
+/* ================= LOAD REPORT ================= */
+window.loadReport = async function(){
+  const from = document.getElementById("from").value;
+  const to   = document.getElementById("to").value;
 
-/* LOAD DATA */
-loadData();
-async function loadData(){
-  allVotes=[];
-  const snap = await getDocs(collection(db,"votes"));
-  snap.forEach(d=>allVotes.push({id:d.id,...d.data()}));
-  applyFilter();
-}
+  let snap = await getDocs(collection(db,"votes"));
 
-/* APPLY FILTER */
-window.applyFilter = function(){
-  let f = fromDate.value;
-  let t = toDate.value;
-
-  let filtered = allVotes.filter(v=>{
-    return (!f || v.date>=f) && (!t || v.date<=t);
+  let votes = [];
+  snap.forEach(d=>{
+    let v = d.data();
+    if((!from || v.date>=from) && (!to || v.date<=to)){
+      votes.push(v);
+    }
   });
 
-  buildSummary(filtered);
-  buildDetails(filtered);
+  renderDetails(votes);
+  renderSummary(votes);
 };
 
-/* SUMMARY + BONUS */
-async function buildSummary(data){
-  let map={};
+/* ================= DETAILS ================= */
+function renderDetails(votes){
+  let body = document.getElementById("details");
+  body.innerHTML = "";
 
-  data.forEach(v=>{
-    let c = Object.values(v.tasks).filter(x=>x).length;
-    if(!map[v.phone]){
-      map[v.phone]={name:v.name, phone:v.phone, total:0};
-    }
-    map[v.phone].total += c;
-  });
-
-  /* FETCH BONUS */
-  const bonusSnap = await getDocs(collection(db,"bonus"));
-  let bonusMap={};
-  bonusSnap.forEach(b=>{
-    let d=b.data();
-    bonusMap[d.phone]=b.id;
-    if(map[d.phone]) map[d.phone].total += d.points;
-  });
-
-  let arr = Object.values(map).sort((a,b)=>b.total-a.total);
-  let topScore = arr.length ? arr[0].total : 0;
-
-  let tbody=document.getElementById("summaryBody");
-  tbody.innerHTML="";
-
-  let rank=0,last=null,totalAll=0;
-
-  arr.forEach((u,i)=>{
-    if(u.total!==last){rank=i+1;last=u.total}
-    totalAll+=u.total;
-
-    let tr=document.createElement("tr");
-    if(rank===1) tr.className="rank1";
-    else if(rank===2) tr.className="rank2";
-    else if(rank===3) tr.className="rank3";
-
-    tr.innerHTML=`
-      <td>${rank}</td>
-      <td>${u.name}</td>
-      <td>${u.phone}</td>
-      <td>${u.total}</td>
-      <td>
-        ${
-          u.total===topScore && !bonusMap[u.phone]
-            ? `<button class="bonus" onclick="addBonus('${u.phone}')">+10</button>`
-            : bonusMap[u.phone]
-              ? `<button class="delBonus" onclick="removeBonus('${u.phone}')">Remove</button>`
-              : ""
-        }
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  grandTotal.innerText="TOTAL POINTS : "+totalAll;
-}
-
-/* DETAILS */
-function buildDetails(data){
-  let body=document.getElementById("detailBody");
-  body.innerHTML="";
-
-  data.forEach(v=>{
-    let tr=document.createElement("tr");
-    tr.innerHTML=`
+  votes.forEach(v=>{
+    let tr = document.createElement("tr");
+    tr.innerHTML = `
       <td>${v.name}</td>
       <td>${v.phone}</td>
       <td>${Object.values(v.tasks).filter(x=>x).length}</td>
       <td>${v.date}</td>
-      <td><button class="delVote" onclick="delVote('${v.id}')">X</button></td>
+      <td><button class="delete-btn" onclick="deleteVote('${v.phone}','${v.date}')">X</button></td>
     `;
     body.appendChild(tr);
   });
 }
 
-/* DELETE VOTE */
-window.delVote = async function(id){
-  if(confirm("Delete vote?")){
-    await deleteDoc(doc(db,"votes",id));
-    loadData();
-  }
-};
-
-/* ADD BONUS */
-window.addBonus = async function(phone){
-  let week = getWeekKey(new Date());
-  await setDoc(doc(db,"bonus",phone+"_"+week),{
-    phone,week,points:10
+/* ================= SUMMARY + RANK ================= */
+async function renderSummary(votes){
+  let map = {};
+  votes.forEach(v=>{
+    let key = v.phone;
+    let points = Object.values(v.tasks).filter(x=>x).length;
+    if(!map[key]){
+      map[key] = {name:v.name, phone:v.phone, taskPoints:0};
+    }
+    map[key].taskPoints += points;
   });
-  alert("Bonus added");
-  loadData();
-};
 
-/* REMOVE BONUS */
-window.removeBonus = async function(phone){
-  let week = getWeekKey(new Date());
-  if(confirm("Remove bonus?")){
-    await deleteDoc(doc(db,"bonus",phone+"_"+week));
-    loadData();
+  let users = [];
+  for(let p in map){
+    let bonusSnap = await getDoc(doc(db,"bonuses",p));
+    let bonus = bonusSnap.exists() ? bonusSnap.data().points : 0;
+    users.push({
+      ...map[p],
+      bonus,
+      total: map[p].taskPoints + bonus
+    });
   }
-};
 
-/* WEEK KEY */
-function getWeekKey(d){
-  let y=d.getFullYear();
-  let w=Math.ceil((((d-new Date(y,0,1))/86400000)+1)/7);
-  return y+"-W"+w;
+  users.sort((a,b)=>b.total-a.total);
+
+  let rank=0, prev=null, pos=0;
+  users.forEach(u=>{
+    pos++;
+    if(prev===null || u.total<prev) rank=pos;
+    prev=u.total;
+    u.rank=rank;
+  });
+
+  let tbody = document.getElementById("summary");
+  tbody.innerHTML="";
+  let totalPoints=0;
+
+  users.forEach(u=>{
+    totalPoints += u.total;
+    let tr = document.createElement("tr");
+    tr.className = u.rank<=3 ? `rank-${u.rank}` : "";
+    tr.innerHTML = `
+      <td>${u.rank}</td>
+      <td>${u.name}</td>
+      <td>${u.phone}</td>
+      <td>${u.total}</td>
+      <td>
+        <button class="bonus-btn" onclick="addBonus('${u.phone}','${u.name}')">+ Bonus</button>
+        ${u.bonus>0 ? `<button class="remove-btn" onclick="removeBonus('${u.phone}')">Remove</button>`:""}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("totalPoints").innerText =
+    "TOTAL POINTS : "+totalPoints;
 }
 
-/* EXCEL */
-window.exportExcel=function(){
-  let rows=[["Rank","Name","Phone","Total"]];
-  document.querySelectorAll("#summaryBody tr").forEach(tr=>{
-    rows.push([...tr.children].slice(0,4).map(td=>td.innerText));
-  });
-  let csv=rows.map(r=>r.join(",")).join("\n");
-  let a=document.createElement("a");
-  a.href="data:text/csv,"+encodeURIComponent(csv);
-  a.download="admin-summary.csv";
+/* ================= BONUS ================= */
+window.addBonus = async function(phone,name){
+  let p = prompt("Bonus points for "+name);
+  if(!p || isNaN(p)) return;
+  await setDoc(doc(db,"bonuses",phone),{points:Number(p)});
+  loadReport();
+};
+
+window.removeBonus = async function(phone){
+  await deleteDoc(doc(db,"bonuses",phone));
+  loadReport();
+};
+
+/* ================= DELETE VOTE ================= */
+window.deleteVote = async function(phone,date){
+  if(!confirm("Delete this vote?")) return;
+  await deleteDoc(doc(db,"votes",phone+"_"+date));
+  loadReport();
+};
+
+/* ================= EXCEL ================= */
+window.exportExcel = function(){
+  let table = document.querySelector("table");
+  let html = table.outerHTML.replace(/ /g,"%20");
+  let a = document.createElement("a");
+  a.href = "data:application/vnd.ms-excel," + html;
+  a.download = "voting-report.xls";
   a.click();
 };
-</script>
 
+loadReport();
+</script>
 </body>
 </html>
