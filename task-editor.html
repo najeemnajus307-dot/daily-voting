@@ -5,85 +5,92 @@
 <title>Task Editor</title>
 <style>
 body{
-    font-family:Arial;
-    background:#f1f5f9;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
+  font-family:Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
 .box{
-    background:#fff;
-    padding:25px;
-    width:360px;
-    border-radius:10px;
-    box-shadow:0 0 10px rgba(0,0,0,0.2);
+  background:#fff;
+  padding:25px;
+  width:360px;
+  border-radius:10px;
 }
-h2{text-align:center;}
-input{
-    width:100%;
-    padding:8px;
-    margin:6px 0;
+input,button{
+  width:100%;
+  padding:8px;
+  margin:6px 0;
 }
 button{
-    width:100%;
-    padding:10px;
-    background:#2563eb;
-    color:#fff;
-    border:none;
-    margin-top:10px;
-    cursor:pointer;
+  background:#2563eb;
+  color:#fff;
+  border:none;
 }
-ul{padding-left:18px;}
+li{margin:4px 0;}
 </style>
 </head>
 
 <body>
-
 <div class="box">
-<h2>Task Editor</h2>
+<h3>Task Editor (Firebase)</h3>
 
 <input id="taskInput" placeholder="Enter task">
 <button onclick="addTask()">Add Task</button>
 
-<ul id="taskList"></ul>
+<ul id="list"></ul>
 
-<button style="background:#16a34a" onclick="saveTasks()">Save Tasks</button>
+<button style="background:#16a34a" onclick="save()">Save Tasks</button>
 </div>
 
-<script>
-let tasks = JSON.parse(localStorage.getItem("dailyTasks")) || [];
-let list = document.getElementById("taskList");
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* 🔥 FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let tasks=[];
+const list=document.getElementById("list");
+
+/* LOAD EXISTING TASKS */
+const snap = await getDoc(doc(db,"tasks","daily"));
+if(snap.exists()){
+  tasks = snap.data().list || [];
+  render();
+}
 
 function render(){
-    list.innerHTML="";
-    tasks.forEach((t,i)=>{
-        let li=document.createElement("li");
-        li.innerHTML = `${t} <button onclick="del(${i})">❌</button>`;
-        list.appendChild(li);
-    });
-}
-render();
-
-function addTask(){
-    let v=document.getElementById("taskInput").value.trim();
-    if(v){
-        tasks.push(v);
-        document.getElementById("taskInput").value="";
-        render();
-    }
+  list.innerHTML="";
+  tasks.forEach((t,i)=>{
+    let li=document.createElement("li");
+    li.innerHTML=`${t} <button onclick="del(${i})">❌</button>`;
+    list.appendChild(li);
+  });
 }
 
-function del(i){
-    tasks.splice(i,1);
-    render();
+window.addTask=function(){
+  let v=taskInput.value.trim();
+  if(v){ tasks.push(v); taskInput.value=""; render(); }
 }
 
-function saveTasks(){
-    localStorage.setItem("dailyTasks", JSON.stringify(tasks));
-    alert("Tasks saved ✅");
+window.del=function(i){
+  tasks.splice(i,1);
+  render();
+}
+
+window.save=async function(){
+  await setDoc(doc(db,"tasks","daily"),{list:tasks});
+  alert("Tasks saved to Firebase ✅");
 }
 </script>
-
 </body>
 </html>
