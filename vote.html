@@ -1,69 +1,91 @@
 <!DOCTYPE html>
 <html lang="ml">
 <head>
-<meta charset="UTF-8">
-<title>Daily Challenge Vote</title>
-
-<style>
-body{
-    font-family: Arial;
-    background:#f1f5f9;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-}
-.box{
-    background:white;
-    padding:25px;
-    width:360px;
-    border-radius:10px;
-    box-shadow:0 0 10px rgba(0,0,0,0.2);
-}
-h2{text-align:center;margin-bottom:10px}
-.task{
-    border:1px solid #ddd;
-    padding:10px;
-    border-radius:6px;
-    margin-bottom:10px;
-}
-.task label{
-    font-weight:bold;
-}
-.points{
-    font-size:13px;
-    margin-top:5px;
-}
-button{
-    width:100%;
-    padding:10px;
-    margin-top:15px;
-    background:#16a34a;
-    color:white;
-    border:none;
-    border-radius:6px;
-    font-size:16px;
-    cursor:pointer;
-}
-button:disabled{
-    background:#9ca3af;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>Daily Voting</title>
+    <style>
+        body{
+            font-family: Arial;
+            background:#f1f5f9;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+        .box{
+            background:white;
+            padding:25px;
+            width:360px;
+            border-radius:10px;
+            box-shadow:0 0 10px rgba(0,0,0,0.2);
+            position:relative;
+        }
+        h2{text-align:center;}
+        .info{
+            text-align:center;
+            font-size:14px;
+            margin-bottom:6px;
+        }
+        label{
+            display:block;
+            margin:6px 0;
+        }
+        button{
+            width:100%;
+            padding:10px;
+            margin-top:15px;
+            background:#16a34a;
+            color:white;
+            border:none;
+            font-size:16px;
+            cursor:pointer;
+            border-radius:6px;
+        }
+        button:disabled{
+            background:#9ca3af;
+            cursor:not-allowed;
+        }
+        .logout{
+            position:absolute;
+            top:10px;
+            right:10px;
+            background:#dc2626;
+            width:auto;
+            padding:6px 10px;
+            font-size:14px;
+        }
+    </style>
 </head>
-
 <body>
 
 <div class="box">
-    <h2>Daily Challenge Vote</h2>
-    <div id="taskBox"></div>
+    <button class="logout" onclick="logout()">Logout</button>
+
+    <h2>Daily Tasks</h2>
+
+    <div class="info" id="user"></div>
+    <div class="info" id="date"></div>
+
+    <label><input type="checkbox" id="water"> വെള്ളം കുടിച്ചു</label>
+    <label><input type="checkbox" id="warmup"> Warm up & Stretching</label>
+    <label><input type="checkbox" id="sugar"> Sugar cut</label>
+    <label><input type="checkbox" id="steps"> 100 Steps</label>
+    <label><input type="checkbox" id="pushup"> Push up + Squat</label>
+
     <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+/* 🔒 BACK BUTTON BLOCK (MOST IMPORTANT) */
+history.pushState(null, null, location.href);
+window.onpopstate = function () {
+    history.go(1);
+};
 
-/* 🔥 FIREBASE */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -77,67 +99,81 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* 🔐 LOGIN CHECK */
-const user  = sessionStorage.getItem("userName");
-const phone = sessionStorage.getItem("userPhone");
+let user  = localStorage.getItem("currentUser");
+let phone = localStorage.getItem("currentPhone");
+
 if(!user || !phone){
-    location.replace("index.html");
+    window.location.replace("index.html"); // 🔑 replace, not href
 }
 
 /* 📅 DATE */
-const today = new Date().toISOString().split("T")[0];
-const voteRef = doc(db,"votes",phone+"_"+today);
+let today = new Date().toISOString().split("T")[0];
+let voteRef = doc(db, "votes", phone + "_" + today);
 
-const taskBox = document.getElementById("taskBox");
-const btn = document.getElementById("submitBtn");
+/* UI */
+document.getElementById("user").innerText = "Welcome " + user;
+document.getElementById("date").innerText = "Date : " + today;
 
-/* 📥 LOAD TASKS (ADMIN ADD ചെയ്തവ) */
-const taskSnap = await getDoc(doc(db,"config","tasks"));
+let inputs = {
+    water:  document.getElementById("water"),
+    warmup: document.getElementById("warmup"),
+    sugar:  document.getElementById("sugar"),
+    steps:  document.getElementById("steps"),
+    pushup: document.getElementById("pushup")
+};
+let btn = document.getElementById("submitBtn");
 
-if(!taskSnap.exists()){
-    taskBox.innerHTML="<p style='color:red'>No tasks added</p>";
-    btn.disabled=true;
-}else{
-    taskSnap.data().list.forEach((t,i)=>{
-        taskBox.innerHTML += `
-        <div class="task">
-            <label>
-                <input type="checkbox" id="task_${i}">
-                ${t.name}
-            </label>
-            <div class="points">Points : ${t.points}</div>
-        </div>`;
-    });
+/* 🔒 CHECK ALREADY SUBMITTED */
+const snap = await getDoc(voteRef);
+if(snap.exists()){
+    loadTasks(snap.data().tasks);
+    lockPage("Already submitted today");
 }
 
-/* 🔒 ALREADY VOTED CHECK */
-const voted = await getDoc(voteRef);
-if(voted.exists()){
-    btn.disabled=true;
-    btn.innerText="Already Voted Today";
+/* FUNCTIONS */
+function loadTasks(tasks){
+    inputs.water.checked  = tasks.water;
+    inputs.warmup.checked = tasks.warmup;
+    inputs.sugar.checked  = tasks.sugar;
+    inputs.steps.checked  = tasks.steps;
+    inputs.pushup.checked = tasks.pushup;
 }
 
-/* ✅ SUBMIT */
-window.submitVote = async ()=>{
-    let tasks = {};
-    let total = 0;
+function lockPage(msg){
+    Object.values(inputs).forEach(i => i.disabled = true);
+    btn.disabled = true;
+    btn.innerText = msg;
+}
 
-    taskSnap.data().list.forEach((t,i)=>{
-        const checked = document.getElementById("task_"+i).checked;
-        tasks[t.name] = checked;
-        if(checked) total += t.points;
+/* ✅ SUBMIT VOTE */
+window.submitVote = async function(){
+    let taskData = {
+        water:  inputs.water.checked,
+        warmup: inputs.warmup.checked,
+        sugar:  inputs.sugar.checked,
+        steps:  inputs.steps.checked,
+        pushup: inputs.pushup.checked
+    };
+
+    await setDoc(voteRef, {
+        name: user,
+        phone: phone,
+        date: today,
+        tasks: taskData,
+        submittedAt: new Date().toISOString()
     });
 
-    await setDoc(voteRef,{
-        name:user,
-        phone:phone,
-        date:today,
-        tasks:tasks,
-        points:total,
-        submittedAt:new Date().toISOString()
-    });
-
-    alert("Vote submitted 👍");
+    alert("Vote submitted successfully 👍");
     location.reload();
+};
+
+/* 🚪 LOGOUT */
+window.logout = function(){
+    if(confirm("Logout cheyyano?")){
+        localStorage.removeItem("currentUser");
+        localStorage.removeItem("currentPhone");
+        window.location.replace("index.html"); // 🔑 replace
+    }
 };
 </script>
 
