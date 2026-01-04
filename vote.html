@@ -1,71 +1,62 @@
 <!DOCTYPE html>
 <html lang="ml">
 <head>
-  <meta charset="UTF-8">
-  <title>Daily Voting</title>
+<meta charset="UTF-8">
+<title>Vote</title>
 
-  <style>
-    body{
-      font-family: Arial;
-      background:#f1f5f9;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      height:100vh;
-    }
-    .box{
-      background:white;
-      padding:25px;
-      width:360px;
-      border-radius:10px;
-      box-shadow:0 0 10px rgba(0,0,0,0.2);
-    }
-    h2{text-align:center;}
-    label{
-      display:block;
-      margin:8px 0;
-      padding:8px;
-      border:1px solid #ddd;
-      border-radius:6px;
-    }
-    button{
-      width:100%;
-      padding:10px;
-      margin-top:15px;
-      background:#16a34a;
-      color:white;
-      border:none;
-      font-size:16px;
-      border-radius:6px;
-      cursor:pointer;
-    }
-  </style>
+<style>
+body{
+  font-family:Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.box{
+  background:#fff;
+  padding:20px;
+  width:320px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+label{
+  display:block;
+  margin:8px 0;
+}
+button{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  background:green;
+  color:white;
+  border:none;
+  border-radius:6px;
+}
+</style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>Daily Voting</h2>
+<h3>Daily Vote</h3>
 
-  <form id="voteForm">
-    <label><input type="radio" name="vote" value="Option 1"> Option 1</label>
-    <label><input type="radio" name="vote" value="Option 2"> Option 2</label>
-    <label><input type="radio" name="vote" value="Option 3"> Option 3</label>
+<label><input type="radio" name="v" value="A"> Option A</label>
+<label><input type="radio" name="v" value="B"> Option B</label>
+<label><input type="radio" name="v" value="C"> Option C</label>
 
-    <button type="submit">Submit Vote</button>
-  </form>
+<button onclick="vote()">Submit</button>
 </div>
 
 <script>
-  document.getElementById("voteForm").onsubmit = function(e){
-    e.preventDefault();
-    let v = document.querySelector('input[name="vote"]:checked');
-    if(!v){
-      alert("ഒരു option select ചെയ്യൂ");
-      return;
-    }
-    alert("Vote Submitted ✅\n" + v.value);
+function vote(){
+  let v = document.querySelector('input[name="v"]:checked');
+  if(!v){
+    alert("Option select ചെയ്യൂ");
+    return;
   }
+  alert("Vote success ✅ : " + v.value);
+}
 </script>
 
 </body>
