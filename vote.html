@@ -2,34 +2,39 @@
 <html lang="ml">
 <head>
 <meta charset="UTF-8">
-<title>Daily Vote</title>
+<title>Daily Voting</title>
 
 <style>
 body{
   font-family:Arial;
   background:#f1f5f9;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+  padding:20px;
 }
 .box{
   background:#fff;
   padding:20px;
-  width:320px;
+  max-width:420px;
+  margin:auto;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-input{width:100%;padding:8px;margin-bottom:8px;}
-label{display:block;margin:8px 0;}
+.task{
+  border:1px solid #ddd;
+  padding:10px;
+  border-radius:6px;
+  margin-bottom:10px;
+}
 button{
   width:100%;
   padding:10px;
-  background:green;
+  background:#16a34a;
   color:#fff;
   border:none;
   border-radius:6px;
-  cursor:pointer;
+  margin-top:10px;
+}
+input{
+  margin-right:6px;
 }
 </style>
 </head>
@@ -37,50 +42,84 @@ button{
 <body>
 
 <div class="box">
-  <h3>Daily Challenge</h3>
-  <p><b>Task:</b> 30 Push-ups</p>
-  <p><b>Points:</b> 5</p>
+  <h3>Daily Challenge Vote</h3>
 
   <input id="user" placeholder="Your Name">
 
-  <label><input type="radio" name="vote" value="Completed"> Completed</label>
-  <label><input type="radio" name="vote" value="Not Completed"> Not Completed</label>
+  <div id="tasks"></div>
 
-  <button onclick="submitVote()">Submit</button>
+  <button onclick="submitVote()">Submit Vote</button>
 </div>
 
-<script>
-function submitVote(){
-  let user = document.getElementById("user").value.trim();
-  let v = document.querySelector('input[name="vote"]:checked');
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, getDoc, addDoc, collection } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-  if(!user || !v){
-    alert("All fields fill ചെയ്യൂ");
-    return;
-  }
+/* 🔥 SAME FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
 
-  let today = new Date().toDateString();
-  let data = JSON.parse(localStorage.getItem("votes") || "[]");
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-  // one vote per user per day
-  let exists = data.find(d => d.user === user && d.date === today);
-  if(exists){
-    alert("ഇന്ന് ഇതിനകം vote ചെയ്തിട്ടുണ്ട്");
-    return;
-  }
+const taskBox = document.getElementById("tasks");
+let tasks = [];
 
-  let points = v.value === "Completed" ? 5 : 0;
+/* LOAD TASKS FROM FIREBASE */
+const snap = await getDoc(doc(db,"tasks","daily"));
+if(snap.exists()){
+  tasks = snap.data().list || [];
+  renderTasks();
+}
 
-  data.push({
-    date: today,
-    user: user,
-    task: "30 Push-ups",
-    status: v.value,
-    points: points
+function renderTasks(){
+  taskBox.innerHTML="";
+  tasks.forEach((t,i)=>{
+    taskBox.innerHTML += `
+      <div class="task">
+        <b>${t}</b> <br>
+        <label>
+          <input type="radio" name="task${i}" value="Completed"> Completed
+        </label>
+        <label>
+          <input type="radio" name="task${i}" value="Not Completed"> Not Completed
+        </label>
+        <div><b>Points:</b> 5</div>
+      </div>
+    `;
   });
+}
 
-  localStorage.setItem("votes", JSON.stringify(data));
-  alert("Vote saved ✅");
+/* SUBMIT VOTE */
+window.submitVote = async function(){
+  let user = document.getElementById("user").value.trim();
+  if(!user){
+    alert("User name enter ചെയ്യൂ");
+    return;
+  }
+
+  for(let i=0;i<tasks.length;i++){
+    let v = document.querySelector(`input[name="task${i}"]:checked`);
+    if(!v){
+      alert("എല്ലാ task-ക്കും option select ചെയ്യൂ");
+      return;
+    }
+
+    let points = v.value === "Completed" ? 5 : 0;
+
+    await addDoc(collection(db,"votes"),{
+      user:user,
+      task:tasks[i],
+      status:v.value,
+      points:points,
+      date:new Date()
+    });
+  }
+
+  alert("Votes submitted ✅");
 }
 </script>
 
