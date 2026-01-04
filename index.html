@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
 
-    <!-- 🔒 Prevent browser cache -->
+    <!-- prevent cache -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -71,34 +71,49 @@
         <input id="li_phone" placeholder="Phone">
         <input id="li_pass" type="password" placeholder="Password">
         <button onclick="login()">Login</button>
+        <div class="link" onclick="showForgot()">Forgot password?</div>
         <div class="link" onclick="showSignup()">New user? Sign up</div>
+    </div>
+
+    <!-- FORGOT PASSWORD -->
+    <div id="forgotBox" style="display:none">
+        <h3>Reset Password</h3>
+        <input id="fp_phone" placeholder="Phone">
+        <input id="fp_pass" type="password" placeholder="New Password">
+        <button onclick="resetPassword()">Reset Password</button>
+        <div class="link" onclick="showLogin()">Back to Login</div>
     </div>
 
 </div>
 
 <script>
-/* 🔁 AUTO REDIRECT IF ALREADY LOGGED IN (IMPORTANT) */
+/* 🔁 AUTO REDIRECT IF ALREADY LOGGED IN */
 document.addEventListener("DOMContentLoaded", function () {
     let u = localStorage.getItem("currentUser");
     let p = localStorage.getItem("currentPhone");
-
     if (u && p) {
         window.location.replace("vote.html");
     }
 });
 
-/* 🔄 Toggle forms */
+/* SHOW PAGES */
 function showLogin(){
     signupBox.style.display="none";
+    forgotBox.style.display="none";
     loginBox.style.display="block";
 }
-
 function showSignup(){
-    signupBox.style.display="block";
     loginBox.style.display="none";
+    forgotBox.style.display="none";
+    signupBox.style.display="block";
+}
+function showForgot(){
+    loginBox.style.display="none";
+    signupBox.style.display="none";
+    forgotBox.style.display="block";
 }
 
-/* 📝 SIGNUP */
+/* SIGNUP */
 function signup(){
     let name = su_name.value.trim();
     let phone = su_phone.value.trim();
@@ -121,7 +136,7 @@ function signup(){
     showLogin();
 }
 
-/* 🔐 LOGIN */
+/* LOGIN */
 function login(){
     let phone = li_phone.value.trim();
     let pass = li_pass.value.trim();
@@ -141,8 +156,32 @@ function login(){
     localStorage.setItem("currentUser", user.name);
     localStorage.setItem("currentPhone", user.phone);
 
-    // 🔑 replace() prevents back to login
     window.location.replace("vote.html");
+}
+
+/* RESET PASSWORD */
+function resetPassword(){
+    let phone = fp_phone.value.trim();
+    let newPass = fp_pass.value.trim();
+
+    if(phone=="" || newPass==""){
+        alert("All fields required");
+        return;
+    }
+
+    let data = localStorage.getItem("user_"+phone);
+    if(!data){
+        alert("User not found");
+        return;
+    }
+
+    let user = JSON.parse(data);
+    user.pass = newPass;
+
+    localStorage.setItem("user_"+phone, JSON.stringify(user));
+
+    alert("Password reset successful. Login now.");
+    showLogin();
 }
 </script>
 
