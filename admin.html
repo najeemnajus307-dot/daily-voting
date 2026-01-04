@@ -41,102 +41,64 @@ th{background:#f3f4f6}
 .rank2{background:#e5e7eb}
 .rank3{background:#fcd34d}
 
-.logout{
-    float:right;
-    background:#dc2626;
-    color:white;
-    border:none;
+.total{
+    margin-top:15px;
+    font-weight:bold;
+    text-align:right;
 }
-.hidden{display:none}
 </style>
 </head>
 <body>
 
-<!-- 🔐 LOGIN -->
-<div class="box" id="loginBox">
-    <h2>Admin Login</h2>
-    <input id="adminUser" placeholder="Username"><br>
-    <input id="adminPass" type="password" placeholder="Password"><br>
-    <button onclick="adminLogin()">Login</button>
-</div>
+<div class="box">
+<h2>Admin Voting Report</h2>
 
-<!-- 📊 REPORT -->
-<div class="box hidden" id="reportBox">
-    <button class="logout" onclick="logout()">Logout</button>
-    <h2>Admin Voting Report</h2>
+<input type="date" id="fromDate">
+<input type="date" id="toDate">
+<button onclick="applyFilter()">Apply Filter</button>
+<button onclick="exportExcel()">Date-wise Excel</button>
 
-    <input type="date" id="fromDate">
-    <input type="date" id="toDate">
-    <button onclick="applyFilter()">Apply Filter</button>
-    <button onclick="exportExcel()">Date-wise Excel</button>
+<table>
+<thead>
+<tr>
+    <th>Rank</th>
+    <th>Name</th>
+    <th>Phone</th>
+    <th>Total Tasks</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Rank</th>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Total Tasks</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
-
-    <h3 id="totalVotes"></h3>
+<div class="total" id="totalTasks"></div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 Firebase */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee",
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 ADMIN CREDENTIALS */
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "admin123";
-
-/* 🔐 LOGIN CHECK */
-if(localStorage.getItem("adminLogged")==="yes"){
-    showReport();
-}
-
-window.adminLogin = function(){
-    if(adminUser.value===ADMIN_USER && adminPass.value===ADMIN_PASS){
-        localStorage.setItem("adminLogged","yes");
-        showReport();
-    }else{
-        alert("Wrong admin credentials");
-    }
-};
-
-function showReport(){
-    loginBox.classList.add("hidden");
-    reportBox.classList.remove("hidden");
-    loadData();
-}
-
-window.logout = function(){
-    localStorage.removeItem("adminLogged");
-    location.reload();
-};
-
-/* 📊 LOAD & FILTER */
 let allVotes = [];
 
+/* 🔄 LOAD DATA */
 async function loadData(){
-    allVotes=[];
+    allVotes = [];
     const snap = await getDocs(collection(db,"votes"));
-    snap.forEach(d=>allVotes.push(d.data()));
+    snap.forEach(d => allVotes.push(d.data()));
     applyFilter();
 }
+loadData();
 
+/* 📅 FILTER */
 window.applyFilter = function(){
     let from = fromDate.value;
     let to   = toDate.value;
@@ -149,17 +111,22 @@ window.applyFilter = function(){
     buildRanking(filtered);
 };
 
-/* 🏆 USER TOTAL + RANKING */
+/* 🏆 USER TOTAL + RANK */
 function buildRanking(data){
     let map = {};
 
     data.forEach(v=>{
         let key = v.phone;
-        let count = Object.values(v.tasks).filter(x=>x).length;
+        let taskCount = Object.values(v.tasks).filter(x=>x).length;
+
         if(!map[key]){
-            map[key]={name:v.name, phone:v.phone, total:0};
+            map[key] = {
+                name:v.name,
+                phone:v.phone,
+                total:0
+            };
         }
-        map[key].total += count;
+        map[key].total += taskCount;
     });
 
     let arr = Object.values(map).sort((a,b)=>b.total-a.total);
@@ -171,20 +138,20 @@ function buildRanking(data){
     let grandTotal=0;
 
     arr.forEach(u=>{
-        grandTotal+=u.total;
+        grandTotal += u.total;
 
-        if(u.total!==lastScore){
+        if(u.total !== lastScore){
             rank++;
-            displayRank=rank;
-            lastScore=u.total;
+            displayRank = rank;
+            lastScore = u.total;
         }
 
-        let tr=document.createElement("tr");
+        let tr = document.createElement("tr");
         if(displayRank===1) tr.className="rank1";
         else if(displayRank===2) tr.className="rank2";
         else if(displayRank===3) tr.className="rank3";
 
-        tr.innerHTML=`
+        tr.innerHTML = `
             <td>${displayRank}</td>
             <td>${u.name}</td>
             <td>${u.phone}</td>
@@ -193,12 +160,13 @@ function buildRanking(data){
         tbody.appendChild(tr);
     });
 
-    totalVotes.innerText="TOTAL TASKS : "+grandTotal;
+    totalTasks.innerText = "TOTAL TASKS : " + grandTotal;
 }
 
-/* 📤 EXCEL */
+/* 📤 EXCEL EXPORT */
 window.exportExcel = function(){
     let rows=[["Rank","Name","Phone","Total Tasks"]];
+
     document.querySelectorAll("#tableBody tr").forEach(tr=>{
         let cols=[...tr.children].map(td=>td.innerText);
         rows.push(cols);
