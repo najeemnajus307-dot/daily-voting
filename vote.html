@@ -6,7 +6,7 @@
 
 <style>
 body{
-  font-family: Arial;
+  font-family:Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
@@ -14,37 +14,23 @@ body{
   height:100vh;
 }
 .box{
-  background:white;
+  background:#fff;
   padding:25px;
-  width:360px;
+  width:380px;
   border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,0.2);
+  box-shadow:0 0 10px rgba(0,0,0,.2);
   position:relative;
 }
-h2{text-align:center;}
-.info{
-  text-align:center;
-  font-size:14px;
-  margin-bottom:6px;
-}
-label{
-  display:block;
-  margin:6px 0;
-}
+label{display:block;margin:6px 0;}
+.points{color:green;font-size:13px;}
 button{
   width:100%;
   padding:10px;
   margin-top:15px;
   background:#16a34a;
-  color:white;
+  color:#fff;
   border:none;
-  font-size:16px;
-  cursor:pointer;
   border-radius:6px;
-}
-button:disabled{
-  background:#9ca3af;
-  cursor:not-allowed;
 }
 .logout{
   position:absolute;
@@ -53,7 +39,6 @@ button:disabled{
   background:#dc2626;
   width:auto;
   padding:6px 10px;
-  font-size:14px;
 }
 </style>
 </head>
@@ -63,21 +48,16 @@ button:disabled{
 <div class="box">
   <button class="logout" onclick="logout()">Logout</button>
 
-  <h2>Daily Tasks</h2>
-  <div class="info" id="user"></div>
-  <div class="info" id="date"></div>
-
+  <h3>Daily Tasks</h3>
   <div id="taskList"></div>
 
-  <button id="submitBtn">Submit Vote</button>
+  <button id="submitBtn">Submit</button>
 </div>
 
-<!-- ✅ STABLE FIREBASE v9 -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -85,93 +65,69 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
+const db = getFirestore(app);
 
 async function init(){
 
-  /* 🔐 LOGIN CHECK */
   const user  = localStorage.getItem("currentUser");
   const phone = localStorage.getItem("currentPhone");
-
   if(!user || !phone){
     location.replace("index.html");
     return;
   }
 
   const today = new Date().toISOString().split("T")[0];
-  const voteRef = doc(db,"votes", phone + "_" + today);
-
-  document.getElementById("user").innerText = "Welcome " + user;
-  document.getElementById("date").innerText = "Date : " + today;
+  const voteRef = doc(db,"votes", phone+"_"+today);
 
   const taskBox = document.getElementById("taskList");
-  const submitBtn = document.getElementById("submitBtn");
+  const btn = document.getElementById("submitBtn");
 
-  /* 🔽 LOAD TASKS */
   const taskSnap = await getDoc(doc(db,"tasks","daily"));
-  if(!taskSnap.exists()){
-    taskBox.innerHTML = "<p>No tasks added</p>";
-    submitBtn.disabled = true;
-    return;
-  }
-
   const tasks = taskSnap.data().list || [];
+
   const inputs = {};
 
-  taskBox.innerHTML = "";
   tasks.forEach((t,i)=>{
-    const id = "task_"+i;
+    const id = "t"+i;
     taskBox.innerHTML += `
       <label>
-        <input type="checkbox" id="${id}"> ${t}
+        <input type="checkbox" id="${id}">
+        ${t.text}
+        <div class="points">${t.points} points</div>
       </label>
     `;
-    inputs[i] = document.getElementById(id);
+    inputs[i] = { el:document.getElementById(id), pts:t.points };
   });
 
-  /* 🔒 CHECK ALREADY SUBMITTED */
-  const snap = await getDoc(voteRef);
-  if(snap.exists()){
-    const old = snap.data().tasks || {};
-    Object.keys(old).forEach(i=>{
-      if(inputs[i]) inputs[i].checked = old[i];
-    });
-    lockPage("Already submitted today");
-  }
+  btn.onclick = async ()=>{
+    let result = {};
+    let total = 0;
 
-  function lockPage(msg){
-    Object.values(inputs).forEach(i=>i.disabled=true);
-    submitBtn.disabled = true;
-    submitBtn.innerText = msg;
-  }
-
-  submitBtn.onclick = async () => {
-    const taskData = {};
     Object.keys(inputs).forEach(i=>{
-      taskData[i] = inputs[i].checked;
+      const checked = inputs[i].el.checked;
+      result[i] = checked;
+      if(checked) total += inputs[i].pts;
     });
 
     await setDoc(voteRef,{
       name:user,
       phone:phone,
       date:today,
-      tasks:taskData,
-      submittedAt:new Date().toISOString()
+      tasks:result,
+      totalPoints:total
     });
 
-    alert("Vote submitted successfully ✅");
+    alert("Vote saved ✅ Total points: " + total);
     location.reload();
   };
 }
 
-/* 🚪 LOGOUT */
-window.logout = function(){
-  localStorage.removeItem("currentUser");
-  localStorage.removeItem("currentPhone");
+window.logout = ()=>{
+  localStorage.clear();
   location.replace("index.html");
 };
 
-init(); // 🚀 IMPORTANT
+init();
 </script>
 
 </body>
