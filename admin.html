@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin Weekly Bonus Report</title>
+<title>Admin – Voting & Weekly Bonus</title>
 
 <style>
 body{font-family:Arial;background:#f1f5f9;padding:20px}
@@ -17,18 +17,23 @@ th{background:#f3f4f6}
 .rank-2{background:#dbeafe}
 .rank-3{background:#fde68a}
 .scroll{max-height:360px;overflow-y:auto;margin-top:8px}
-.bonus{background:#16a34a;color:#fff;border:none;padding:4px 8px}
-.remove{background:#b91c1c;color:#fff;border:none;padding:4px 8px}
-.del{background:#dc2626;color:#fff;border:none;padding:4px 8px}
+.bonus{background:#16a34a;color:#fff;border:none;padding:4px 8px;cursor:pointer}
+.remove{background:#b91c1c;color:#fff;border:none;padding:4px 8px;cursor:pointer}
+.del{background:#dc2626;color:#fff;border:none;padding:4px 8px;cursor:pointer}
 .total{text-align:right;font-weight:bold;margin-top:6px}
-.note{font-size:13px;color:#374151;text-align:center;margin-top:6px}
+.note{font-size:13px;color:#374151;text-align:center;margin-bottom:6px}
+.topbar{display:flex;justify-content:space-between;align-items:center}
+.link{background:#2563eb;color:#fff;border:none;padding:6px 10px;cursor:pointer}
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<h2>Admin Weekly Bonus Report</h2>
+<div class="topbar">
+  <h2>Admin – Voting & Weekly Bonus</h2>
+  <button class="link" onclick="goBonusHistory()">Bonus History</button>
+</div>
 
 <div class="controls">
   From <input type="date" id="fromDate">
@@ -38,10 +43,10 @@ th{background:#f3f4f6}
 </div>
 
 <div class="note">
-  Bonus applies only for the selected date range (example: 01-01-2026 to 07-01-2026)
+  Bonus applies only to the selected date range (weekly). Rank-1 users only (tie allowed).
 </div>
 
-<h3>Summary (Ranking + Weekly Bonus)</h3>
+<h3>Summary (Dense Ranking + Weekly Bonus)</h3>
 <table>
 <thead>
 <tr>
@@ -231,8 +236,13 @@ window.exportExcel = function(){
   let csv=rows.map(r=>r.join(",")).join("\n");
   let a=document.createElement("a");
   a.href="data:text/csv,"+encodeURIComponent(csv);
-  a.download="weekly-bonus-report.csv";
+  a.download="weekly-admin-report.csv";
   a.click();
+};
+
+/* ===== NAV ===== */
+window.goBonusHistory = function(){
+  window.location.href="admin-bonus-history.html";
 };
 </script>
 </body>
