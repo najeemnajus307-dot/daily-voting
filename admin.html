@@ -55,7 +55,7 @@ th{
   cursor:pointer;
 }
 
-/* 🔥 Rank styles */
+/* Rank colors */
 .rank-1{ background:#fff7cc; font-weight:bold; }
 .rank-2{ background:#e5e7eb; }
 .rank-3{ background:#fde68a; }
@@ -73,7 +73,7 @@ th{
 <div class="box">
   <h2>Admin Voting Report</h2>
 
-  <!-- CONTROLS -->
+  <!-- FILTER CONTROLS -->
   <div class="controls">
     <input type="date" id="from">
     <input type="date" id="to">
@@ -81,8 +81,8 @@ th{
     <button onclick="exportCSV()">Export Excel</button>
   </div>
 
-  <!-- 🔹 TOP 3 RANK TABLE -->
-  <h3>🏆 Top 3 Users (Total Votes)</h3>
+  <!-- TOP 3 RANK TABLE -->
+  <h3>🏆 Top 3 Ranks (Dense Ranking)</h3>
   <table>
     <thead>
       <tr>
@@ -95,7 +95,11 @@ th{
     <tbody id="summaryBody"></tbody>
   </table>
 
-  <!-- 🔹 DETAIL TABLE -->
+  <!-- INFO BOXES -->
+  <div class="total" id="rankInfo"></div>
+  <div class="total" id="remainingBox"></div>
+
+  <!-- DETAIL TABLE -->
   <h3 style="margin-top:25px">Detailed Votes</h3>
   <table>
     <thead>
@@ -109,8 +113,6 @@ th{
     </thead>
     <tbody id="tbody"></tbody>
   </table>
-
-  <div class="total" id="totalUsers"></div>
 </div>
 
 <script type="module">
@@ -123,7 +125,7 @@ import {
   doc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 Firebase Config */
+/* Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -135,21 +137,22 @@ const db = getFirestore(app);
 
 const tbody = document.getElementById("tbody");
 const summaryBody = document.getElementById("summaryBody");
-const totalUsersBox = document.getElementById("totalUsers");
+const rankInfo = document.getElementById("rankInfo");
+const remainingBox = document.getElementById("remainingBox");
 
-/* 📊 LOAD DATA */
+/* LOAD DATA */
 window.loadData = async function(){
   tbody.innerHTML = "";
   summaryBody.innerHTML = "";
-  totalUsersBox.innerText = "";
+  rankInfo.innerText = "";
+  remainingBox.innerText = "";
 
   let from = document.getElementById("from").value;
   let to   = document.getElementById("to").value;
 
   let snap = await getDocs(collection(db,"votes"));
 
-  let userMap = {}; 
-  // phone → { name, phone, totalVotes }
+  let userMap = {}; // phone → {name, phone, totalVotes}
 
   snap.forEach(d=>{
     let v = d.data();
@@ -158,23 +161,21 @@ window.loadData = async function(){
     if(from && date < from) return;
     if(to && date > to) return;
 
-    // 🔢 TASK COUNT PER DATE
+    // Count tasks for that day
     let taskCount = Object.values(v.tasks).filter(t=>t).length;
 
-    /* DETAIL TABLE */
+    /* Detail table */
     let tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${v.name}</td>
       <td>${v.phone}</td>
       <td>${taskCount}</td>
       <td>${date}</td>
-      <td>
-        <button class="delete" onclick="deleteVote('${d.id}')">❌</button>
-      </td>
+      <td><button class="delete" onclick="deleteVote('${d.id}')">❌</button></td>
     `;
     tbody.appendChild(tr);
 
-    /* USER TOTAL = TASK SUM */
+    /* User-wise total vote sum */
     if(!userMap[v.phone]){
       userMap[v.phone] = {
         name: v.name,
@@ -185,30 +186,50 @@ window.loadData = async function(){
     userMap[v.phone].totalVotes += taskCount;
   });
 
-  /* ---- SORT & PICK TOP 3 ---- */
-  let rankedUsers = Object.values(userMap)
-    .sort((a,b) => b.totalVotes - a.totalVotes)
-    .slice(0,3);
+  /* ---- DENSE RANKING LOGIC ---- */
+  let sortedUsers = Object.values(userMap)
+    .sort((a,b) => b.totalVotes - a.totalVotes);
 
-  rankedUsers.forEach((u,index)=>{
-    let rank = index + 1;
-    let tr = document.createElement("tr");
-    tr.classList.add(`rank-${rank}`);
+  let rank = 0;
+  let lastVotes = null;
+  let shownUsers = 0;
+  let totalRanks = 0;
 
-    tr.innerHTML = `
-      <td>${rank === 1 ? "🥇 1" : rank === 2 ? "🥈 2" : "🥉 3"}</td>
-      <td>${u.name}</td>
-      <td>${u.phone}</td>
-      <td>${u.totalVotes}</td>
-    `;
-    summaryBody.appendChild(tr);
-  });
+  for(let i=0;i<sortedUsers.length;i++){
+    let u = sortedUsers[i];
 
-  totalUsersBox.innerText =
-    "TOTAL USERS (Filtered) : " + Object.keys(userMap).length;
+    if(u.totalVotes !== lastVotes){
+      rank += 1;
+      lastVotes = u.totalVotes;
+      totalRanks = rank;   // keep updating till end
+    }
+
+    // Show only TOP 3 ranks
+    if(rank <= 3){
+      let tr = document.createElement("tr");
+      tr.classList.add(`rank-${rank}`);
+      tr.innerHTML = `
+        <td>${rank === 1 ? "🥇 1" : rank === 2 ? "🥈 2" : "🥉 3"}</td>
+        <td>${u.name}</td>
+        <td>${u.phone}</td>
+        <td>${u.totalVotes}</td>
+      `;
+      summaryBody.appendChild(tr);
+      shownUsers++;
+    }
+  }
+
+  rankInfo.innerText =
+    "Top Ranks Shown : 3 | Total Ranks : " + totalRanks;
+
+  let remaining =
+    Object.keys(userMap).length - shownUsers;
+
+  remainingBox.innerText =
+    remaining > 0 ? "Remaining Users : " + remaining : "";
 };
 
-/* ❌ DELETE VOTE */
+/* DELETE VOTE */
 window.deleteVote = async function(id){
   if(confirm("Delete this vote?")){
     await deleteDoc(doc(db,"votes",id));
@@ -216,7 +237,7 @@ window.deleteVote = async function(id){
   }
 };
 
-/* 📥 EXPORT EXCEL (SUMMARY) */
+/* EXPORT SUMMARY TO CSV */
 window.exportCSV = function(){
   let rows = [["Rank","Name","Phone","Total Votes"]];
   document.querySelectorAll("#summaryBody tr").forEach(tr=>{
@@ -233,7 +254,7 @@ window.exportCSV = function(){
   let blob = new Blob([csv],{type:"text/csv"});
   let a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "top3_user_votes.csv";
+  a.download = "top_ranks_report.csv";
   a.click();
 };
 
