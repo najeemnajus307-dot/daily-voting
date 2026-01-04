@@ -17,35 +17,73 @@ body{
   background:#fff;
   padding:25px;
   width:380px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
+  border-radius:12px;
+  box-shadow:0 0 12px rgba(0,0,0,0.15);
   position:relative;
 }
-h2{text-align:center;margin-bottom:4px;}
-h4{text-align:center;color:#16a34a;margin-top:0;}
-.info{text-align:center;font-size:14px;margin-bottom:6px;}
-label{display:block;margin:8px 0;}
-.points{font-size:13px;color:green;margin-left:22px;}
+
+/* LOGO */
+.logo-box{
+  text-align:center;
+  margin-bottom:10px;
+}
+.logo-box img{
+  width:180px;
+  max-width:100%;
+}
+
+/* HEADERS */
+h2{
+  text-align:center;
+  margin:6px 0 2px;
+}
+h4{
+  text-align:center;
+  color:#16a34a;
+  margin:0 0 10px;
+}
+.info{
+  text-align:center;
+  font-size:14px;
+  margin-bottom:6px;
+}
+
+/* TASKS */
+label{
+  display:block;
+  margin:8px 0;
+}
+.points{
+  font-size:13px;
+  color:green;
+  margin-left:22px;
+}
+
+/* BUTTONS */
 button{
   width:100%;
   padding:10px;
   margin-top:15px;
-  background:#16a34a;
-  color:#fff;
   border:none;
   border-radius:6px;
   font-size:16px;
+  cursor:pointer;
 }
-button:disabled{background:#9ca3af;}
-.logout{
-  position:absolute;
-  top:10px;
-  right:10px;
+.submit-btn{
+  background:#16a34a;
+  color:#fff;
+}
+.submit-btn:disabled{
+  background:#9ca3af;
+  cursor:not-allowed;
+}
+.logout-btn{
   background:#dc2626;
   color:#fff;
-  border:none;
-  padding:6px 10px;
-  border-radius:6px;
+  margin-top:10px;
+}
+.logout-btn:hover{
+  background:#b91c1c;
 }
 </style>
 </head>
@@ -53,7 +91,11 @@ button:disabled{background:#9ca3af;}
 <body>
 
 <div class="box">
-  <button class="logout" onclick="logout()">Logout</button>
+
+  <!-- LOGO -->
+  <div class="logo-box">
+    <img src="faith-fitness.png" alt="Faith & Fitness">
+  </div>
 
   <h2>Welcome Faith & Fitness</h2>
   <h4>Daily Tasks</h4>
@@ -61,9 +103,15 @@ button:disabled{background:#9ca3af;}
   <div class="info" id="user"></div>
   <div class="info" id="date"></div>
 
+  <!-- TASK LIST -->
   <div id="taskList"></div>
 
-  <button id="submitBtn">Submit</button>
+  <!-- SUBMIT -->
+  <button id="submitBtn" class="submit-btn">Submit</button>
+
+  <!-- LOGOUT -->
+  <button class="logout-btn" onclick="logout()">Logout</button>
+
 </div>
 
 <script type="module">
@@ -103,12 +151,12 @@ async function init(){
   const tasks = taskSnap.exists() ? taskSnap.data().list : [];
 
   if(tasks.length === 0){
-    taskBox.innerHTML = "<p>No tasks</p>";
+    taskBox.innerHTML = "<p>No tasks today</p>";
     submitBtn.disabled = true;
     return;
   }
 
-  /* 1️⃣ FIRST build HTML */
+  /* BUILD TASK HTML */
   taskBox.innerHTML = tasks.map((t,i)=>`
     <label>
       <input type="checkbox" id="task_${i}">
@@ -117,13 +165,13 @@ async function init(){
     </label>
   `).join("");
 
-  /* 2️⃣ THEN read checkbox elements */
+  /* READ CHECKBOXES */
   const inputs = tasks.map((t,i)=>({
     el: document.getElementById("task_"+i),
     pts: Number(t.points)
   }));
 
-  /* ALREADY SUBMITTED */
+  /* CHECK ALREADY SUBMITTED */
   const snap = await getDoc(voteRef);
   if(snap.exists()){
     const old = snap.data().tasks || {};
@@ -165,9 +213,12 @@ async function init(){
   };
 }
 
-window.logout = ()=>{
-  localStorage.clear();
-  location.replace("index.html");
+/* LOGOUT */
+window.logout = function(){
+  if(confirm("Logout cheyyano?")){
+    localStorage.clear();
+    location.replace("index.html");
+  }
 };
 
 init();
