@@ -1,104 +1,71 @@
 <!DOCTYPE html>
 <html lang="ml">
 <head>
-    <meta charset="UTF-8">
-    <title>Daily Voting</title>
+  <meta charset="UTF-8">
+  <title>Daily Voting</title>
 
-    <style>
-        body{
-            font-family: Arial, sans-serif;
-            background:#f1f5f9;
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            height:100vh;
-        }
-        .box{
-            background:white;
-            padding:25px;
-            width:360px;
-            border-radius:10px;
-            box-shadow:0 0 10px rgba(0,0,0,0.2);
-        }
-        h2{
-            text-align:center;
-            margin-bottom:10px;
-        }
-        .info{
-            text-align:center;
-            font-size:14px;
-            margin-bottom:15px;
-            color:#555;
-        }
-        label{
-            display:block;
-            padding:8px;
-            border:1px solid #ddd;
-            border-radius:6px;
-            margin-bottom:8px;
-            cursor:pointer;
-        }
-        input[type="radio"]{
-            margin-right:8px;
-        }
-        button{
-            width:100%;
-            padding:10px;
-            margin-top:15px;
-            background:#16a34a;
-            color:white;
-            border:none;
-            font-size:16px;
-            cursor:pointer;
-            border-radius:6px;
-        }
-        button:hover{
-            background:#15803d;
-        }
-    </style>
+  <style>
+    body{
+      font-family: Arial;
+      background:#f1f5f9;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+    }
+    .box{
+      background:white;
+      padding:25px;
+      width:360px;
+      border-radius:10px;
+      box-shadow:0 0 10px rgba(0,0,0,0.2);
+    }
+    h2{text-align:center;}
+    label{
+      display:block;
+      margin:8px 0;
+      padding:8px;
+      border:1px solid #ddd;
+      border-radius:6px;
+    }
+    button{
+      width:100%;
+      padding:10px;
+      margin-top:15px;
+      background:#16a34a;
+      color:white;
+      border:none;
+      font-size:16px;
+      border-radius:6px;
+      cursor:pointer;
+    }
+  </style>
 </head>
 
 <body>
 
 <div class="box">
-    <h2>Daily Voting</h2>
-    <div class="info">
-        ഇഷ്ടപ്പെട്ട option select ചെയ്ത് vote ചെയ്യുക
-    </div>
+  <h2>Daily Voting</h2>
 
-    <form id="voteForm">
-        <label>
-            <input type="radio" name="vote" value="Option 1">
-            Option 1
-        </label>
+  <form id="voteForm">
+    <label><input type="radio" name="vote" value="Option 1"> Option 1</label>
+    <label><input type="radio" name="vote" value="Option 2"> Option 2</label>
+    <label><input type="radio" name="vote" value="Option 3"> Option 3</label>
 
-        <label>
-            <input type="radio" name="vote" value="Option 2">
-            Option 2
-        </label>
-
-        <label>
-            <input type="radio" name="vote" value="Option 3">
-            Option 3
-        </label>
-
-        <button type="submit">Vote Submit</button>
-    </form>
+    <button type="submit">Submit Vote</button>
+  </form>
 </div>
 
 <script>
-    document.getElementById("voteForm").addEventListener("submit", function(e){
-        e.preventDefault();
-
-        const selected = document.querySelector('input[name="vote"]:checked');
-
-        if(!selected){
-            alert("ദയവായി ഒരു option select ചെയ്യൂ");
-            return;
-        }
-
-        alert("നിങ്ങളുടെ vote സ്വീകരിച്ചു ✅\n\nSelected: " + selected.value);
-    });
+  document.getElementById("voteForm").onsubmit = function(e){
+    e.preventDefault();
+    let v = document.querySelector('input[name="vote"]:checked');
+    if(!v){
+      alert("ഒരു option select ചെയ്യൂ");
+      return;
+    }
+    alert("Vote Submitted ✅\n" + v.value);
+  }
 </script>
 
 </body>
