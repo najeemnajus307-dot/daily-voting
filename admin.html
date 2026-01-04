@@ -1,168 +1,175 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Admin – Voting & Weekly Bonus</title>
+
 <style>
 body{font-family:Arial;background:#f1f5f9;padding:20px}
-.box{background:#fff;max-width:1200px;margin:auto;padding:20px;border-radius:10px}
-h2{text-align:center;margin-bottom:10px}
-table{width:100%;border-collapse:collapse;margin-top:15px}
-th,td{border:1px solid #ddd;padding:6px;text-align:center}
+.box{background:#fff;padding:20px;border-radius:10px}
+h2{text-align:center}
+
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #ddd;padding:8px;text-align:center}
 th{background:#f3f4f6}
+
 .rank1{background:#fde68a}
 .rank2{background:#dbeafe}
 .rank3{background:#fef3c7}
-button{padding:5px 10px;border:none;cursor:pointer;border-radius:4px}
-.green{background:#16a34a;color:#fff}
-.red{background:#dc2626;color:#fff}
+
+.green{background:#16a34a;color:#fff;border:none;padding:6px 10px;cursor:pointer}
+.red{background:#dc2626;color:#fff;border:none;padding:6px 10px;cursor:pointer}
+
+.scroll{max-height:400px;overflow:auto}
 </style>
 </head>
 
 <body>
 <div class="box">
+
 <h2>Admin – Voting & Weekly Bonus</h2>
 
-From <input type="date" id="from">
-To <input type="date" id="to">
-<button onclick="applyFilter()">Apply</button>
+From
+<input type="date" id="from">
+To
+<input type="date" id="to">
+<button onclick="loadData()">Apply</button>
+
+<p><b>Bonus:</b> Rank-1 users only (tie allowed). Bonus = +10</p>
 
 <h3>Summary (Dense Ranking + Weekly Bonus)</h3>
-<table id="summaryTable">
+<div class="scroll">
+<table>
 <thead>
 <tr>
-<th>Rank</th><th>Name</th><th>Phone</th>
-<th>Week Points</th><th>Date Range</th>
-<th>Total (with Bonus)</th><th>Bonus</th>
+<th>Rank</th>
+<th>Name</th>
+<th>Phone</th>
+<th>Week Points</th>
+<th>Date Range</th>
+<th>Total (with Bonus)</th>
+<th>Bonus</th>
+<th>Bonus Added On</th>
 </tr>
 </thead>
-<tbody></tbody>
+<tbody id="summary"></tbody>
 </table>
+</div>
 
 <h3>Detailed Votes</h3>
-<table id="detailTable">
+<div class="scroll">
+<table>
 <thead>
 <tr>
-<th>Name</th><th>Phone</th><th>Tasks</th><th>Date</th><th>Delete</th>
+<th>Name</th>
+<th>Phone</th>
+<th>Tasks</th>
+<th>Date</th>
+<th>Delete</th>
 </tr>
 </thead>
-<tbody></tbody>
+<tbody id="details"></tbody>
 </table>
+</div>
+
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs, deleteDoc, doc, setDoc, getDoc } 
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
- apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
- authDomain: "daily-voting-793ee.firebaseapp.com",
- projectId: "daily-voting-793ee",
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee",
+  storageBucket: "daily-voting-793ee.firebasestorage.app",
+  messagingSenderId: "1065830068376",
+  appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔢 TASK COUNT */
-function countTasks(t){
- return Object.values(t||{}).filter(v=>v===true).length;
-}
+window.loadData = async function(){
+  const from = document.getElementById("from").value;
+  const to = document.getElementById("to").value;
+  if(!from || !to){ alert("Select date range"); return; }
 
-/* APPLY FILTER */
-window.applyFilter = async function(){
- const from = document.getElementById("from").value;
- const to = document.getElementById("to").value;
- if(!from || !to){ alert("Select date range"); return; }
+  const votesSnap = await getDocs(collection(db,"votes"));
+  const map = {};
+  const details = document.getElementById("details");
+  details.innerHTML="";
 
- const snap = await getDocs(collection(db,"votes"));
- let votes=[];
+  votesSnap.forEach(d=>{
+    const v = d.data();
+    if(v.date>=from && v.date<=to){
+      const pts = Object.values(v.tasks).filter(x=>x).length;
+      if(!map[v.phone]) map[v.phone]={name:v.name,phone:v.phone,points:0};
+      map[v.phone].points += pts;
 
- snap.forEach(d=>{
-   const v=d.data();
-   if(v.date>=from && v.date<=to){
-     votes.push({...v,id:d.id});
-   }
- });
+      details.innerHTML+=`
+      <tr>
+        <td>${v.name}</td>
+        <td>${v.phone}</td>
+        <td>${pts}</td>
+        <td>${v.date}</td>
+        <td><button class="red" onclick="deleteVote('${d.id}')">X</button></td>
+      </tr>`;
+    }
+  });
 
- renderDetail(votes);
- renderSummary(votes, from, to);
-}
+  const users = Object.values(map).sort((a,b)=>b.points-a.points);
 
-/* DETAILED TABLE */
-function renderDetail(votes){
- const tb=document.querySelector("#detailTable tbody");
- tb.innerHTML="";
- votes.forEach(v=>{
-   tb.innerHTML+=`
-   <tr>
-    <td>${v.name}</td>
-    <td>${v.phone}</td>
-    <td>${countTasks(v.tasks)}</td>
-    <td>${v.date}</td>
-    <td><button class="red" onclick="delVote('${v.id}')">X</button></td>
-   </tr>`;
- });
-}
+  // Dense ranking
+  let rank=0,prev=null,idx=0;
+  users.forEach(u=>{
+    idx++;
+    if(prev!==u.points){rank=idx;prev=u.points}
+    u.rank=rank;
+  });
 
-/* DELETE VOTE */
-window.delVote = async function(id){
- if(confirm("Delete vote?")){
-   await deleteDoc(doc(db,"votes",id));
-   applyFilter();
- }
-}
+  const summary=document.getElementById("summary");
+  summary.innerHTML="";
 
-/* SUMMARY + DENSE RANKING */
-async function renderSummary(votes,from,to){
- let map={};
+  for(const u of users){
+    const bonusDoc = await getDoc(doc(db,"bonus",u.phone+"_"+from+"_"+to));
+    const bonus = bonusDoc.exists()?10:0;
+    const total = u.points + bonus;
 
- votes.forEach(v=>{
-  if(!map[v.phone]){
-    map[v.phone]={name:v.name,phone:v.phone,points:0};
+    summary.innerHTML+=`
+    <tr class="${u.rank==1?'rank1':u.rank==2?'rank2':u.rank==3?'rank3':''}">
+      <td>${u.rank}</td>
+      <td>${u.name}</td>
+      <td>${u.phone}</td>
+      <td>${u.points}</td>
+      <td>${from} to ${to}</td>
+      <td>${total}</td>
+      <td>
+        ${u.rank==1 && !bonus?`<button class="green" onclick="addBonus('${u.phone}','${from}','${to}')">+10</button>`:""}
+        ${bonus?`<button class="red" onclick="removeBonus('${u.phone}','${from}','${to}')">Remove</button>`:""}
+      </td>
+      <td>${bonusDoc.exists()?bonusDoc.data().date:"-"}</td>
+    </tr>`;
   }
-  map[v.phone].points+=countTasks(v.tasks);
- });
-
- let arr=Object.values(map).sort((a,b)=>b.points-a.points);
-
- // dense rank
- let rank=0,last=null;
- arr.forEach((u,i)=>{
-  if(u.points!==last){rank++; last=u.points;}
-  u.rank=rank;
- });
-
- const tb=document.querySelector("#summaryTable tbody");
- tb.innerHTML="";
-
- for(const u of arr){
-  const bonusDoc=await getDoc(doc(db,"bonus",u.phone+"_"+from+"_"+to));
-  const bonus = bonusDoc.exists()?10:0;
-
-  tb.innerHTML+=`
-  <tr class="${u.rank==1?'rank1':u.rank==2?'rank2':u.rank==3?'rank3':''}">
-   <td>${u.rank}</td>
-   <td>${u.name}</td>
-   <td>${u.phone}</td>
-   <td>${u.points}</td>
-   <td>${from} to ${to}</td>
-   <td>${u.points+bonus}</td>
-   <td>
-    ${u.rank==1 && !bonus ? `<button class="green" onclick="addBonus('${u.phone}','${from}','${to}')">+10</button>`:""}
-    ${bonus?`<button class="red" onclick="removeBonus('${u.phone}','${from}','${to}')">Remove</button>`:""}
-   </td>
-  </tr>`;
- }
 }
 
-/* BONUS */
-window.addBonus=async(p,f,t)=>{
- await setDoc(doc(db,"bonus",p+"_"+f+"_"+t),{p,f,t,at:new Date().toISOString()});
- applyFilter();
+window.addBonus = async function(phone,from,to){
+  await setDoc(doc(db,"bonus",phone+"_"+from+"_"+to),{
+    phone,from,to,date:new Date().toISOString().split("T")[0]
+  });
+  loadData();
 }
-window.removeBonus=async(p,f,t)=>{
- await deleteDoc(doc(db,"bonus",p+"_"+f+"_"+t));
- applyFilter();
+
+window.removeBonus = async function(phone,from,to){
+  await deleteDoc(doc(db,"bonus",phone+"_"+from+"_"+to));
+  loadData();
+}
+
+window.deleteVote = async function(id){
+  const pass = prompt("Enter delete password");
+  if(pass!=="1234"){alert("Wrong password");return;}
+  await deleteDoc(doc(db,"votes",id));
+  loadData();
 }
 </script>
 </body>
