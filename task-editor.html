@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="ml">
 <head>
 <meta charset="UTF-8">
 <title>Task Editor</title>
+
 <style>
 body{
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
@@ -15,8 +16,13 @@ body{
 .box{
   background:#fff;
   padding:25px;
-  width:360px;
+  width:380px;
   border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+h3{
+  text-align:center;
+  margin-bottom:10px;
 }
 input,button{
   width:100%;
@@ -27,28 +33,52 @@ button{
   background:#2563eb;
   color:#fff;
   border:none;
+  border-radius:6px;
+  cursor:pointer;
 }
-li{margin:4px 0;}
+ul{
+  list-style:none;
+  padding:0;
+}
+li{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:6px 0;
+  background:#f8fafc;
+  padding:6px;
+  border-radius:6px;
+}
+li button{
+  width:auto;
+  background:#dc2626;
+  padding:4px 8px;
+  font-size:14px;
+}
+.save{
+  background:#16a34a;
+}
 </style>
 </head>
 
 <body>
+
 <div class="box">
-<h3>Task Editor (Firebase)</h3>
+  <h3>Daily Task Editor</h3>
 
-<input id="taskInput" placeholder="Enter task">
-<button onclick="addTask()">Add Task</button>
+  <input id="taskInput" placeholder="Enter new task">
+  <button onclick="addTask()">Add Task</button>
 
-<ul id="list"></ul>
+  <ul id="taskList"></ul>
 
-<button style="background:#16a34a" onclick="save()">Save Tasks</button>
+  <button class="save" onclick="saveTasks()">Save Tasks</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* 🔥 FIREBASE CONFIG (same as vote.html) */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -58,39 +88,60 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let tasks=[];
-const list=document.getElementById("list");
+/* ELEMENTS */
+const input = document.getElementById("taskInput");
+const list  = document.getElementById("taskList");
 
-/* LOAD EXISTING TASKS */
+let tasks = [];
+
+/* 🔽 LOAD EXISTING TASKS */
 const snap = await getDoc(doc(db,"tasks","daily"));
 if(snap.exists()){
   tasks = snap.data().list || [];
   render();
 }
 
+/* RENDER TASK LIST */
 function render(){
   list.innerHTML="";
   tasks.forEach((t,i)=>{
-    let li=document.createElement("li");
-    li.innerHTML=`${t} <button onclick="del(${i})">❌</button>`;
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span>${t}</span>
+      <button onclick="delTask(${i})">❌</button>
+    `;
     list.appendChild(li);
   });
 }
 
-window.addTask=function(){
-  let v=taskInput.value.trim();
-  if(v){ tasks.push(v); taskInput.value=""; render(); }
-}
-
-window.del=function(i){
-  tasks.splice(i,1);
+/* ADD TASK */
+window.addTask = function(){
+  const val = input.value.trim();
+  if(!val){
+    alert("Task text enter ചെയ്യൂ");
+    return;
+  }
+  tasks.push(val);
+  input.value="";
   render();
-}
+};
 
-window.save=async function(){
-  await setDoc(doc(db,"tasks","daily"),{list:tasks});
-  alert("Tasks saved to Firebase ✅");
-}
+/* DELETE TASK */
+window.delTask = function(i){
+  if(confirm("Delete this task?")){
+    tasks.splice(i,1);
+    render();
+  }
+};
+
+/* SAVE TO FIREBASE */
+window.saveTasks = async function(){
+  await setDoc(doc(db,"tasks","daily"),{
+    list: tasks
+  });
+  alert("Tasks saved successfully ✅");
+};
 </script>
+
 </body>
 </html>
