@@ -8,36 +8,19 @@
 body{
   font-family: Arial;
   background:#f1f5f9;
-  padding:20px;
+  padding:30px;
 }
 .box{
   background:#fff;
-  max-width:1100px;
-  margin:auto;
-  padding:20px;
+  padding:25px;
   border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2,h3{
-  text-align:center;
-}
-.controls{
-  display:flex;
-  gap:10px;
-  justify-content:center;
-  flex-wrap:wrap;
-  margin-bottom:15px;
-}
-input,button{
-  padding:6px 10px;
-  font-size:14px;
-}
-button{
-  cursor:pointer;
-}
+h2{text-align:center;margin-bottom:15px;}
 table{
   width:100%;
   border-collapse:collapse;
-  margin-top:10px;
+  margin-top:15px;
 }
 th,td{
   border:1px solid #ddd;
@@ -47,23 +30,16 @@ th,td{
 th{
   background:#f3f4f6;
 }
+.rank1{background:#fff7cc;}
+.rank2{background:#e5e7eb;}
+.rank3{background:#fde68a;}
+.small{font-size:13px;color:#555;}
 .delete{
   background:#dc2626;
   color:#fff;
   border:none;
-  padding:4px 8px;
+  padding:5px 8px;
   cursor:pointer;
-}
-
-/* Rank colors */
-.rank-1{ background:#fff7cc; font-weight:bold; }
-.rank-2{ background:#e5e7eb; }
-.rank-3{ background:#fde68a; }
-
-.total{
-  margin-top:10px;
-  font-weight:bold;
-  text-align:right;
 }
 </style>
 </head>
@@ -73,59 +49,42 @@ th{
 <div class="box">
   <h2>Admin Voting Report</h2>
 
-  <!-- FILTER CONTROLS -->
-  <div class="controls">
-    <input type="date" id="from">
-    <input type="date" id="to">
-    <button onclick="loadData()">Filter</button>
-    <button onclick="exportCSV()">Export Excel</button>
-  </div>
-
-  <!-- TOP 3 RANK TABLE -->
-  <h3>🏆 Top 3 Ranks (Dense Ranking)</h3>
-  <table>
+  <h3>🏆 Top Ranks (By Total Points)</h3>
+  <table id="rankTable">
     <thead>
       <tr>
         <th>Rank</th>
         <th>Name</th>
         <th>Phone</th>
-        <th>Total Votes</th>
+        <th>Total Points</th>
       </tr>
     </thead>
-    <tbody id="summaryBody"></tbody>
+    <tbody></tbody>
   </table>
 
-  <!-- INFO BOXES -->
-  <div class="total" id="rankInfo"></div>
-  <div class="total" id="remainingBox"></div>
+  <p class="small" id="rankInfo"></p>
 
-  <!-- DETAIL TABLE -->
-  <h3 style="margin-top:25px">Detailed Votes</h3>
-  <table>
+  <h3 style="margin-top:30px;">📋 Detailed Votes</h3>
+  <table id="detailTable">
     <thead>
       <tr>
         <th>Name</th>
         <th>Phone</th>
         <th>Tasks Done</th>
+        <th>Total Points</th>
         <th>Date</th>
         <th>Delete</th>
       </tr>
     </thead>
-    <tbody id="tbody"></tbody>
+    <tbody></tbody>
   </table>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  deleteDoc,
-  doc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore, collection, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* Firebase config */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -133,101 +92,67 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db  = getFirestore(app);
 
-const tbody = document.getElementById("tbody");
-const summaryBody = document.getElementById("summaryBody");
-const rankInfo = document.getElementById("rankInfo");
-const remainingBox = document.getElementById("remainingBox");
+const rankBody   = document.querySelector("#rankTable tbody");
+const detailBody = document.querySelector("#detailTable tbody");
+const rankInfo   = document.getElementById("rankInfo");
 
-/* LOAD DATA */
-window.loadData = async function(){
-  tbody.innerHTML = "";
-  summaryBody.innerHTML = "";
-  rankInfo.innerText = "";
-  remainingBox.innerText = "";
+async function loadData(){
 
-  let from = document.getElementById("from").value;
-  let to   = document.getElementById("to").value;
-
-  let snap = await getDocs(collection(db,"votes"));
-
-  let userMap = {}; // phone → {name, phone, totalVotes}
+  const snap = await getDocs(collection(db,"votes"));
+  let rows = [];
 
   snap.forEach(d=>{
-    let v = d.data();
-    let date = v.date;
+    const data = d.data();
+    const tasksDone = Object.values(data.tasks || {}).filter(v=>v).length;
+    const totalPoints = data.totalPoints || 0;
 
-    if(from && date < from) return;
-    if(to && date > to) return;
-
-    // Count tasks for that day
-    let taskCount = Object.values(v.tasks).filter(t=>t).length;
-
-    /* Detail table */
-    let tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${v.name}</td>
-      <td>${v.phone}</td>
-      <td>${taskCount}</td>
-      <td>${date}</td>
-      <td><button class="delete" onclick="deleteVote('${d.id}')">❌</button></td>
-    `;
-    tbody.appendChild(tr);
-
-    /* User-wise total vote sum */
-    if(!userMap[v.phone]){
-      userMap[v.phone] = {
-        name: v.name,
-        phone: v.phone,
-        totalVotes: 0
-      };
-    }
-    userMap[v.phone].totalVotes += taskCount;
+    rows.push({
+      id:d.id,
+      name:data.name,
+      phone:data.phone,
+      date:data.date,
+      tasksDone,
+      totalPoints
+    });
   });
 
-  /* ---- DENSE RANKING LOGIC ---- */
-  let sortedUsers = Object.values(userMap)
-    .sort((a,b) => b.totalVotes - a.totalVotes);
+  /* 🔽 DETAILED TABLE */
+  detailBody.innerHTML = "";
+  rows.forEach(r=>{
+    detailBody.innerHTML += `
+      <tr>
+        <td>${r.name}</td>
+        <td>${r.phone}</td>
+        <td>${r.tasksDone}</td>
+        <td><b>${r.totalPoints}</b></td>
+        <td>${r.date}</td>
+        <td>
+          <button class="delete" onclick="deleteVote('${r.id}')">✖</button>
+        </td>
+      </tr>
+    `;
+  });
 
-  let rank = 0;
-  let lastVotes = null;
-  let shownUsers = 0;
-  let totalRanks = 0;
+  /* 🔝 TOP RANKS (by points) */
+  rows.sort((a,b)=>b.totalPoints - a.totalPoints);
 
-  for(let i=0;i<sortedUsers.length;i++){
-    let u = sortedUsers[i];
-
-    if(u.totalVotes !== lastVotes){
-      rank += 1;
-      lastVotes = u.totalVotes;
-      totalRanks = rank;   // keep updating till end
-    }
-
-    // Show only TOP 3 ranks
-    if(rank <= 3){
-      let tr = document.createElement("tr");
-      tr.classList.add(`rank-${rank}`);
-      tr.innerHTML = `
-        <td>${rank === 1 ? "🥇 1" : rank === 2 ? "🥈 2" : "🥉 3"}</td>
-        <td>${u.name}</td>
-        <td>${u.phone}</td>
-        <td>${u.totalVotes}</td>
-      `;
-      summaryBody.appendChild(tr);
-      shownUsers++;
-    }
-  }
+  rankBody.innerHTML = "";
+  rows.slice(0,3).forEach((r,i)=>{
+    rankBody.innerHTML += `
+      <tr class="rank${i+1}">
+        <td>🏅 ${i+1}</td>
+        <td>${r.name}</td>
+        <td>${r.phone}</td>
+        <td><b>${r.totalPoints}</b></td>
+      </tr>
+    `;
+  });
 
   rankInfo.innerText =
-    "Top Ranks Shown : 3 | Total Ranks : " + totalRanks;
-
-  let remaining =
-    Object.keys(userMap).length - shownUsers;
-
-  remainingBox.innerText =
-    remaining > 0 ? "Remaining Users : " + remaining : "";
-};
+    "Top Ranks Shown : 3 | Total Records : " + rows.length;
+}
 
 /* DELETE VOTE */
 window.deleteVote = async function(id){
@@ -237,28 +162,6 @@ window.deleteVote = async function(id){
   }
 };
 
-/* EXPORT SUMMARY TO CSV */
-window.exportCSV = function(){
-  let rows = [["Rank","Name","Phone","Total Votes"]];
-  document.querySelectorAll("#summaryBody tr").forEach(tr=>{
-    let tds = tr.querySelectorAll("td");
-    rows.push([
-      tds[0].innerText,
-      tds[1].innerText,
-      tds[2].innerText,
-      tds[3].innerText
-    ]);
-  });
-
-  let csv = rows.map(r=>r.join(",")).join("\n");
-  let blob = new Blob([csv],{type:"text/csv"});
-  let a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "top_ranks_report.csv";
-  a.click();
-};
-
-/* AUTO LOAD */
 loadData();
 </script>
 
