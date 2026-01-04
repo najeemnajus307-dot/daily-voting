@@ -1,178 +1,122 @@
 <!DOCTYPE html>
 <html lang="ml">
 <head>
-    <meta charset="UTF-8">
-    <title>Daily Voting</title>
-    <style>
-        body{
-            font-family: Arial;
-            background:#f1f5f9;
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            height:100vh;
-        }
-        .box{
-            background:white;
-            padding:25px;
-            width:360px;
-            border-radius:10px;
-            box-shadow:0 0 10px rgba(0,0,0,0.2);
-            position:relative;
-        }
-        h2{text-align:center;}
-        .info{
-            text-align:center;
-            font-size:14px;
-            margin-bottom:6px;
-        }
-        label{
-            display:block;
-            margin:6px 0;
-        }
-        button{
-            width:100%;
-            padding:10px;
-            margin-top:15px;
-            background:#16a34a;
-            color:white;
-            border:none;
-            font-size:16px;
-            cursor:pointer;
-            border-radius:6px;
-        }
-        button:disabled{
-            background:#9ca3af;
-            cursor:not-allowed;
-        }
-        .logout{
-            position:absolute;
-            top:10px;
-            right:10px;
-            background:#dc2626;
-            width:auto;
-            padding:6px 10px;
-            font-size:14px;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Daily Voting</title>
+
+<style>
+body{
+  font-family: Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.box{
+  background:white;
+  padding:25px;
+  width:360px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,0.2);
+  position:relative;
+}
+h2{text-align:center;}
+.info{text-align:center;font-size:14px;margin-bottom:6px}
+label{display:block;margin:6px 0}
+button{
+  width:100%;
+  padding:10px;
+  margin-top:15px;
+  background:#16a34a;
+  color:white;
+  border:none;
+  font-size:16px;
+  cursor:pointer;
+  border-radius:6px;
+}
+.logout{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:#dc2626;
+  width:auto;
+  padding:6px 10px;
+  font-size:14px;
+}
+.task-edit{
+  position:absolute;
+  top:10px;
+  left:10px;
+  font-size:14px;
+  color:#2563eb;
+  text-decoration:underline;
+}
+</style>
 </head>
+
 <body>
 
 <div class="box">
-    <button class="logout" onclick="logout()">Logout</button>
 
-    <h2>Daily Tasks</h2>
+<!-- 🔗 TASK EDIT LINK -->
+<a href="task-editor.html" target="_blank" class="task-edit">Task Edit</a>
 
-    <div class="info" id="user"></div>
-    <div class="info" id="date"></div>
+<button class="logout" onclick="logout()">Logout</button>
 
-    <!-- 🔥 TASKS WILL LOAD HERE -->
-    <div id="tasks"></div>
+<h2>Daily Tasks</h2>
 
-    <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
+<div class="info" id="user"></div>
+<div class="info" id="date"></div>
+
+<!-- 🔥 TASKS LOAD HERE -->
+<div id="tasks"></div>
+
+<button onclick="submitVote()">Submit Vote</button>
 </div>
 
-<script type="module">
-/* 🔒 BACK BUTTON BLOCK */
-history.pushState(null, null, location.href);
-window.onpopstate = function () {
-    history.go(1);
-};
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-/* 🔥 FIREBASE CONFIG */
-const firebaseConfig = {
-  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-/* 🔐 LOGIN CHECK */
-let user  = localStorage.getItem("currentUser");
+<script>
+/* LOGIN CHECK */
+let user = localStorage.getItem("currentUser");
 let phone = localStorage.getItem("currentPhone");
-
 if(!user || !phone){
-    window.location.replace("index.html");
+  location.replace("index.html");
 }
 
-/* 📅 DATE */
-let today = new Date().toISOString().split("T")[0];
-let voteRef = doc(db, "votes", phone + "_" + today);
-
-/* UI */
 document.getElementById("user").innerText = "Welcome " + user;
-document.getElementById("date").innerText = "Date : " + today;
+document.getElementById("date").innerText =
+  "Date : " + new Date().toISOString().split("T")[0];
 
-/* 🔥 LOAD TASKS FROM task-editor.html */
+/* LOAD TASKS */
 let tasks = JSON.parse(localStorage.getItem("tasks_master")) || [];
-let taskBox = document.getElementById("tasks");
-let inputs = {};
+let box = document.getElementById("tasks");
+let state = {};
 
-tasks.forEach((task, i) => {
-    let id = "task_" + i;
-    taskBox.innerHTML += `
-        <label>
-            <input type="checkbox" id="${id}">
-            ${task}
-        </label>
-    `;
-    inputs[id] = document.getElementById(id);
+tasks.forEach((t,i)=>{
+  let id = "task_"+i;
+  state[id]=false;
+  box.innerHTML += `
+    <label>
+      <input type="checkbox" id="${id}">
+      ${t}
+    </label>`;
 });
 
-let btn = document.getElementById("submitBtn");
-
-/* 🔒 CHECK ALREADY SUBMITTED */
-const snap = await getDoc(voteRef);
-if(snap.exists()){
-    loadTasks(snap.data().tasks);
-    lockPage("Already submitted today");
+/* SUBMIT */
+function submitVote(){
+  let points = 0;
+  Object.keys(state).forEach(id=>{
+    if(document.getElementById(id).checked) points++;
+  });
+  alert("Vote submitted. Points : " + points);
 }
 
-/* FUNCTIONS */
-function loadTasks(saved){
-    Object.keys(saved).forEach(id=>{
-        if(inputs[id]) inputs[id].checked = saved[id];
-    });
+/* LOGOUT */
+function logout(){
+  localStorage.removeItem("currentUser");
+  localStorage.removeItem("currentPhone");
+  location.replace("index.html");
 }
-
-function lockPage(msg){
-    Object.values(inputs).forEach(i => i.disabled = true);
-    btn.disabled = true;
-    btn.innerText = msg;
-}
-
-/* ✅ SUBMIT VOTE */
-window.submitVote = async function(){
-    let taskData = {};
-    Object.keys(inputs).forEach(id=>{
-        taskData[id] = inputs[id].checked;
-    });
-
-    await setDoc(voteRef, {
-        name: user,
-        phone: phone,
-        date: today,
-        tasks: taskData,
-        submittedAt: new Date().toISOString()
-    });
-
-    alert("Vote submitted successfully 👍");
-    location.reload();
-};
-
-/* 🚪 LOGOUT */
-window.logout = function(){
-    if(confirm("Logout cheyyano?")){
-        localStorage.removeItem("currentUser");
-        localStorage.removeItem("currentPhone");
-        window.location.replace("index.html");
-    }
-};
 </script>
 
 </body>
