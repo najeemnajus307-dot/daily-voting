@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
 
@@ -77,12 +77,15 @@
 </div>
 
 <script>
-/* 🔁 AUTO REDIRECT IF ALREADY LOGGED IN */
-let u = localStorage.getItem("currentUser");
-let p = localStorage.getItem("currentPhone");
-if(u && p){
-    window.location.replace("vote.html");
-}
+/* 🔁 AUTO REDIRECT IF ALREADY LOGGED IN (IMPORTANT) */
+document.addEventListener("DOMContentLoaded", function () {
+    let u = localStorage.getItem("currentUser");
+    let p = localStorage.getItem("currentPhone");
+
+    if (u && p) {
+        window.location.replace("vote.html");
+    }
+});
 
 /* 🔄 Toggle forms */
 function showLogin(){
@@ -118,7 +121,7 @@ function signup(){
     showLogin();
 }
 
-/* 🔐 LOGIN (BACK SAFE) */
+/* 🔐 LOGIN */
 function login(){
     let phone = li_phone.value.trim();
     let pass = li_pass.value.trim();
@@ -138,15 +141,9 @@ function login(){
     localStorage.setItem("currentUser", user.name);
     localStorage.setItem("currentPhone", user.phone);
 
-    // 🔑 replace() avoids back to login
+    // 🔑 replace() prevents back to login
     window.location.replace("vote.html");
 }
-
-/* 🚫 Block back button on login page */
-history.pushState(null, null, location.href);
-window.onpopstate = function () {
-    history.go(1);
-};
 </script>
 
 </body>
