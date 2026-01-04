@@ -6,51 +6,49 @@
 
 <style>
 body{
-  font-family: Arial;
-  background:#f1f5f9;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+    font-family:Arial;
+    background:#f1f5f9;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
 }
 .box{
-  background:white;
-  padding:25px;
-  width:360px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,0.2);
-  position:relative;
+    background:#fff;
+    padding:25px;
+    width:360px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.2);
+    position:relative;
 }
 h2{text-align:center;}
-.info{text-align:center;font-size:14px;margin-bottom:6px}
-label{display:block;margin:6px 0}
+.info{text-align:center;font-size:14px;margin-bottom:6px;}
+label{display:block;margin:6px 0;}
 button{
-  width:100%;
-  padding:10px;
-  margin-top:15px;
-  background:#16a34a;
-  color:white;
-  border:none;
-  font-size:16px;
-  cursor:pointer;
-  border-radius:6px;
+    width:100%;
+    padding:10px;
+    margin-top:15px;
+    background:#16a34a;
+    color:white;
+    border:none;
+    font-size:16px;
+    cursor:pointer;
+    border-radius:6px;
 }
+button:disabled{background:#9ca3af;}
 .logout{
-  position:absolute;
-  top:10px;
-  right:10px;
-  background:#dc2626;
-  width:auto;
-  padding:6px 10px;
-  font-size:14px;
+    position:absolute;
+    top:10px;
+    right:10px;
+    background:#dc2626;
+    padding:6px 10px;
+    font-size:14px;
 }
 .task-edit{
-  position:absolute;
-  top:10px;
-  left:10px;
-  font-size:14px;
-  color:#2563eb;
-  text-decoration:underline;
+    position:absolute;
+    top:10px;
+    left:10px;
+    font-size:13px;
 }
 </style>
 </head>
@@ -59,9 +57,7 @@ button{
 
 <div class="box">
 
-<!-- 🔗 TASK EDIT LINK -->
-<a href="task-editor.html" target="_blank" class="task-edit">Task Edit</a>
-
+<a class="task-edit" href="task-editor.html">Task Edit</a>
 <button class="logout" onclick="logout()">Logout</button>
 
 <h2>Daily Tasks</h2>
@@ -69,54 +65,100 @@ button{
 <div class="info" id="user"></div>
 <div class="info" id="date"></div>
 
-<!-- 🔥 TASKS LOAD HERE -->
-<div id="tasks"></div>
+<!-- TASKS WILL LOAD HERE -->
+<div id="taskArea"></div>
 
-<button onclick="submitVote()">Submit Vote</button>
+<button id="submitBtn" onclick="submitVote()">Submit Vote</button>
+
 </div>
 
-<script>
-/* LOGIN CHECK */
-let user = localStorage.getItem("currentUser");
-let phone = localStorage.getItem("currentPhone");
-if(!user || !phone){
-  location.replace("index.html");
+<script type="module">
+/* 🔒 BACK BUTTON BLOCK */
+history.pushState(null,null,location.href);
+window.onpopstate=()=>history.go(1);
+
+/* 🔥 FIREBASE */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+const firebaseConfig={
+ apiKey:"AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+ authDomain:"daily-voting-793ee.firebaseapp.com",
+ projectId:"daily-voting-793ee",
+ storageBucket:"daily-voting-793ee.firebasestorage.app",
+ messagingSenderId:"1065830068376",
+ appId:"1:1065830068376:web:9d3858939d07056a5fa0ed"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+/* 🔐 LOGIN CHECK */
+let user=localStorage.getItem("currentUser");
+let phone=localStorage.getItem("currentPhone");
+if(!user||!phone) location.replace("index.html");
+
+/* DATE */
+let today=new Date().toISOString().split("T")[0];
+document.getElementById("user").innerText="Welcome "+user;
+document.getElementById("date").innerText="Date : "+today;
+
+/* TASK LOAD FROM EDITOR */
+let taskArea=document.getElementById("taskArea");
+let dailyTasks=JSON.parse(localStorage.getItem("dailyTasks"))||[];
+let inputs={};
+
+if(dailyTasks.length===0){
+    taskArea.innerHTML="<p style='color:red;text-align:center'>No tasks added</p>";
+}else{
+    dailyTasks.forEach(t=>{
+        let id=t.replace(/\s+/g,"_");
+        let lbl=document.createElement("label");
+        lbl.innerHTML=`<input type="checkbox" id="${id}"> ${t}`;
+        taskArea.appendChild(lbl);
+        inputs[id]=document.getElementById(id);
+    });
 }
 
-document.getElementById("user").innerText = "Welcome " + user;
-document.getElementById("date").innerText =
-  "Date : " + new Date().toISOString().split("T")[0];
+/* FIRESTORE REF */
+let voteRef=doc(db,"votes",phone+"_"+today);
 
-/* LOAD TASKS */
-let tasks = JSON.parse(localStorage.getItem("tasks_master")) || [];
-let box = document.getElementById("tasks");
-let state = {};
-
-tasks.forEach((t,i)=>{
-  let id = "task_"+i;
-  state[id]=false;
-  box.innerHTML += `
-    <label>
-      <input type="checkbox" id="${id}">
-      ${t}
-    </label>`;
-});
+/* CHECK ALREADY VOTED */
+const snap=await getDoc(voteRef);
+if(snap.exists()){
+    let saved=snap.data().tasks;
+    Object.keys(saved).forEach(k=>{
+        if(inputs[k]) inputs[k].checked=saved[k];
+    });
+    Object.values(inputs).forEach(i=>i.disabled=true);
+    submitBtn.disabled=true;
+    submitBtn.innerText="Already Submitted";
+}
 
 /* SUBMIT */
-function submitVote(){
-  let points = 0;
-  Object.keys(state).forEach(id=>{
-    if(document.getElementById(id).checked) points++;
-  });
-  alert("Vote submitted. Points : " + points);
-}
+window.submitVote=async function(){
+    let taskData={};
+    Object.keys(inputs).forEach(k=>taskData[k]=inputs[k].checked);
+
+    await setDoc(voteRef,{
+        name:user,
+        phone:phone,
+        date:today,
+        tasks:taskData,
+        submittedAt:new Date().toISOString()
+    });
+
+    alert("Vote submitted 👍");
+    location.reload();
+};
 
 /* LOGOUT */
-function logout(){
-  localStorage.removeItem("currentUser");
-  localStorage.removeItem("currentPhone");
-  location.replace("index.html");
-}
+window.logout=function(){
+    if(confirm("Logout cheyyano?")){
+        localStorage.clear();
+        location.replace("index.html");
+    }
+};
 </script>
 
 </body>
