@@ -18,7 +18,7 @@ body{
   padding:25px;
   width:380px;
   border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,0.2);
+  box-shadow:0 0 10px rgba(0,0,0,.2);
   position:relative;
 }
 h2{text-align:center;margin-bottom:4px;}
@@ -33,12 +33,10 @@ button{
   background:#16a34a;
   color:#fff;
   border:none;
-  font-size:16px;
   border-radius:6px;
+  font-size:16px;
 }
-button:disabled{
-  background:#9ca3af;
-}
+button:disabled{background:#9ca3af;}
 .logout{
   position:absolute;
   top:10px;
@@ -72,7 +70,7 @@ button:disabled{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -98,61 +96,55 @@ async function init(){
   document.getElementById("date").innerText = "Date : " + today;
 
   const taskBox = document.getElementById("taskList");
-  const btn = document.getElementById("submitBtn");
+  const submitBtn = document.getElementById("submitBtn");
 
   /* LOAD TASKS */
   const taskSnap = await getDoc(doc(db,"tasks","daily"));
-  if(!taskSnap.exists()){
-    taskBox.innerHTML = "<p>No tasks added</p>";
-    btn.disabled = true;
+  const tasks = taskSnap.exists() ? taskSnap.data().list : [];
+
+  if(tasks.length === 0){
+    taskBox.innerHTML = "<p>No tasks</p>";
+    submitBtn.disabled = true;
     return;
   }
 
-  const tasks = taskSnap.data().list || [];
-  const inputs = {};
+  /* 1️⃣ FIRST build HTML */
+  taskBox.innerHTML = tasks.map((t,i)=>`
+    <label>
+      <input type="checkbox" id="task_${i}">
+      ${t.text}
+      <div class="points">${t.points} points</div>
+    </label>
+  `).join("");
 
-  taskBox.innerHTML = "";
-  tasks.forEach((t,i)=>{
-    const id = "task_"+i;
-    taskBox.innerHTML += `
-      <label>
-        <input type="checkbox" id="${id}">
-        ${t.text}
-        <div class="points">${t.points} points</div>
-      </label>
-    `;
-    inputs[i] = {
-      el: document.getElementById(id),
-      pts: Number(t.points)
-    };
-  });
+  /* 2️⃣ THEN read checkbox elements */
+  const inputs = tasks.map((t,i)=>({
+    el: document.getElementById("task_"+i),
+    pts: Number(t.points)
+  }));
 
-  /* ALREADY SUBMITTED CHECK */
+  /* ALREADY SUBMITTED */
   const snap = await getDoc(voteRef);
   if(snap.exists()){
     const old = snap.data().tasks || {};
-    Object.keys(old).forEach(i=>{
-      if(inputs[i]) inputs[i].el.checked = old[i];
+    inputs.forEach((o,i)=>{
+      o.el.checked = !!old[i];
+      o.el.disabled = true;
     });
-    lockPage("Already submitted");
-  }
-
-  function lockPage(msg){
-    Object.values(inputs).forEach(i=>i.el.disabled=true);
-    btn.disabled = true;
-    btn.innerText = msg;
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Already submitted";
+    return;
   }
 
   /* SUBMIT */
-  btn.onclick = async ()=>{
+  submitBtn.onclick = async ()=>{
     let result = {};
     let total = 0;
 
-    Object.keys(inputs).forEach(i=>{
-      const checked = inputs[i].el.checked;
-      result[i] = checked;
-      if(checked){
-        total += inputs[i].pts; // ✅ CORRECT TOTAL
+    inputs.forEach((o,i)=>{
+      result[i] = o.el.checked;
+      if(o.el.checked){
+        total += o.pts;
       }
     });
 
@@ -166,12 +158,14 @@ async function init(){
     });
 
     alert("Vote saved ✅ Total points : " + total);
-    lockPage("Already submitted");
+
+    inputs.forEach(o=>o.el.disabled=true);
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Already submitted";
   };
 }
 
-/* LOGOUT */
-window.logout = function(){
+window.logout = ()=>{
   localStorage.clear();
   location.replace("index.html");
 };
