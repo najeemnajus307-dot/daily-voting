@@ -10,18 +10,28 @@ body{
   background:#f1f5f9;
   padding:20px;
 }
-.box{
+.container{
   background:#fff;
   padding:20px;
-  border-radius:10px;
-  max-width:1100px;
+  border-radius:12px;
+  max-width:1200px;
   margin:auto;
 }
-h2{text-align:center}
+h2,h3{text-align:center}
+
+.controls{
+  text-align:center;
+  margin-bottom:15px;
+}
+input,button{
+  padding:6px 10px;
+  margin:4px;
+}
+
 table{
   width:100%;
   border-collapse:collapse;
-  margin-top:15px;
+  margin-top:10px;
 }
 th,td{
   border:1px solid #ddd;
@@ -29,67 +39,95 @@ th,td{
   text-align:center;
 }
 th{background:#f3f4f6}
-.del{
-  background:#dc2626;
-  color:#fff;
-  border:none;
-  padding:6px 10px;
-  cursor:pointer;
-  border-radius:4px;
-}
-.top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.logout{
-  background:#111827;
-  color:#fff;
-  padding:6px 10px;
-  border:none;
-  border-radius:4px;
-  cursor:pointer;
-}
-.total{
-  text-align:right;
+
+.rank-1{background:#ffe066;font-weight:bold}
+.rank-2{background:#dbeafe}
+.rank-3{background:#fde68a}
+
+.scroll-box{
+  max-height:400px;
+  overflow-y:auto;
   margin-top:10px;
-  font-weight:bold;
+}
+
+.delete-btn{
+  background:#dc2626;
+  color:white;
+  border:none;
+  padding:4px 8px;
+  cursor:pointer;
+}
+
+.bonus-btn{
+  background:#16a34a;
+  color:white;
+  border:none;
+  padding:4px 8px;
+  cursor:pointer;
+}
+
+.remove-btn{
+  background:#b91c1c;
+  color:white;
+  border:none;
+  padding:4px 8px;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
+<div class="container">
 
-<div class="box">
-  <div class="top">
-    <h2>Admin Voting Report</h2>
-    <button class="logout" onclick="logout()">Logout</button>
-  </div>
+<h2>Admin Voting Report</h2>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Tasks</th>
-        <th>Date</th>
-        <th>Delete Vote</th>
-      </tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
-
-  <div class="total" id="totalVotes">TOTAL VOTES : 0</div>
+<div class="controls">
+  From <input type="date" id="from">
+  To <input type="date" id="to">
+  <button onclick="loadReport()">Apply Filter</button>
+  <button onclick="exportExcel()">Export Excel</button>
 </div>
 
-<!-- FIREBASE -->
+<h3>User Summary (Dense Ranking + Bonus)</h3>
+<table>
+<thead>
+<tr>
+  <th>Rank</th>
+  <th>Name</th>
+  <th>Phone</th>
+  <th>Total Points</th>
+  <th>Bonus</th>
+</tr>
+</thead>
+<tbody id="summary"></tbody>
+</table>
+
+<h3 style="margin-top:25px">Detailed Votes</h3>
+<div class="scroll-box">
+<table>
+<thead>
+<tr>
+  <th>Name</th>
+  <th>Phone</th>
+  <th>Tasks</th>
+  <th>Date</th>
+  <th>Delete</th>
+</tr>
+</thead>
+<tbody id="details"></tbody>
+</table>
+</div>
+
+<p style="text-align:right;font-weight:bold" id="totalPoints"></p>
+
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs, deleteDoc, doc } 
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-/* 🔐 ADMIN DELETE PASSWORD */
-const ADMIN_DELETE_PASSWORD = "admin@123";
+import {
+  getFirestore, collection, getDocs,
+  doc, deleteDoc, getDoc, setDoc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
@@ -102,70 +140,135 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
+const db = getFirestore(app);
 
-const rows = document.getElementById("rows");
-const totalBox = document.getElementById("totalVotes");
+/* ================= LOAD REPORT ================= */
+window.loadReport = async function(){
+  const from = document.getElementById("from").value;
+  const to   = document.getElementById("to").value;
 
-/* 🚀 LOAD REPORT */
-async function loadReport(){
-  rows.innerHTML="";
-  let total = 0;
+  let snap = await getDocs(collection(db,"votes"));
+  let votes = [];
 
-  const snap = await getDocs(collection(db,"votes"));
   snap.forEach(d=>{
-    const v = d.data();
-    total++;
+    let v = d.data();
+    if((!from || v.date>=from) && (!to || v.date<=to)){
+      votes.push(v);
+    }
+  });
 
-    const tr = document.createElement("tr");
+  renderDetails(votes);
+  renderSummary(votes);
+};
+
+/* ================= DETAILS ================= */
+function renderDetails(votes){
+  let body = document.getElementById("details");
+  body.innerHTML="";
+
+  votes.forEach(v=>{
+    let tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${v.name}</td>
       <td>${v.phone}</td>
-      <td>${countTasks(v.tasks)}</td>
+      <td>${Object.values(v.tasks).filter(x=>x).length}</td>
       <td>${v.date}</td>
-      <td>
-        <button class="del" onclick="deleteVote('${d.id}')">X</button>
-      </td>
+      <td><button class="delete-btn" onclick="deleteVote('${v.phone}','${v.date}')">X</button></td>
     `;
-    rows.appendChild(tr);
+    body.appendChild(tr);
+  });
+}
+
+/* ================= SUMMARY + DENSE RANK ================= */
+async function renderSummary(votes){
+  let map = {};
+  votes.forEach(v=>{
+    let pts = Object.values(v.tasks).filter(x=>x).length;
+    if(!map[v.phone]){
+      map[v.phone]={name:v.name, phone:v.phone, base:0};
+    }
+    map[v.phone].base += pts;
   });
 
-  totalBox.innerText = "TOTAL VOTES : " + total;
+  let users=[];
+  for(let p in map){
+    let bSnap = await getDoc(doc(db,"bonuses",p));
+    let bonus = bSnap.exists()? bSnap.data().points:0;
+    users.push({
+      name:map[p].name,
+      phone:p,
+      total:map[p].base + bonus,
+      bonus
+    });
+  }
+
+  users.sort((a,b)=>b.total-a.total);
+
+  /* 🔥 DENSE RANK LOGIC */
+  let rank=0, prev=null;
+  users.forEach(u=>{
+    if(prev===null || u.total<prev){
+      rank++;
+    }
+    u.rank=rank;
+    prev=u.total;
+  });
+
+  let body=document.getElementById("summary");
+  body.innerHTML="";
+  let totalPoints=0;
+
+  users.forEach(u=>{
+    totalPoints+=u.total;
+    let tr=document.createElement("tr");
+    tr.className = u.rank<=3 ? `rank-${u.rank}`:"";
+    tr.innerHTML=`
+      <td>${u.rank}</td>
+      <td>${u.name}</td>
+      <td>${u.phone}</td>
+      <td>${u.total}</td>
+      <td>
+        <button class="bonus-btn" onclick="addBonus('${u.phone}','${u.name}')">+ Bonus</button>
+        ${u.bonus>0?`<button class="remove-btn" onclick="removeBonus('${u.phone}')">Remove</button>`:""}
+      </td>
+    `;
+    body.appendChild(tr);
+  });
+
+  document.getElementById("totalPoints").innerText="TOTAL POINTS : "+totalPoints;
 }
 
-/* ✅ TASK COUNT */
-function countTasks(t){
-  let c = 0;
-  for(let k in t){
-    if(t[k]) c++;
-  }
-  return c;
-}
-
-/* ❌ DELETE ONLY VOTE (PASSWORD PROTECTED) */
-window.deleteVote = async function(id){
-  let pass = prompt("Enter admin password to delete this vote");
-  if(pass !== ADMIN_DELETE_PASSWORD){
-    alert("❌ Wrong password");
-    return;
-  }
-
-  if(!confirm("Delete this vote?")){
-    return;
-  }
-
-  await deleteDoc(doc(db,"votes",id));
-  alert("✅ Vote deleted");
+/* ================= BONUS ================= */
+window.addBonus = async function(phone,name){
+  let p = prompt("Bonus points for "+name);
+  if(!p || isNaN(p)) return;
+  await setDoc(doc(db,"bonuses",phone),{points:Number(p)});
   loadReport();
 };
 
-/* 🚪 LOGOUT */
-window.logout = function(){
-  window.location.href = "index.html";
+window.removeBonus = async function(phone){
+  await deleteDoc(doc(db,"bonuses",phone));
+  loadReport();
+};
+
+/* ================= DELETE VOTE ================= */
+window.deleteVote = async function(phone,date){
+  if(!confirm("Delete this vote?")) return;
+  await deleteDoc(doc(db,"votes",phone+"_"+date));
+  loadReport();
+};
+
+/* ================= EXCEL ================= */
+window.exportExcel = function(){
+  let table = document.querySelector("table");
+  let html = table.outerHTML.replace(/ /g,"%20");
+  let a = document.createElement("a");
+  a.href="data:application/vnd.ms-excel,"+html;
+  a.download="voting-report.xls";
+  a.click();
 };
 
 loadReport();
 </script>
-
 </body>
 </html>
