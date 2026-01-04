@@ -6,35 +6,52 @@
 
 <style>
 body{
-  font-family:Arial;
-  background:#f1f5f9;
-  padding:20px;
+    font-family: Arial;
+    background:#f1f5f9;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
 }
 .box{
-  background:#fff;
-  padding:20px;
-  max-width:420px;
-  margin:auto;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
+    background:white;
+    padding:25px;
+    width:360px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.2);
+    position:relative;
 }
-.task{
-  border:1px solid #ddd;
-  padding:10px;
-  border-radius:6px;
-  margin-bottom:10px;
+h2{text-align:center;}
+.info{
+    text-align:center;
+    font-size:14px;
+    margin-bottom:6px;
+}
+label{
+    display:block;
+    margin:8px 0;
 }
 button{
-  width:100%;
-  padding:10px;
-  background:#16a34a;
-  color:#fff;
-  border:none;
-  border-radius:6px;
-  margin-top:10px;
+    width:100%;
+    padding:10px;
+    margin-top:15px;
+    background:#16a34a;
+    color:white;
+    border:none;
+    font-size:16px;
+    cursor:pointer;
+    border-radius:6px;
 }
-input{
-  margin-right:6px;
+button:disabled{
+    background:#9ca3af;
+}
+.logout{
+    position:absolute;
+    top:10px;
+    right:10px;
+    background:#dc2626;
+    padding:6px 10px;
+    font-size:14px;
 }
 </style>
 </head>
@@ -42,85 +59,113 @@ input{
 <body>
 
 <div class="box">
-  <h3>Daily Challenge Vote</h3>
+    <button class="logout" onclick="logout()">Logout</button>
 
-  <input id="user" placeholder="Your Name">
+    <h2>Daily Tasks</h2>
 
-  <div id="tasks"></div>
+    <div class="info" id="user"></div>
+    <div class="info" id="date"></div>
 
-  <button onclick="submitVote()">Submit Vote</button>
+    <!-- TASKS -->
+    <div id="taskBox"></div>
+
+    <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, addDoc, collection } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+/* 🔒 Back button block */
+history.pushState(null,null,location.href);
+window.onpopstate = ()=> history.go(1);
 
-/* 🔥 SAME FIREBASE CONFIG */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+  projectId: "daily-voting-793ee",
+  storageBucket: "daily-voting-793ee.firebasestorage.app",
+  messagingSenderId: "1065830068376",
+  appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const taskBox = document.getElementById("tasks");
-let tasks = [];
+/* 🔐 LOGIN CHECK (sessionStorage) */
+const user = sessionStorage.getItem("userName");
+const phone = sessionStorage.getItem("userPhone");
 
-/* LOAD TASKS FROM FIREBASE */
-const snap = await getDoc(doc(db,"tasks","daily"));
-if(snap.exists()){
-  tasks = snap.data().list || [];
-  renderTasks();
+if(!user || !phone){
+    window.location.replace("index.html");
 }
 
-function renderTasks(){
-  taskBox.innerHTML="";
-  tasks.forEach((t,i)=>{
-    taskBox.innerHTML += `
-      <div class="task">
-        <b>${t}</b> <br>
-        <label>
-          <input type="radio" name="task${i}" value="Completed"> Completed
-        </label>
-        <label>
-          <input type="radio" name="task${i}" value="Not Completed"> Not Completed
-        </label>
-        <div><b>Points:</b> 5</div>
-      </div>
-    `;
-  });
-}
+/* 📅 DATE */
+const today = new Date().toISOString().split("T")[0];
+const voteRef = doc(db,"votes", phone + "_" + today);
 
-/* SUBMIT VOTE */
-window.submitVote = async function(){
-  let user = document.getElementById("user").value.trim();
-  if(!user){
-    alert("User name enter ചെയ്യൂ");
-    return;
-  }
+/* UI */
+document.getElementById("user").innerText = "Welcome " + user;
+document.getElementById("date").innerText = "Date : " + today;
 
-  for(let i=0;i<tasks.length;i++){
-    let v = document.querySelector(`input[name="task${i}"]:checked`);
-    if(!v){
-      alert("എല്ലാ task-ക്കും option select ചെയ്യൂ");
-      return;
-    }
+const taskBox = document.getElementById("taskBox");
+const btn = document.getElementById("submitBtn");
 
-    let points = v.value === "Completed" ? 5 : 0;
+/* 📥 LOAD TASKS FROM FIRESTORE (READ ONLY) */
+const taskSnap = await getDoc(doc(db,"config","tasks"));
 
-    await addDoc(collection(db,"votes"),{
-      user:user,
-      task:tasks[i],
-      status:v.value,
-      points:points,
-      date:new Date()
+if(!taskSnap.exists()){
+    taskBox.innerHTML = "<p style='color:red;text-align:center'>No tasks added</p>";
+    btn.disabled = true;
+}else{
+    taskSnap.data().list.forEach(t=>{
+        taskBox.innerHTML += `
+            <label>
+                <input type="checkbox" data-task="${t}">
+                ${t}
+            </label>`;
     });
-  }
-
-  alert("Votes submitted ✅");
 }
+
+/* 🔒 CHECK ALREADY VOTED */
+const votedSnap = await getDoc(voteRef);
+if(votedSnap.exists()){
+    const saved = votedSnap.data().tasks;
+    document.querySelectorAll("input[type=checkbox]").forEach(cb=>{
+        cb.checked = saved[cb.dataset.task];
+        cb.disabled = true;
+    });
+    btn.disabled = true;
+    btn.innerText = "Already Voted";
+}
+
+/* ✅ SUBMIT VOTE */
+window.submitVote = async function(){
+    let tasks = {};
+    document.querySelectorAll("input[type=checkbox]").forEach(cb=>{
+        tasks[cb.dataset.task] = cb.checked;
+    });
+
+    await setDoc(voteRef,{
+        name:user,
+        phone:phone,
+        date:today,
+        tasks:tasks,
+        submittedAt:new Date().toISOString()
+    });
+
+    alert("Vote submitted successfully 👍");
+    location.reload();
+};
+
+/* 🚪 LOGOUT */
+window.logout = function(){
+    if(confirm("Logout cheyyano?")){
+        sessionStorage.clear();
+        window.location.replace("index.html");
+    }
+};
 </script>
 
 </body>
