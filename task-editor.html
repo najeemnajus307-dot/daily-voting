@@ -1,88 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Task Editor</title>
-
 <style>
 body{
-  font-family:Arial;
-  background:#f1f5f9;
-  padding:20px;
+    font-family:Arial;
+    background:#f1f5f9;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
 }
 .box{
-  background:#fff;
-  padding:20px;
-  border-radius:10px;
-  max-width:400px;
-  margin:auto;
+    background:#fff;
+    padding:20px;
+    width:360px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,.2);
 }
+h2{text-align:center;}
 input{
-  width:100%;
-  padding:8px;
-  margin-bottom:8px;
+    width:100%;
+    padding:8px;
+    margin:6px 0;
 }
 button{
-  padding:8px;
-  width:100%;
-  background:#2563eb;
-  color:white;
-  border:none;
-  cursor:pointer;
+    width:100%;
+    padding:10px;
+    background:#2563eb;
+    color:white;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
 }
-ul{padding-left:18px}
-li{margin-bottom:6px}
-.del{
-  color:red;
-  cursor:pointer;
-  margin-left:8px;
-}
+ul{padding-left:20px;}
+li{margin:4px 0;}
 </style>
 </head>
-
 <body>
-<div class="box">
-<h3>Add Voting Tasks</h3>
 
-<input id="taskInput" placeholder="Type task and click Add">
+<div class="box">
+<h2>Task Editor</h2>
+
+<input id="taskInput" placeholder="New task name">
 <button onclick="addTask()">Add Task</button>
 
 <ul id="taskList"></ul>
 </div>
 
 <script>
-let tasks = JSON.parse(localStorage.getItem("tasks_master")) || [];
-
-function save(){
-  localStorage.setItem("tasks_master", JSON.stringify(tasks));
-  render();
-}
+let tasks = JSON.parse(localStorage.getItem("dailyTasks")) || [];
 
 function render(){
-  const ul = document.getElementById("taskList");
-  ul.innerHTML="";
-  tasks.forEach((t,i)=>{
-    ul.innerHTML += `
-      <li>${t}
-        <span class="del" onclick="removeTask(${i})">❌</span>
-      </li>`;
-  });
+    let ul = document.getElementById("taskList");
+    ul.innerHTML="";
+    tasks.forEach((t,i)=>{
+        let li=document.createElement("li");
+        li.innerHTML = t +
+        ` <button onclick="del(${i})">❌</button>`;
+        ul.appendChild(li);
+    });
+    localStorage.setItem("dailyTasks",JSON.stringify(tasks));
 }
-
 function addTask(){
-  const val = taskInput.value.trim();
-  if(!val) return;
-  tasks.push(val);
-  taskInput.value="";
-  save();
+    let v=document.getElementById("taskInput").value.trim();
+    if(!v) return;
+    tasks.push(v);
+    document.getElementById("taskInput").value="";
+    render();
 }
-
-function removeTask(i){
-  tasks.splice(i,1);
-  save();
+function del(i){
+    tasks.splice(i,1);
+    render();
 }
-
 render();
 </script>
+
 </body>
 </html>
