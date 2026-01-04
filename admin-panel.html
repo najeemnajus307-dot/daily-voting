@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel</title>
+
+<style>
+body{
+  font-family:Arial;
+  background:#f1f5f9;
+  padding:20px;
+}
+.box{
+  background:#fff;
+  max-width:1000px;
+  margin:auto;
+  padding:20px;
+  border-radius:10px;
+}
+h2,h3{text-align:center;}
+input,button{
+  padding:6px 10px;
+  margin:5px;
+}
+button{cursor:pointer}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:8px;
+  text-align:center;
+}
+th{background:#f3f4f6;}
+.admin-box{
+  background:#eef2ff;
+  padding:10px;
+  margin-bottom:15px;
+}
+</style>
+</head>
+
+<body>
+
+<script>
+// 🔐 LOGIN CHECK
+if(!localStorage.getItem("adminRole")){
+  location.href="admin-login.html";
+}
+</script>
+
+<div class="box">
+<h2>Admin Panel</h2>
+
+<!-- SUPER ADMIN ONLY -->
+<div class="admin-box" id="superBox" style="display:none">
+  <h3>Create New Admin</h3>
+  <input id="newUser" placeholder="Username">
+  <input id="newPass" placeholder="Password">
+  <button onclick="addAdmin()">Add Admin</button>
+</div>
+
+<!-- DATE FILTER -->
+<h3>Date Filter</h3>
+<input type="date" id="from">
+<input type="date" id="to">
+<button onclick="loadData()">Apply Filter</button>
+<button onclick="exportDateWise()">Date-wise Excel</button>
+
+<!-- TABLE -->
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Phone</th>
+<th>Tasks</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<br>
+<button onclick="logout()">Logout</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* FIREBASE */
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const tbody = document.getElementById("tbody");
+
+/* SHOW SUPER ADMIN BOX */
+if(localStorage.getItem("adminRole")==="super"){
+  superBox.style.display="block";
+}
+
+/* ADD ADMIN */
+window.addAdmin = function(){
+  let u=newUser.value.trim();
+  let p=newPass.value.trim();
+  if(!u||!p) return alert("Fill all fields");
+
+  let admins = JSON.parse(localStorage.getItem("admins")||"[]");
+  admins.push({user:u, pass:p});
+  localStorage.setItem("admins", JSON.stringify(admins));
+
+  alert("Admin created");
+  newUser.value=""; newPass.value="";
+};
+
+/* LOAD DATA */
+window.loadData = async function(){
+  tbody.innerHTML="";
+  let f=from.value, t=to.value;
+
+  let snap = await getDocs(collection(db,"votes"));
+  snap.forEach(d=>{
+    let v=d.data();
+    if(f && v.date<f) return;
+    if(t && v.date>t) return;
+
+    let taskCount = Object.values(v.tasks).filter(x=>x).length;
+    let tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${v.name}</td>
+      <td>${v.phone}</td>
+      <td>${taskCount}</td>
+      <td>${v.date}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+};
+
+/* DATE-WISE EXCEL (SAME FILTER) */
+window.exportDateWise = async function(){
+  let f=from.value, t=to.value;
+  let snap = await getDocs(collection(db,"votes"));
+  let map={};
+
+  snap.forEach(d=>{
+    let v=d.data();
+    if(f && v.date<f) return;
+    if(t && v.date>t) return;
+
+    let c=Object.values(v.tasks).filter(x=>x).length;
+    map[v.date]=(map[v.date]||0)+c;
+  });
+
+  let rows=[["Date","Total Votes"]];
+  Object.keys(map).sort().forEach(d=>{
+    rows.push([d,map[d]]);
+  });
+
+  let csv=rows.map(r=>r.join(",")).join("\n");
+  let blob=new Blob([csv],{type:"text/csv"});
+  let a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="date_wise_report.csv";
+  a.click();
+};
+
+/* LOGOUT */
+window.logout=function(){
+  localStorage.removeItem("adminRole");
+  location.href="admin-login.html";
+};
+</script>
+
+</body>
+</html>
