@@ -2,7 +2,7 @@
 <html lang="ml">
 <head>
 <meta charset="UTF-8">
-<title>Daily Voting</title>
+<title>Daily Challenge Vote</title>
 
 <style>
 body{
@@ -19,17 +19,20 @@ body{
     width:360px;
     border-radius:10px;
     box-shadow:0 0 10px rgba(0,0,0,0.2);
-    position:relative;
 }
-h2{text-align:center;}
-.info{
-    text-align:center;
-    font-size:14px;
-    margin-bottom:6px;
+h2{text-align:center;margin-bottom:10px}
+.task{
+    border:1px solid #ddd;
+    padding:10px;
+    border-radius:6px;
+    margin-bottom:10px;
 }
-label{
-    display:block;
-    margin:8px 0;
+.task label{
+    font-weight:bold;
+}
+.points{
+    font-size:13px;
+    margin-top:5px;
 }
 button{
     width:100%;
@@ -38,20 +41,12 @@ button{
     background:#16a34a;
     color:white;
     border:none;
+    border-radius:6px;
     font-size:16px;
     cursor:pointer;
-    border-radius:6px;
 }
 button:disabled{
     background:#9ca3af;
-}
-.logout{
-    position:absolute;
-    top:10px;
-    right:10px;
-    background:#dc2626;
-    padding:6px 10px;
-    font-size:14px;
 }
 </style>
 </head>
@@ -59,28 +54,16 @@ button:disabled{
 <body>
 
 <div class="box">
-    <button class="logout" onclick="logout()">Logout</button>
-
-    <h2>Daily Tasks</h2>
-
-    <div class="info" id="user"></div>
-    <div class="info" id="date"></div>
-
-    <!-- TASKS -->
+    <h2>Daily Challenge Vote</h2>
     <div id="taskBox"></div>
-
     <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
 </div>
 
 <script type="module">
-/* 🔒 Back button block */
-history.pushState(null,null,location.href);
-window.onpopstate = ()=> history.go(1);
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* 🔥 FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -93,58 +76,55 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK (sessionStorage) */
-const user = sessionStorage.getItem("userName");
+/* 🔐 LOGIN CHECK */
+const user  = sessionStorage.getItem("userName");
 const phone = sessionStorage.getItem("userPhone");
-
 if(!user || !phone){
-    window.location.replace("index.html");
+    location.replace("index.html");
 }
 
 /* 📅 DATE */
 const today = new Date().toISOString().split("T")[0];
-const voteRef = doc(db,"votes", phone + "_" + today);
-
-/* UI */
-document.getElementById("user").innerText = "Welcome " + user;
-document.getElementById("date").innerText = "Date : " + today;
+const voteRef = doc(db,"votes",phone+"_"+today);
 
 const taskBox = document.getElementById("taskBox");
 const btn = document.getElementById("submitBtn");
 
-/* 📥 LOAD TASKS FROM FIRESTORE (READ ONLY) */
+/* 📥 LOAD TASKS (ADMIN ADD ചെയ്തവ) */
 const taskSnap = await getDoc(doc(db,"config","tasks"));
 
 if(!taskSnap.exists()){
-    taskBox.innerHTML = "<p style='color:red;text-align:center'>No tasks added</p>";
-    btn.disabled = true;
+    taskBox.innerHTML="<p style='color:red'>No tasks added</p>";
+    btn.disabled=true;
 }else{
-    taskSnap.data().list.forEach(t=>{
+    taskSnap.data().list.forEach((t,i)=>{
         taskBox.innerHTML += `
+        <div class="task">
             <label>
-                <input type="checkbox" data-task="${t}">
-                ${t}
-            </label>`;
+                <input type="checkbox" id="task_${i}">
+                ${t.name}
+            </label>
+            <div class="points">Points : ${t.points}</div>
+        </div>`;
     });
 }
 
-/* 🔒 CHECK ALREADY VOTED */
-const votedSnap = await getDoc(voteRef);
-if(votedSnap.exists()){
-    const saved = votedSnap.data().tasks;
-    document.querySelectorAll("input[type=checkbox]").forEach(cb=>{
-        cb.checked = saved[cb.dataset.task];
-        cb.disabled = true;
-    });
-    btn.disabled = true;
-    btn.innerText = "Already Voted";
+/* 🔒 ALREADY VOTED CHECK */
+const voted = await getDoc(voteRef);
+if(voted.exists()){
+    btn.disabled=true;
+    btn.innerText="Already Voted Today";
 }
 
-/* ✅ SUBMIT VOTE */
-window.submitVote = async function(){
+/* ✅ SUBMIT */
+window.submitVote = async ()=>{
     let tasks = {};
-    document.querySelectorAll("input[type=checkbox]").forEach(cb=>{
-        tasks[cb.dataset.task] = cb.checked;
+    let total = 0;
+
+    taskSnap.data().list.forEach((t,i)=>{
+        const checked = document.getElementById("task_"+i).checked;
+        tasks[t.name] = checked;
+        if(checked) total += t.points;
     });
 
     await setDoc(voteRef,{
@@ -152,19 +132,12 @@ window.submitVote = async function(){
         phone:phone,
         date:today,
         tasks:tasks,
+        points:total,
         submittedAt:new Date().toISOString()
     });
 
-    alert("Vote submitted successfully 👍");
+    alert("Vote submitted 👍");
     location.reload();
-};
-
-/* 🚪 LOGOUT */
-window.logout = function(){
-    if(confirm("Logout cheyyano?")){
-        sessionStorage.clear();
-        window.location.replace("index.html");
-    }
 };
 </script>
 
