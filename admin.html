@@ -6,7 +6,7 @@
 
 <style>
 body{
-  font-family: Arial;
+  font-family:Arial;
   background:#f1f5f9;
   padding:30px;
 }
@@ -16,7 +16,17 @@ body{
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2{text-align:center;margin-bottom:15px;}
+h2{text-align:center;}
+
+.filter{
+  text-align:center;
+  margin-bottom:15px;
+}
+.filter input, .filter button{
+  padding:6px 10px;
+  margin:0 5px;
+}
+
 table{
   width:100%;
   border-collapse:collapse;
@@ -27,18 +37,17 @@ th,td{
   padding:8px;
   text-align:center;
 }
-th{
-  background:#f3f4f6;
-}
+th{background:#f3f4f6;}
+
 .rank1{background:#fff7cc;}
 .rank2{background:#e5e7eb;}
 .rank3{background:#fde68a;}
-.small{font-size:13px;color:#555;}
+
 .delete{
   background:#dc2626;
   color:#fff;
   border:none;
-  padding:5px 8px;
+  padding:4px 8px;
   cursor:pointer;
 }
 </style>
@@ -49,8 +58,18 @@ th{
 <div class="box">
   <h2>Admin Voting Report</h2>
 
-  <h3>🏆 Top Ranks (By Total Points)</h3>
-  <table id="rankTable">
+  <!-- DATE FILTER -->
+  <div class="filter">
+    From:
+    <input type="date" id="fromDate">
+    To:
+    <input type="date" id="toDate">
+    <button onclick="applyFilter()">Filter</button>
+    <button onclick="resetFilter()">Reset</button>
+  </div>
+
+  <h3>🏆 Top Ranks (By Points)</h3>
+  <table>
     <thead>
       <tr>
         <th>Rank</th>
@@ -59,13 +78,11 @@ th{
         <th>Total Points</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="rankBody"></tbody>
   </table>
 
-  <p class="small" id="rankInfo"></p>
-
-  <h3 style="margin-top:30px;">📋 Detailed Votes</h3>
-  <table id="detailTable">
+  <h3 style="margin-top:25px;">📋 Detailed Votes</h3>
+  <table>
     <thead>
       <tr>
         <th>Name</th>
@@ -76,7 +93,7 @@ th{
         <th>Delete</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="detailBody"></tbody>
   </table>
 </div>
 
@@ -84,7 +101,7 @@ th{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getFirestore, collection, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -94,31 +111,35 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
-const rankBody   = document.querySelector("#rankTable tbody");
-const detailBody = document.querySelector("#detailTable tbody");
-const rankInfo   = document.getElementById("rankInfo");
+const rankBody   = document.getElementById("rankBody");
+const detailBody = document.getElementById("detailBody");
 
-async function loadData(){
+let allRows = []; // 🔑 store all data
 
+async function loadAll(){
   const snap = await getDocs(collection(db,"votes"));
-  let rows = [];
+  allRows = [];
 
   snap.forEach(d=>{
     const data = d.data();
     const tasksDone = Object.values(data.tasks || {}).filter(v=>v).length;
     const totalPoints = data.totalPoints || 0;
 
-    rows.push({
+    allRows.push({
       id:d.id,
       name:data.name,
       phone:data.phone,
-      date:data.date,
+      date:data.date, // YYYY-MM-DD
       tasksDone,
       totalPoints
     });
   });
 
-  /* 🔽 DETAILED TABLE */
+  render(allRows);
+}
+
+function render(rows){
+  /* DETAIL TABLE */
   detailBody.innerHTML = "";
   rows.forEach(r=>{
     detailBody.innerHTML += `
@@ -135,11 +156,10 @@ async function loadData(){
     `;
   });
 
-  /* 🔝 TOP RANKS (by points) */
-  rows.sort((a,b)=>b.totalPoints - a.totalPoints);
-
+  /* RANKING */
+  const sorted = [...rows].sort((a,b)=>b.totalPoints - a.totalPoints);
   rankBody.innerHTML = "";
-  rows.slice(0,3).forEach((r,i)=>{
+  sorted.slice(0,3).forEach((r,i)=>{
     rankBody.innerHTML += `
       <tr class="rank${i+1}">
         <td>🏅 ${i+1}</td>
@@ -149,20 +169,41 @@ async function loadData(){
       </tr>
     `;
   });
-
-  rankInfo.innerText =
-    "Top Ranks Shown : 3 | Total Records : " + rows.length;
 }
 
-/* DELETE VOTE */
+/* APPLY DATE FILTER */
+window.applyFilter = function(){
+  const from = document.getElementById("fromDate").value;
+  const to   = document.getElementById("toDate").value;
+
+  if(!from || !to){
+    alert("Select both dates");
+    return;
+  }
+
+  const filtered = allRows.filter(r=>{
+    return r.date >= from && r.date <= to;
+  });
+
+  render(filtered);
+};
+
+/* RESET */
+window.resetFilter = function(){
+  document.getElementById("fromDate").value = "";
+  document.getElementById("toDate").value = "";
+  render(allRows);
+};
+
+/* DELETE */
 window.deleteVote = async function(id){
   if(confirm("Delete this vote?")){
     await deleteDoc(doc(db,"votes",id));
-    loadData();
+    loadAll();
   }
 };
 
-loadData();
+loadAll();
 </script>
 
 </body>
