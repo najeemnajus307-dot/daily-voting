@@ -12,7 +12,7 @@ body{
 }
 .box{
   background:#fff;
-  max-width:1000px;
+  max-width:1100px;
   margin:auto;
   padding:20px;
   border-radius:10px;
@@ -30,6 +30,9 @@ h2,h3{
 input,button{
   padding:6px 10px;
   font-size:14px;
+}
+button{
+  cursor:pointer;
 }
 table{
   width:100%;
@@ -51,6 +54,12 @@ th{
   padding:4px 8px;
   cursor:pointer;
 }
+
+/* 🔥 Rank styles */
+.rank-1{ background:#fff7cc; font-weight:bold; }
+.rank-2{ background:#e5e7eb; }
+.rank-3{ background:#fde68a; }
+
 .total{
   margin-top:10px;
   font-weight:bold;
@@ -64,6 +73,7 @@ th{
 <div class="box">
   <h2>Admin Voting Report</h2>
 
+  <!-- CONTROLS -->
   <div class="controls">
     <input type="date" id="from">
     <input type="date" id="to">
@@ -71,11 +81,12 @@ th{
     <button onclick="exportCSV()">Export Excel</button>
   </div>
 
-  <!-- 🔹 SUMMARY TABLE -->
-  <h3>User-wise Total Votes (Task Sum)</h3>
+  <!-- 🔹 TOP 3 RANK TABLE -->
+  <h3>🏆 Top 3 Users (Total Votes)</h3>
   <table>
     <thead>
       <tr>
+        <th>Rank</th>
         <th>Name</th>
         <th>Phone</th>
         <th>Total Votes</th>
@@ -85,7 +96,7 @@ th{
   </table>
 
   <!-- 🔹 DETAIL TABLE -->
-  <h3 style="margin-top:20px">Detailed Votes</h3>
+  <h3 style="margin-top:25px">Detailed Votes</h3>
   <table>
     <thead>
       <tr>
@@ -99,10 +110,9 @@ th{
     <tbody id="tbody"></tbody>
   </table>
 
-  <div class="total" id="totalVotes"></div>
+  <div class="total" id="totalUsers"></div>
 </div>
 
-<!-- 🔥 FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -125,20 +135,21 @@ const db = getFirestore(app);
 
 const tbody = document.getElementById("tbody");
 const summaryBody = document.getElementById("summaryBody");
-const totalBox = document.getElementById("totalVotes");
+const totalUsersBox = document.getElementById("totalUsers");
 
 /* 📊 LOAD DATA */
 window.loadData = async function(){
   tbody.innerHTML = "";
   summaryBody.innerHTML = "";
-  totalBox.innerText = "";
+  totalUsersBox.innerText = "";
 
   let from = document.getElementById("from").value;
   let to   = document.getElementById("to").value;
 
   let snap = await getDocs(collection(db,"votes"));
 
-  let userMap = {}; // phone → {name, phone, totalVotes}
+  let userMap = {}; 
+  // phone → { name, phone, totalVotes }
 
   snap.forEach(d=>{
     let v = d.data();
@@ -147,7 +158,7 @@ window.loadData = async function(){
     if(from && date < from) return;
     if(to && date > to) return;
 
-    // 🔢 TASK COUNT (THIS IS THE KEY)
+    // 🔢 TASK COUNT PER DATE
     let taskCount = Object.values(v.tasks).filter(t=>t).length;
 
     /* DETAIL TABLE */
@@ -157,11 +168,13 @@ window.loadData = async function(){
       <td>${v.phone}</td>
       <td>${taskCount}</td>
       <td>${date}</td>
-      <td><button class="delete" onclick="deleteVote('${d.id}')">❌</button></td>
+      <td>
+        <button class="delete" onclick="deleteVote('${d.id}')">❌</button>
+      </td>
     `;
     tbody.appendChild(tr);
 
-    /* USER TOTAL = SUM OF TASKS */
+    /* USER TOTAL = TASK SUM */
     if(!userMap[v.phone]){
       userMap[v.phone] = {
         name: v.name,
@@ -172,10 +185,18 @@ window.loadData = async function(){
     userMap[v.phone].totalVotes += taskCount;
   });
 
-  /* BUILD SUMMARY TABLE */
-  Object.values(userMap).forEach(u=>{
+  /* ---- SORT & PICK TOP 3 ---- */
+  let rankedUsers = Object.values(userMap)
+    .sort((a,b) => b.totalVotes - a.totalVotes)
+    .slice(0,3);
+
+  rankedUsers.forEach((u,index)=>{
+    let rank = index + 1;
     let tr = document.createElement("tr");
+    tr.classList.add(`rank-${rank}`);
+
     tr.innerHTML = `
+      <td>${rank === 1 ? "🥇 1" : rank === 2 ? "🥈 2" : "🥉 3"}</td>
       <td>${u.name}</td>
       <td>${u.phone}</td>
       <td>${u.totalVotes}</td>
@@ -183,8 +204,8 @@ window.loadData = async function(){
     summaryBody.appendChild(tr);
   });
 
-  totalBox.innerText =
-    "TOTAL USERS : " + Object.keys(userMap).length;
+  totalUsersBox.innerText =
+    "TOTAL USERS (Filtered) : " + Object.keys(userMap).length;
 };
 
 /* ❌ DELETE VOTE */
@@ -195,15 +216,16 @@ window.deleteVote = async function(id){
   }
 };
 
-/* 📥 EXPORT EXCEL (CSV) */
+/* 📥 EXPORT EXCEL (SUMMARY) */
 window.exportCSV = function(){
-  let rows = [["Name","Phone","Total Votes"]];
+  let rows = [["Rank","Name","Phone","Total Votes"]];
   document.querySelectorAll("#summaryBody tr").forEach(tr=>{
     let tds = tr.querySelectorAll("td");
     rows.push([
       tds[0].innerText,
       tds[1].innerText,
-      tds[2].innerText
+      tds[2].innerText,
+      tds[3].innerText
     ]);
   });
 
@@ -211,7 +233,7 @@ window.exportCSV = function(){
   let blob = new Blob([csv],{type:"text/csv"});
   let a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "user_vote_summary.csv";
+  a.download = "top3_user_votes.csv";
   a.click();
 };
 
