@@ -2,7 +2,7 @@
 <html lang="ml">
 <head>
 <meta charset="UTF-8">
-<title>Vote</title>
+<title>Daily Vote</title>
 
 <style>
 body{
@@ -20,18 +20,16 @@ body{
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-label{
-  display:block;
-  margin:8px 0;
-}
+input{width:100%;padding:8px;margin-bottom:8px;}
+label{display:block;margin:8px 0;}
 button{
   width:100%;
   padding:10px;
-  margin-top:10px;
   background:green;
-  color:white;
+  color:#fff;
   border:none;
   border-radius:6px;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -39,23 +37,50 @@ button{
 <body>
 
 <div class="box">
-<h3>Daily Vote</h3>
+  <h3>Daily Challenge</h3>
+  <p><b>Task:</b> 30 Push-ups</p>
+  <p><b>Points:</b> 5</p>
 
-<label><input type="radio" name="v" value="A"> Option A</label>
-<label><input type="radio" name="v" value="B"> Option B</label>
-<label><input type="radio" name="v" value="C"> Option C</label>
+  <input id="user" placeholder="Your Name">
 
-<button onclick="vote()">Submit</button>
+  <label><input type="radio" name="vote" value="Completed"> Completed</label>
+  <label><input type="radio" name="vote" value="Not Completed"> Not Completed</label>
+
+  <button onclick="submitVote()">Submit</button>
 </div>
 
 <script>
-function vote(){
-  let v = document.querySelector('input[name="v"]:checked');
-  if(!v){
-    alert("Option select ചെയ്യൂ");
+function submitVote(){
+  let user = document.getElementById("user").value.trim();
+  let v = document.querySelector('input[name="vote"]:checked');
+
+  if(!user || !v){
+    alert("All fields fill ചെയ്യൂ");
     return;
   }
-  alert("Vote success ✅ : " + v.value);
+
+  let today = new Date().toDateString();
+  let data = JSON.parse(localStorage.getItem("votes") || "[]");
+
+  // one vote per user per day
+  let exists = data.find(d => d.user === user && d.date === today);
+  if(exists){
+    alert("ഇന്ന് ഇതിനകം vote ചെയ്തിട്ടുണ്ട്");
+    return;
+  }
+
+  let points = v.value === "Completed" ? 5 : 0;
+
+  data.push({
+    date: today,
+    user: user,
+    task: "30 Push-ups",
+    status: v.value,
+    points: points
+  });
+
+  localStorage.setItem("votes", JSON.stringify(data));
+  alert("Vote saved ✅");
 }
 </script>
 
