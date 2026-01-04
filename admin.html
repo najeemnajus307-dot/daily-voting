@@ -6,38 +6,35 @@
 
 <style>
 body{
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
   padding:20px;
 }
 .box{
   background:#fff;
-  max-width:900px;
+  max-width:1000px;
   margin:auto;
   padding:20px;
   border-radius:10px;
 }
-h2{
+h2,h3{
   text-align:center;
-  margin-bottom:15px;
 }
 .controls{
   display:flex;
   gap:10px;
   justify-content:center;
-  margin-bottom:15px;
   flex-wrap:wrap;
+  margin-bottom:15px;
 }
 input,button{
   padding:6px 10px;
   font-size:14px;
 }
-button{
-  cursor:pointer;
-}
 table{
   width:100%;
   border-collapse:collapse;
+  margin-top:10px;
 }
 th,td{
   border:1px solid #ddd;
@@ -47,16 +44,17 @@ th,td{
 th{
   background:#f3f4f6;
 }
+.delete{
+  background:#dc2626;
+  color:#fff;
+  border:none;
+  padding:4px 8px;
+  cursor:pointer;
+}
 .total{
   margin-top:10px;
   font-weight:bold;
   text-align:right;
-}
-.delete{
-  background:#dc2626;
-  color:white;
-  border:none;
-  padding:4px 8px;
 }
 </style>
 </head>
@@ -73,6 +71,21 @@ th{
     <button onclick="exportCSV()">Export Excel</button>
   </div>
 
+  <!-- 🔹 SUMMARY TABLE -->
+  <h3>User-wise Total Votes (Task Sum)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Total Votes</th>
+      </tr>
+    </thead>
+    <tbody id="summaryBody"></tbody>
+  </table>
+
+  <!-- 🔹 DETAIL TABLE -->
+  <h3 style="margin-top:20px">Detailed Votes</h3>
   <table>
     <thead>
       <tr>
@@ -100,7 +113,7 @@ import {
   doc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 Firebase config */
+/* 🔥 Firebase Config */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -111,18 +124,21 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const tbody = document.getElementById("tbody");
+const summaryBody = document.getElementById("summaryBody");
 const totalBox = document.getElementById("totalVotes");
 
-/* 📊 LOAD + FILTER DATA */
+/* 📊 LOAD DATA */
 window.loadData = async function(){
   tbody.innerHTML = "";
+  summaryBody.innerHTML = "";
   totalBox.innerText = "";
 
   let from = document.getElementById("from").value;
   let to   = document.getElementById("to").value;
 
   let snap = await getDocs(collection(db,"votes"));
-  let total = 0;
+
+  let userMap = {}; // phone → {name, phone, totalVotes}
 
   snap.forEach(d=>{
     let v = d.data();
@@ -131,24 +147,44 @@ window.loadData = async function(){
     if(from && date < from) return;
     if(to && date > to) return;
 
-    total++;
-
+    // 🔢 TASK COUNT (THIS IS THE KEY)
     let taskCount = Object.values(v.tasks).filter(t=>t).length;
 
+    /* DETAIL TABLE */
     let tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${v.name}</td>
       <td>${v.phone}</td>
       <td>${taskCount}</td>
       <td>${date}</td>
-      <td>
-        <button class="delete" onclick="deleteVote('${d.id}')">❌</button>
-      </td>
+      <td><button class="delete" onclick="deleteVote('${d.id}')">❌</button></td>
     `;
     tbody.appendChild(tr);
+
+    /* USER TOTAL = SUM OF TASKS */
+    if(!userMap[v.phone]){
+      userMap[v.phone] = {
+        name: v.name,
+        phone: v.phone,
+        totalVotes: 0
+      };
+    }
+    userMap[v.phone].totalVotes += taskCount;
   });
 
-  totalBox.innerText = "TOTAL VOTES : " + total;
+  /* BUILD SUMMARY TABLE */
+  Object.values(userMap).forEach(u=>{
+    let tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${u.name}</td>
+      <td>${u.phone}</td>
+      <td>${u.totalVotes}</td>
+    `;
+    summaryBody.appendChild(tr);
+  });
+
+  totalBox.innerText =
+    "TOTAL USERS : " + Object.keys(userMap).length;
 };
 
 /* ❌ DELETE VOTE */
@@ -159,17 +195,15 @@ window.deleteVote = async function(id){
   }
 };
 
-/* 📥 EXPORT TO EXCEL (CSV) */
+/* 📥 EXPORT EXCEL (CSV) */
 window.exportCSV = function(){
-  let rows = [["Name","Phone","Tasks Done","Date"]];
-
-  document.querySelectorAll("#tbody tr").forEach(tr=>{
+  let rows = [["Name","Phone","Total Votes"]];
+  document.querySelectorAll("#summaryBody tr").forEach(tr=>{
     let tds = tr.querySelectorAll("td");
     rows.push([
       tds[0].innerText,
       tds[1].innerText,
-      tds[2].innerText,
-      tds[3].innerText
+      tds[2].innerText
     ]);
   });
 
@@ -177,7 +211,7 @@ window.exportCSV = function(){
   let blob = new Blob([csv],{type:"text/csv"});
   let a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "voting_report.csv";
+  a.download = "user_vote_summary.csv";
   a.click();
 };
 
