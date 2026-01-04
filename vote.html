@@ -66,17 +66,14 @@
     <div class="info" id="user"></div>
     <div class="info" id="date"></div>
 
-    <label><input type="checkbox" id="water"> വെള്ളം കുടിച്ചു</label>
-    <label><input type="checkbox" id="warmup"> Warm up & Stretching</label>
-    <label><input type="checkbox" id="sugar"> Sugar cut</label>
-    <label><input type="checkbox" id="steps"> 100 Steps</label>
-    <label><input type="checkbox" id="pushup"> Push up + Squat</label>
+    <!-- 🔥 TASKS WILL LOAD HERE -->
+    <div id="tasks"></div>
 
     <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
 </div>
 
 <script type="module">
-/* 🔒 BACK BUTTON BLOCK (MOST IMPORTANT) */
+/* 🔒 BACK BUTTON BLOCK */
 history.pushState(null, null, location.href);
 window.onpopstate = function () {
     history.go(1);
@@ -90,9 +87,6 @@ const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee",
-  storageBucket: "daily-voting-793ee.firebasestorage.app",
-  messagingSenderId: "1065830068376",
-  appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -103,7 +97,7 @@ let user  = localStorage.getItem("currentUser");
 let phone = localStorage.getItem("currentPhone");
 
 if(!user || !phone){
-    window.location.replace("index.html"); // 🔑 replace, not href
+    window.location.replace("index.html");
 }
 
 /* 📅 DATE */
@@ -114,13 +108,22 @@ let voteRef = doc(db, "votes", phone + "_" + today);
 document.getElementById("user").innerText = "Welcome " + user;
 document.getElementById("date").innerText = "Date : " + today;
 
-let inputs = {
-    water:  document.getElementById("water"),
-    warmup: document.getElementById("warmup"),
-    sugar:  document.getElementById("sugar"),
-    steps:  document.getElementById("steps"),
-    pushup: document.getElementById("pushup")
-};
+/* 🔥 LOAD TASKS FROM task-editor.html */
+let tasks = JSON.parse(localStorage.getItem("tasks_master")) || [];
+let taskBox = document.getElementById("tasks");
+let inputs = {};
+
+tasks.forEach((task, i) => {
+    let id = "task_" + i;
+    taskBox.innerHTML += `
+        <label>
+            <input type="checkbox" id="${id}">
+            ${task}
+        </label>
+    `;
+    inputs[id] = document.getElementById(id);
+});
+
 let btn = document.getElementById("submitBtn");
 
 /* 🔒 CHECK ALREADY SUBMITTED */
@@ -131,12 +134,10 @@ if(snap.exists()){
 }
 
 /* FUNCTIONS */
-function loadTasks(tasks){
-    inputs.water.checked  = tasks.water;
-    inputs.warmup.checked = tasks.warmup;
-    inputs.sugar.checked  = tasks.sugar;
-    inputs.steps.checked  = tasks.steps;
-    inputs.pushup.checked = tasks.pushup;
+function loadTasks(saved){
+    Object.keys(saved).forEach(id=>{
+        if(inputs[id]) inputs[id].checked = saved[id];
+    });
 }
 
 function lockPage(msg){
@@ -147,13 +148,10 @@ function lockPage(msg){
 
 /* ✅ SUBMIT VOTE */
 window.submitVote = async function(){
-    let taskData = {
-        water:  inputs.water.checked,
-        warmup: inputs.warmup.checked,
-        sugar:  inputs.sugar.checked,
-        steps:  inputs.steps.checked,
-        pushup: inputs.pushup.checked
-    };
+    let taskData = {};
+    Object.keys(inputs).forEach(id=>{
+        taskData[id] = inputs[id].checked;
+    });
 
     await setDoc(voteRef, {
         name: user,
@@ -172,7 +170,7 @@ window.logout = function(){
     if(confirm("Logout cheyyano?")){
         localStorage.removeItem("currentUser");
         localStorage.removeItem("currentPhone");
-        window.location.replace("index.html"); // 🔑 replace
+        window.location.replace("index.html");
     }
 };
 </script>
