@@ -5,18 +5,42 @@
 <title>Admin – Weekly Voting & Bonus</title>
 
 <style>
-body{font-family:Arial;background:#f1f5f9;padding:20px}
-.box{background:#fff;padding:20px;border-radius:10px;max-width:1200px;margin:auto}
-h2{text-align:center}
-table{width:100%;border-collapse:collapse;margin-top:15px}
-th,td{border:1px solid #ddd;padding:8px;text-align:center}
+body{
+  font-family: Arial;
+  background:#f1f5f9;
+  padding:20px;
+}
+.box{
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  max-width:1200px;
+  margin:auto;
+}
+h2{text-align:center;margin-bottom:20px}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:8px;
+  text-align:center;
+}
 th{background:#f3f4f6}
 .rank1{background:#fde68a}
 .rank2{background:#dbeafe}
 .rank3{background:#fef3c7}
-button{padding:5px 10px;border:none;border-radius:4px;cursor:pointer}
-.green{background:#16a34a;color:#fff}
-.red{background:#dc2626;color:#fff}
+button{
+  padding:5px 10px;
+  border:none;
+  cursor:pointer;
+  border-radius:4px;
+}
+.add{background:#16a34a;color:#fff}
+.remove{background:#dc2626;color:#fff}
+input[type=number]{width:70px}
 .small{font-size:13px;color:#555}
 </style>
 </head>
@@ -26,16 +50,20 @@ button{padding:5px 10px;border:none;border-radius:4px;cursor:pointer}
 
 <h2>Admin – Weekly Voting & Bonus</h2>
 
-From <input type="date" id="from">
-To <input type="date" id="to">
-<button onclick="apply()">Apply</button>
+From
+<input type="date" id="from">
+To
+<input type="date" id="to">
+<button onclick="applyFilter()">Apply</button>
 
 <p class="small">
-✔ Bonus = +10 (once per user per week) <br>
-✔ Votes add anytime → Total auto updates
+✔ Bonus = once per user per selected week  
+✔ Bonus points = admin decides  
+✔ Votes add anytime → total auto update  
 </p>
 
-<h3>Summary</h3>
+<h3>Summary (Dense Ranking)</h3>
+
 <table>
 <thead>
 <tr>
@@ -59,7 +87,6 @@ To <input type="date" id="to">
 <th>Phone</th>
 <th>Points</th>
 <th>Date</th>
-<th>Delete</th>
 </tr>
 </thead>
 <tbody id="details"></tbody>
@@ -68,104 +95,125 @@ To <input type="date" id="to">
 </div>
 
 <script>
-// ---------------- SAMPLE DATA (replace with Firebase later if needed) ----------------
-let votes = [
- {name:"User A",phone:"111",points:40,date:"2026-01-02"},
- {name:"User A",phone:"111",points:5,date:"2026-01-04"},
- {name:"User B",phone:"222",points:30,date:"2026-01-03"},
- {name:"User C",phone:"333",points:25,date:"2026-01-04"},
-];
+// ================== SAMPLE VOTES DATA ==================
+// (ഇത് vote.html നിന്നു normally വരും)
+let votes = JSON.parse(localStorage.getItem("votes") || "[]");
 
-// ---------------- BONUS STORAGE (STATIC) ----------------
-function getBonus(key){
- return Number(localStorage.getItem("bonus_"+key) || 0);
-}
-function setBonus(key,val){
- localStorage.setItem("bonus_"+key, val);
-}
+/*
+vote object example:
+{ name:"User A", phone:"999", points:5, date:"2026-01-03" }
+*/
 
-// ---------------- APPLY FILTER ----------------
-function apply(){
- const f = from.value;
- const t = to.value;
- if(!f || !t){ alert("Select date range"); return; }
+// ================== BONUS STORAGE ==================
+let bonuses = JSON.parse(localStorage.getItem("weeklyBonus") || "{}");
 
- const rangeKey = f+"_"+t;
+// ================== APPLY FILTER ==================
+function applyFilter(){
+  const from = document.getElementById("from").value;
+  const to   = document.getElementById("to").value;
+  if(!from || !to){ alert("Select dates"); return; }
 
- // filter votes by date
- const filtered = votes.filter(v=>v.date>=f && v.date<=t);
+  const filtered = votes.filter(v => v.date >= from && v.date <= to);
 
- // group by user
- let map = {};
- filtered.forEach(v=>{
-  if(!map[v.phone]){
-    map[v.phone]={name:v.name,phone:v.phone,points:0};
-  }
-  map[v.phone].points += v.points; // dynamic
- });
-
- let users = Object.values(map);
-
- // sort by WEEK POINTS ONLY
- users.sort((a,b)=>b.points-a.points);
-
- // dense ranking
- let rank=0,last=null;
- users.forEach((u,i)=>{
-  if(u.points!==last){rank++;last=u.points}
-  u.rank=rank;
- });
-
- // render summary
- summary.innerHTML="";
- users.forEach(u=>{
-  const bonus = getBonus(rangeKey+"_"+u.phone); // static
-  const total = u.points + bonus;               // 🔥 dynamic total
-
-  let cls = u.rank==1?"rank1":u.rank==2?"rank2":u.rank==3?"rank3":"";
-
-  summary.innerHTML+=`
-  <tr class="${cls}">
-    <td>${u.rank}</td>
-    <td>${u.name}</td>
-    <td>${u.phone}</td>
-    <td>${u.points}</td>
-    <td>${f} to ${t}</td>
-    <td>${total}</td>
-    <td>
-      ${u.rank==1 && bonus==0
-        ? `<button class="green" onclick="addBonus('${rangeKey}','${u.phone}')">+10</button>`
-        : bonus>0 ? "Added" : ""}
-    </td>
-  </tr>`;
- });
-
- // render details
- details.innerHTML="";
- filtered.forEach((v,i)=>{
-  details.innerHTML+=`
-  <tr>
-    <td>${v.name}</td>
-    <td>${v.phone}</td>
-    <td>${v.points}</td>
-    <td>${v.date}</td>
-    <td><button class="red" onclick="delVote(${i})">X</button></td>
-  </tr>`;
- });
+  renderDetails(filtered);
+  renderSummary(filtered, from, to);
 }
 
-// ---------------- BONUS ----------------
-function addBonus(range,phone){
- setBonus(range+"_"+phone,10); // static bonus
- apply();                      // 🔥 recalc totals
+// ================== DETAILS ==================
+function renderDetails(list){
+  const tb = document.getElementById("details");
+  tb.innerHTML = "";
+  list.forEach(v=>{
+    tb.innerHTML += `
+      <tr>
+        <td>${v.name}</td>
+        <td>${v.phone}</td>
+        <td>${v.points}</td>
+        <td>${v.date}</td>
+      </tr>
+    `;
+  });
 }
 
-// ---------------- DELETE VOTE ----------------
-function delVote(i){
- if(confirm("Delete vote?")){
-  votes.splice(i,1);
-  apply(); // 🔥 totals update
- }
+// ================== SUMMARY ==================
+function renderSummary(list, from, to){
+  const map = {};
+  list.forEach(v=>{
+    if(!map[v.phone]){
+      map[v.phone] = {name:v.name, phone:v.phone, points:0};
+    }
+    map[v.phone].points += Number(v.points);
+  });
+
+  let arr = Object.values(map);
+  arr.sort((a,b)=>b.points - a.points);
+
+  // Dense ranking
+  let rank = 0, prev = null, pos = 0;
+
+  const tb = document.getElementById("summary");
+  tb.innerHTML = "";
+
+  arr.forEach(u=>{
+    pos++;
+    if(prev === null || u.points < prev) rank = pos;
+    prev = u.points;
+
+    const key = u.phone+"_"+from+"_"+to;
+    const bonus = bonuses[key]?.points || 0;
+    const total = u.points + bonus;
+
+    let cls = rank==1?"rank1":rank==2?"rank2":rank==3?"rank3":"";
+
+    tb.innerHTML += `
+      <tr class="${cls}">
+        <td>${rank}</td>
+        <td>${u.name}</td>
+        <td>${u.phone}</td>
+        <td>${u.points}</td>
+        <td>${from} to ${to}</td>
+        <td>${total}</td>
+        <td>
+          <input type="number" id="b_${key}" placeholder="pts">
+          <button class="add" onclick="addBonus('${key}')">Add</button>
+          ${bonus ? `<button class="remove" onclick="removeBonus('${key}')">Remove</button>` : ``}
+        </td>
+      </tr>
+    `;
+  });
+}
+
+// ================== ADD BONUS ==================
+function addBonus(key){
+  const inp = document.getElementById("b_"+key);
+  const val = parseInt(inp.value);
+  if(!val || val<=0){ alert("Valid bonus kodukku"); return; }
+
+  bonuses[key] = {
+    points: val,
+    addedOn: new Date().toISOString().split("T")[0]
+  };
+
+  localStorage.setItem("weeklyBonus", JSON.stringify(bonuses));
+  applyFilter();
+}
+
+// ================== REMOVE BONUS ==================
+function removeBonus(key){
+  delete bonuses[key];
+  localStorage.setItem("weeklyBonus", JSON.stringify(bonuses));
+  applyFilter();
+}
+
+// ================== DEMO DATA (remove later) ==================
+if(votes.length==0){
+  votes = [
+    {name:"User A", phone:"111", points:5, date:"2026-01-03"},
+    {name:"User A", phone:"111", points:3, date:"2026-01-04"},
+    {name:"User B", phone:"222", points:5, date:"2026-01-03"},
+    {name:"User C", phone:"333", points:4, date:"2026-01-04"}
+  ];
+  localStorage.setItem("votes", JSON.stringify(votes));
 }
 </script>
 
