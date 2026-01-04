@@ -12,12 +12,12 @@ body{
 }
 .box{
     background:#fff;
-    max-width:1100px;
+    max-width:1200px;
     margin:auto;
     padding:20px;
     border-radius:10px;
 }
-h2{text-align:center}
+h2,h3{text-align:center}
 
 input,button{
     padding:6px 10px;
@@ -41,8 +41,16 @@ th{background:#f3f4f6}
 .rank2{background:#e5e7eb}
 .rank3{background:#fcd34d}
 
+.deleteBtn{
+    background:#dc2626;
+    color:white;
+    border:none;
+    padding:4px 8px;
+    cursor:pointer;
+}
+
 .total{
-    margin-top:15px;
+    margin-top:10px;
     font-weight:bold;
     text-align:right;
 }
@@ -53,11 +61,14 @@ th{background:#f3f4f6}
 <div class="box">
 <h2>Admin Voting Report</h2>
 
+<!-- DATE FILTER -->
 <input type="date" id="fromDate">
 <input type="date" id="toDate">
 <button onclick="applyFilter()">Apply Filter</button>
-<button onclick="exportExcel()">Date-wise Excel</button>
+<button onclick="exportExcel()">Export Excel</button>
 
+<!-- SUMMARY TABLE -->
+<h3>Summary (User-wise Total)</h3>
 <table>
 <thead>
 <tr>
@@ -67,15 +78,32 @@ th{background:#f3f4f6}
     <th>Total Tasks</th>
 </tr>
 </thead>
-<tbody id="tableBody"></tbody>
+<tbody id="summaryBody"></tbody>
+</table>
+<div class="total" id="grandTotal"></div>
+
+<!-- DETAILED TABLE -->
+<h3>Detailed Votes</h3>
+<div class="total" id="remaining"></div>
+<table>
+<thead>
+<tr>
+    <th>Name</th>
+    <th>Phone</th>
+    <th>Tasks Done</th>
+    <th>Date</th>
+    <th>Delete</th>
+</tr>
+</thead>
+<tbody id="detailBody"></tbody>
 </table>
 
-<div class="total" id="totalTasks"></div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, deleteDoc }
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
@@ -89,16 +117,16 @@ const db = getFirestore(app);
 
 let allVotes = [];
 
-/* 🔄 LOAD DATA */
+/* LOAD DATA */
 async function loadData(){
     allVotes = [];
     const snap = await getDocs(collection(db,"votes"));
-    snap.forEach(d => allVotes.push(d.data()));
+    snap.forEach(d=>allVotes.push(d.data()));
     applyFilter();
 }
 loadData();
 
-/* 📅 FILTER */
+/* APPLY DATE FILTER */
 window.applyFilter = function(){
     let from = fromDate.value;
     let to   = toDate.value;
@@ -108,37 +136,31 @@ window.applyFilter = function(){
         return v.date >= from && v.date <= to;
     });
 
-    buildRanking(filtered);
+    buildSummary(filtered);
+    renderDetailed(filtered);
 };
 
-/* 🏆 USER TOTAL + RANK */
-function buildRanking(data){
+/* SUMMARY + RANKING */
+function buildSummary(data){
     let map = {};
-
     data.forEach(v=>{
-        let key = v.phone;
-        let taskCount = Object.values(v.tasks).filter(x=>x).length;
-
-        if(!map[key]){
-            map[key] = {
-                name:v.name,
-                phone:v.phone,
-                total:0
-            };
+        let count = Object.values(v.tasks).filter(x=>x).length;
+        if(!map[v.phone]){
+            map[v.phone]={name:v.name, phone:v.phone, total:0};
         }
-        map[key].total += taskCount;
+        map[v.phone].total += count;
     });
 
     let arr = Object.values(map).sort((a,b)=>b.total-a.total);
 
-    let tbody = document.getElementById("tableBody");
-    tbody.innerHTML="";
+    let body = document.getElementById("summaryBody");
+    body.innerHTML="";
 
     let rank=0, lastScore=null, displayRank=0;
-    let grandTotal=0;
+    let totalTasks=0;
 
     arr.forEach(u=>{
-        grandTotal += u.total;
+        totalTasks += u.total;
 
         if(u.total !== lastScore){
             rank++;
@@ -146,28 +168,60 @@ function buildRanking(data){
             lastScore = u.total;
         }
 
-        let tr = document.createElement("tr");
+        let tr=document.createElement("tr");
         if(displayRank===1) tr.className="rank1";
         else if(displayRank===2) tr.className="rank2";
         else if(displayRank===3) tr.className="rank3";
 
-        tr.innerHTML = `
+        tr.innerHTML=`
             <td>${displayRank}</td>
             <td>${u.name}</td>
             <td>${u.phone}</td>
             <td>${u.total}</td>
         `;
-        tbody.appendChild(tr);
+        body.appendChild(tr);
     });
 
-    totalTasks.innerText = "TOTAL TASKS : " + grandTotal;
+    grandTotal.innerText = "TOTAL TASKS : " + totalTasks;
 }
 
-/* 📤 EXCEL EXPORT */
+/* DETAILED TABLE */
+function renderDetailed(data){
+    let body = document.getElementById("detailBody");
+    body.innerHTML="";
+
+    data.forEach(v=>{
+        let taskCount = Object.values(v.tasks).filter(x=>x).length;
+
+        let tr=document.createElement("tr");
+        tr.innerHTML=`
+            <td>${v.name}</td>
+            <td>${v.phone}</td>
+            <td>${taskCount}</td>
+            <td>${v.date}</td>
+            <td>
+              <button class="deleteBtn"
+                onclick="deleteVote('${v.phone}_${v.date}')">✖</button>
+            </td>
+        `;
+        body.appendChild(tr);
+    });
+
+    remaining.innerText = "Remaining Users : " + data.length;
+}
+
+/* DELETE VOTE */
+window.deleteVote = async function(id){
+    if(!confirm("Delete this vote?")) return;
+    await deleteDoc(doc(db,"votes",id));
+    alert("Vote deleted");
+    loadData();
+};
+
+/* EXCEL EXPORT (SUMMARY) */
 window.exportExcel = function(){
     let rows=[["Rank","Name","Phone","Total Tasks"]];
-
-    document.querySelectorAll("#tableBody tr").forEach(tr=>{
+    document.querySelectorAll("#summaryBody tr").forEach(tr=>{
         let cols=[...tr.children].map(td=>td.innerText);
         rows.push(cols);
     });
@@ -176,7 +230,7 @@ window.exportExcel = function(){
     let blob = new Blob([csv],{type:"text/csv"});
     let a=document.createElement("a");
     a.href=URL.createObjectURL(blob);
-    a.download="admin-report.csv";
+    a.download="admin-summary-report.csv";
     a.click();
 };
 </script>
