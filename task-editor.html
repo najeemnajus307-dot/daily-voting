@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Task Editor</title>
@@ -14,10 +14,10 @@ body{
 }
 .box{
     background:#fff;
-    padding:20px;
+    padding:25px;
     width:360px;
     border-radius:10px;
-    box-shadow:0 0 10px rgba(0,0,0,.2);
+    box-shadow:0 0 10px rgba(0,0,0,0.2);
 }
 h2{text-align:center;}
 input{
@@ -29,52 +29,60 @@ button{
     width:100%;
     padding:10px;
     background:#2563eb;
-    color:white;
+    color:#fff;
     border:none;
-    border-radius:6px;
+    margin-top:10px;
     cursor:pointer;
 }
-ul{padding-left:20px;}
-li{margin:4px 0;}
+ul{padding-left:18px;}
 </style>
 </head>
+
 <body>
 
 <div class="box">
 <h2>Task Editor</h2>
 
-<input id="taskInput" placeholder="New task name">
+<input id="taskInput" placeholder="Enter task">
 <button onclick="addTask()">Add Task</button>
 
 <ul id="taskList"></ul>
+
+<button style="background:#16a34a" onclick="saveTasks()">Save Tasks</button>
 </div>
 
 <script>
 let tasks = JSON.parse(localStorage.getItem("dailyTasks")) || [];
+let list = document.getElementById("taskList");
 
 function render(){
-    let ul = document.getElementById("taskList");
-    ul.innerHTML="";
+    list.innerHTML="";
     tasks.forEach((t,i)=>{
         let li=document.createElement("li");
-        li.innerHTML = t +
-        ` <button onclick="del(${i})">❌</button>`;
-        ul.appendChild(li);
+        li.innerHTML = `${t} <button onclick="del(${i})">❌</button>`;
+        list.appendChild(li);
     });
-    localStorage.setItem("dailyTasks",JSON.stringify(tasks));
 }
+render();
+
 function addTask(){
     let v=document.getElementById("taskInput").value.trim();
-    if(!v) return;
-    tasks.push(v);
-    document.getElementById("taskInput").value="";
-    render();
+    if(v){
+        tasks.push(v);
+        document.getElementById("taskInput").value="";
+        render();
+    }
 }
+
 function del(i){
     tasks.splice(i,1);
     render();
 }
-render();
+
+function saveTasks(){
+    localStorage.setItem("dailyTasks", JSON.stringify(tasks));
+    alert("Tasks saved ✅");
+}
 </script>
 
 </body>
