@@ -89,7 +89,7 @@ th{background:#2563eb;color:white;}
 
 <!-- FULL REPORT -->
 <div class="box">
-  <h3>All Voting Report (Name & Phone Editable)</h3>
+  <h3>All Voting Report (Editable)</h3>
   <table>
     <thead>
       <tr>
@@ -131,7 +131,7 @@ const ADMIN_PASSWORD = "1";
 let allVotes = [];
 let filteredVotes = [];
 
-/* LOAD VOTES */
+/* LOAD */
 async function loadVotes(){
   allVotes = [];
   const snap = await getDocs(collection(db,"votes"));
@@ -204,21 +204,15 @@ function renderRank(votes){
   });
 }
 
-/* REPORT (POINTS READ-ONLY) */
+/* FULL REPORT (POINTS EDITABLE) */
 function renderReport(votes){
   votes.forEach(v=>{
     reportBody.innerHTML+=`
       <tr>
-        <td>
-          <input class="editInp" id="n_${v.id}" value="${v.name}">
-        </td>
-        <td>
-          <input class="editInp" id="p_${v.id}" value="${v.phone}">
-        </td>
-        <td>${v.totalPoints}</td>
-        <td>
-          <input class="editInp" type="date" id="d_${v.id}" value="${v.date}">
-        </td>
+        <td><input class="editInp" id="n_${v.id}" value="${v.name}"></td>
+        <td><input class="editInp" id="p_${v.id}" value="${v.phone}"></td>
+        <td><input class="editInp" type="number" id="pt_${v.id}" value="${v.totalPoints}"></td>
+        <td><input class="editInp" type="date" id="d_${v.id}" value="${v.date}"></td>
         <td>
           <button class="saveBtn" onclick="saveEdit('${v.id}')">Save</button>
           <button class="delBtn" onclick="deleteVote('${v.id}')">Delete</button>
@@ -227,13 +221,14 @@ function renderReport(votes){
   });
 }
 
-/* SAVE NAME & PHONE (POINTS SAME) */
+/* SAVE (ALL FIELDS WITH PASSWORD) */
 window.saveEdit = async (id)=>{
   const name  = document.getElementById("n_"+id).value.trim();
   const phone = document.getElementById("p_"+id).value.trim();
+  const points= Number(document.getElementById("pt_"+id).value);
   const date  = document.getElementById("d_"+id).value;
 
-  if(!name || !phone || !date){
+  if(!name || !phone || !date || isNaN(points)){
     alert("All fields required");
     return;
   }
@@ -244,16 +239,14 @@ window.saveEdit = async (id)=>{
     return;
   }
 
-  const old = allVotes.find(v=>v.id===id);
-
   await updateDoc(doc(db,"votes",id),{
-    name: name,
-    phone: phone,
-    date: date,
-    totalPoints: old.totalPoints   // 🔒 SAME POINT
+    name,
+    phone,
+    totalPoints: points,
+    date
   });
 
-  alert("User data saved to Firebase ✅");
+  alert("Saved to Firebase ✅");
   loadVotes();
 };
 
