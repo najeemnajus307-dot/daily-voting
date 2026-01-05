@@ -2,69 +2,99 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Task Editor – Faith & Fitness</title>
+<title>Faith & Fitness - Voting</title>
 
 <style>
 body{
   font-family: Arial;
-  background:#f1f5f9;
-  padding:20px;
+  background:#eef2f7;
+  margin:0;
 }
-.box{
-  max-width:400px;
-  background:white;
-  padding:20px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.15);
-  margin:auto;
-}
-h2{
-  text-align:center;
-}
-.task{
-  display:flex;
-  align-items:center;
-  margin:8px 0;
-}
-.task input[type="text"]{
-  flex:1;
-  padding:6px;
-  margin-left:6px;
-}
-button{
-  padding:8px;
-  margin-top:10px;
-  width:100%;
+
+/* HEADER */
+.header{
   background:#16a34a;
   color:white;
+  padding:15px;
+  text-align:center;
+}
+.header h2{margin:0;}
+.header p{margin:4px 0;font-size:14px;}
+
+/* MAIN */
+.container{
+  display:flex;
+  justify-content:center;
+  margin-top:20px;
+}
+.box{
+  background:#fff;
+  padding:20px;
+  width:340px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.15);
+}
+
+.info{
+  background:#f1f5f9;
+  padding:10px;
+  border-radius:6px;
+  margin-bottom:12px;
+  font-size:14px;
+}
+
+.task{
+  padding:6px 0;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
   border:none;
   cursor:pointer;
+  font-size:15px;
 }
-.small{
-  background:#ef4444;
-  margin-top:6px;
-}
+.voteBtn{background:#16a34a;color:white;}
+.logoutBtn{background:#e5e7eb;}
 </style>
 </head>
 
 <body>
 
-<div class="box">
-  <h2>Task Editor</h2>
+<!-- 🔝 TOP -->
+<div class="header">
+  <h2>Welcome Faith & Fitness 💪</h2>
+  <p id="today"></p>
+</div>
 
-  <!-- TASK LIST -->
-  <div id="tasks"></div>
+<div class="container">
+  <div class="box">
 
-  <button onclick="addTask()">➕ Add Task</button>
-  <button class="small" onclick="saveTasks()">💾 Save Tasks</button>
+    <div class="info">
+      <div><b>User :</b> <span id="uname"></span></div>
+      <div><b>Total Points :</b> <span id="points">0</span></div>
+    </div>
+
+    <!-- ✅ TASK LIST (USER VIEW ONLY) -->
+    <div id="taskList"></div>
+
+    <button class="voteBtn" onclick="submitVote()">Submit Today Task</button>
+    <button class="logoutBtn" onclick="logout()">Logout</button>
+
+  </div>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc }
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc,
+  getDocs, collection
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE CONFIG */
+/* 🔥 FIREBASE CONFIG */
 const app = initializeApp({
   apiKey:"YOUR_API_KEY",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -72,45 +102,76 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-const box = document.getElementById("tasks");
+/* SESSION */
+const phone = sessionStorage.getItem("phone");
+const name  = sessionStorage.getItem("name");
+if(!phone) location.href="index.html";
 
-/* LOAD TASKS */
-const ref = doc(db,"settings","tasks");
-const snap = await getDoc(ref);
+/* DATE */
+const today = new Date();
+const dateKey = today.toISOString().slice(0,10);
+document.getElementById("today").innerText = today.toDateString();
+document.getElementById("uname").innerText = name;
 
-let taskList = snap.exists()
-  ? snap.data().list
-  : ["Water","Warmup","Workout"];
+/* 🔹 LOAD TASKS FROM TASK EDITOR */
+const taskBox = document.getElementById("taskList");
+const taskRef = doc(db,"settings","tasks");
+const taskSnap = await getDoc(taskRef);
 
-render();
+const tasks = taskSnap.exists()
+  ? taskSnap.data().list
+  : [];
 
-/* RENDER TASKS */
-function render(){
-  box.innerHTML="";
-  taskList.forEach((t,i)=>{
-    box.innerHTML += `
-      <div class="task">
-        <input type="checkbox" checked disabled>
-        <input type="text" value="${t}" onchange="update(${i},this.value)">
-      </div>`;
+tasks.forEach(task=>{
+  taskBox.innerHTML += `
+    <div class="task">
+      <label>
+        <input type="checkbox" value="${task}"> ${task}
+      </label>
+    </div>
+  `;
+});
+
+/* 🔢 TOTAL POINTS */
+let pts = 0;
+const allVotes = await getDocs(collection(db,"votes"));
+allVotes.forEach(v=>{
+  if(v.data().phone === phone) pts++;
+});
+document.getElementById("points").innerText = pts;
+
+/* ✅ SUBMIT VOTE */
+window.submitVote = async ()=>{
+  const selected = [...document.querySelectorAll(
+    'input[type="checkbox"]:checked'
+  )].map(i=>i.value);
+
+  if(selected.length === 0){
+    alert("Select at least one task");
+    return;
+  }
+
+  const ref = doc(db,"votes", phone+"_"+dateKey);
+  if((await getDoc(ref)).exists()){
+    alert("Already submitted today");
+    return;
+  }
+
+  await setDoc(ref,{
+    phone:phone,
+    name:name,
+    tasks:selected,
+    date:dateKey
   });
-}
 
-/* UPDATE */
-window.update = (i,val)=>{
-  taskList[i]=val;
+  alert("Task submitted successfully ✅");
+  location.reload();
 };
 
-/* ADD TASK */
-window.addTask = ()=>{
-  taskList.push("New Task");
-  render();
-};
-
-/* SAVE TO FIRESTORE */
-window.saveTasks = async ()=>{
-  await setDoc(ref,{ list: taskList });
-  alert("Tasks saved successfully ✅");
+/* LOGOUT */
+window.logout = ()=>{
+  sessionStorage.clear();
+  location.href="index.html";
 };
 </script>
 
