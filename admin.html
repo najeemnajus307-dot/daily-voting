@@ -1,107 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Admin Voting Report</title>
-
 <style>
-body{
-  font-family:Arial;
-  background:#f1f5f9;
-  padding:30px;
-}
-.box{
-  background:#fff;
-  padding:25px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
-}
-h2{text-align:center;}
-
-.filter{
-  text-align:center;
-  margin-bottom:15px;
-}
-.filter input, .filter button{
-  padding:6px 10px;
-  margin:0 5px;
-}
-
+body{font-family:Arial;background:#f1f5f9;padding:30px;}
 table{
   width:100%;
   border-collapse:collapse;
-  margin-top:15px;
+  background:#fff;
 }
 th,td{
   border:1px solid #ddd;
   padding:8px;
   text-align:center;
 }
-th{background:#f3f4f6;}
-
-.rank1{background:#fff7cc;}
-.rank2{background:#e5e7eb;}
-.rank3{background:#fde68a;}
-
-.delete{
-  background:#dc2626;
-  color:#fff;
-  border:none;
-  padding:4px 8px;
-  cursor:pointer;
-}
+th{background:#333;color:#fff;}
+button{padding:5px 10px;}
 </style>
 </head>
 
 <body>
+<h2>Admin Voting Report</h2>
 
-<div class="box">
-  <h2>Admin Voting Report</h2>
-
-  <!-- DATE FILTER -->
-  <div class="filter">
-    From:
-    <input type="date" id="fromDate">
-    To:
-    <input type="date" id="toDate">
-    <button onclick="applyFilter()">Filter</button>
-    <button onclick="resetFilter()">Reset</button>
-  </div>
-
-  <h3>🏆 Top Ranks (By Points)</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Rank</th>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Total Points</th>
-      </tr>
-    </thead>
-    <tbody id="rankBody"></tbody>
-  </table>
-
-  <h3 style="margin-top:25px;">📋 Detailed Votes</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Tasks Done</th>
-        <th>Total Points</th>
-        <th>Date</th>
-        <th>Delete</th>
-      </tr>
-    </thead>
-    <tbody id="detailBody"></tbody>
-  </table>
-</div>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Phone</th>
+<th>Date</th>
+<th>Points</th>
+<th>Delete</th>
+</tr>
+</thead>
+<tbody id="rows"></tbody>
+</table>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getFirestore, collection, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, collection, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -109,102 +47,29 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
+const db = getFirestore(app);
 
-const rankBody   = document.getElementById("rankBody");
-const detailBody = document.getElementById("detailBody");
+const snap = await getDocs(collection(db,"votes"));
+let rows = document.getElementById("rows");
 
-let allRows = []; // 🔑 store all data
+snap.forEach(d=>{
+  let v = d.data();
+  rows.innerHTML += `
+  <tr>
+    <td>${v.name}</td>
+    <td>${v.phone}</td>
+    <td>${v.date}</td>
+    <td>${v.totalPoints}</td>
+    <td><button onclick="del('${d.id}')">❌</button></td>
+  </tr>`;
+});
 
-async function loadAll(){
-  const snap = await getDocs(collection(db,"votes"));
-  allRows = [];
-
-  snap.forEach(d=>{
-    const data = d.data();
-    const tasksDone = Object.values(data.tasks || {}).filter(v=>v).length;
-    const totalPoints = data.totalPoints || 0;
-
-    allRows.push({
-      id:d.id,
-      name:data.name,
-      phone:data.phone,
-      date:data.date, // YYYY-MM-DD
-      tasksDone,
-      totalPoints
-    });
-  });
-
-  render(allRows);
-}
-
-function render(rows){
-  /* DETAIL TABLE */
-  detailBody.innerHTML = "";
-  rows.forEach(r=>{
-    detailBody.innerHTML += `
-      <tr>
-        <td>${r.name}</td>
-        <td>${r.phone}</td>
-        <td>${r.tasksDone}</td>
-        <td><b>${r.totalPoints}</b></td>
-        <td>${r.date}</td>
-        <td>
-          <button class="delete" onclick="deleteVote('${r.id}')">✖</button>
-        </td>
-      </tr>
-    `;
-  });
-
-  /* RANKING */
-  const sorted = [...rows].sort((a,b)=>b.totalPoints - a.totalPoints);
-  rankBody.innerHTML = "";
-  sorted.slice(0,3).forEach((r,i)=>{
-    rankBody.innerHTML += `
-      <tr class="rank${i+1}">
-        <td>🏅 ${i+1}</td>
-        <td>${r.name}</td>
-        <td>${r.phone}</td>
-        <td><b>${r.totalPoints}</b></td>
-      </tr>
-    `;
-  });
-}
-
-/* APPLY DATE FILTER */
-window.applyFilter = function(){
-  const from = document.getElementById("fromDate").value;
-  const to   = document.getElementById("toDate").value;
-
-  if(!from || !to){
-    alert("Select both dates");
-    return;
-  }
-
-  const filtered = allRows.filter(r=>{
-    return r.date >= from && r.date <= to;
-  });
-
-  render(filtered);
-};
-
-/* RESET */
-window.resetFilter = function(){
-  document.getElementById("fromDate").value = "";
-  document.getElementById("toDate").value = "";
-  render(allRows);
-};
-
-/* DELETE */
-window.deleteVote = async function(id){
-  if(confirm("Delete this vote?")){
+window.del = async function(id){
+  if(confirm("Delete vote?")){
     await deleteDoc(doc(db,"votes",id));
-    loadAll();
+    location.reload();
   }
-};
-
-loadAll();
+}
 </script>
-
 </body>
 </html>
