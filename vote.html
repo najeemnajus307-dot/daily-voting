@@ -58,7 +58,7 @@ input[type="checkbox"]{
 <body>
 
 <script>
-/* LOGIN CHECK */
+/* 🔐 LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
 const name  = localStorage.getItem("userName");
 if(!phone || !name){
@@ -68,7 +68,7 @@ if(!phone || !name){
 
 <div class="box">
 
-<!-- 🔰 TOP TITLE -->
+<!-- 🔰 TOP -->
 <h2>WELCOME<br>FAITH & FITNESS</h2>
 
 <div class="info">Hello <b id="user"></b></div>
@@ -90,8 +90,10 @@ if(!phone || !name){
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs,
-  doc, getDoc, setDoc
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔥 FIREBASE CONFIG */
@@ -139,19 +141,17 @@ if(voted.exists()){
   submitBtn.innerText = "Already Voted Today";
 }
 
-/* LOAD TASKS */
-tasksArea.innerHTML="";
-let tasks=[];
+/* ✅ LOAD TASKS FROM tasks/daily */
+tasksArea.innerHTML = "";
+let tasks = [];
 
-const snap = await getDocs(collection(db,"tasks"));
-snap.forEach(d=>{
-  const t = d.data();
-  if(t.active){
-    tasks.push({id:d.id,...t});
-  }
-});
+const taskDoc = await getDoc(doc(db,"tasks","daily"));
 
-if(tasks.length===0){
+if(taskDoc.exists()){
+  tasks = taskDoc.data().list || [];
+}
+
+if(tasks.length === 0){
   tasksArea.innerHTML =
     "<p style='color:red;text-align:center'>No tasks today</p>";
 }
@@ -161,13 +161,13 @@ tasks.forEach((t,i)=>{
     <div class="task">
       <label>
         <input type="checkbox" id="task_${i}">
-        ${t.title} ( ${t.points} pts )
+        ${t.text} ( ${t.points} pts )
       </label>
     </div>
   `;
 });
 
-/* SUBMIT VOTE */
+/* ✅ SUBMIT VOTE */
 submitBtn.onclick = async ()=>{
   if(submitBtn.disabled) return;
 
@@ -176,7 +176,7 @@ submitBtn.onclick = async ()=>{
 
   tasks.forEach((t,i)=>{
     const chk = document.getElementById("task_"+i).checked;
-    selected[t.id] = chk;
+    selected[i] = chk;
     if(chk) todayPoints += t.points;
   });
 
@@ -190,7 +190,7 @@ submitBtn.onclick = async ()=>{
     submittedAt: new Date().toISOString()
   });
 
-  /* UPDATE USER POINTS */
+  /* UPDATE USER POINTS (MONTH + TOTAL) */
   monthly[monthKey] = (monthly[monthKey] || 0) + todayPoints;
   totalPoints += todayPoints;
 
@@ -208,7 +208,7 @@ submitBtn.onclick = async ()=>{
     monthly[monthKey];
 };
 
-/* LOGOUT */
+/* 🔴 LOGOUT */
 window.logout = ()=>{
   localStorage.clear();
   location.replace("index.html");
