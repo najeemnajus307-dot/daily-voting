@@ -33,7 +33,7 @@ button{
 }
 .link{
   text-align:center;
-  color:blue;
+  color:#2563eb;
   cursor:pointer;
   margin-top:6px;
 }
@@ -49,9 +49,9 @@ button{
   <input id="phone" placeholder="Phone">
   <input id="pass" type="password" placeholder="Password">
 
-  <button onclick="submit()">Login</button>
+  <button id="mainBtn">Login</button>
 
-  <div class="link" onclick="toggle()">Create account</div>
+  <div class="link" id="toggleBtn">Create account</div>
 </div>
 
 <script type="module">
@@ -61,7 +61,7 @@ import {
   getDocs, query, where
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* 🔥 FIREBASE CONFIG (API KEY മാറ്റണം) */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -71,60 +71,78 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let signup = false;
+let isSignup = false;
 
-window.toggle = ()=>{
-  signup = !signup;
-  title.innerText = signup ? "Signup" : "Login";
-  name.style.display = signup ? "block" : "none";
+const title = document.getElementById("title");
+const nameInp = document.getElementById("name");
+const phoneInp = document.getElementById("phone");
+const passInp = document.getElementById("pass");
+const mainBtn = document.getElementById("mainBtn");
+const toggleBtn = document.getElementById("toggleBtn");
+
+/* TOGGLE LOGIN / SIGNUP */
+toggleBtn.onclick = ()=>{
+  isSignup = !isSignup;
+  title.innerText = isSignup ? "Signup" : "Login";
+  mainBtn.innerText = isSignup ? "Create Account" : "Login";
+  toggleBtn.innerText = isSignup ? "Already have account?" : "Create account";
+  nameInp.style.display = isSignup ? "block" : "none";
 };
 
-window.submit = async ()=>{
-  const n = name.value.trim();
-  const p = phone.value.trim();
-  const pw = pass.value.trim();
+/* SUBMIT */
+mainBtn.onclick = async ()=>{
+  const name = nameInp.value.trim();
+  const phone = phoneInp.value.trim();
+  const pass = passInp.value.trim();
 
-  if(!p || !pw || (signup && !n)){
+  if(!phone || !pass || (isSignup && !name)){
     alert("Fill all fields");
     return;
   }
 
-  const q = query(collection(db,"users"), where("phone","==",p));
+  const q = query(collection(db,"users"), where("phone","==",phone));
   const snap = await getDocs(q);
 
-  if(signup){
+  /* SIGNUP */
+  if(isSignup){
     if(!snap.empty){
-      alert("Account already exists");
+      alert("User already exists");
       return;
     }
     await addDoc(collection(db,"users"),{
-      name:n,
-      phone:p,
-      password:pw,
-      createdAt:new Date().toISOString()
+      name,
+      phone,
+      password: pass,
+      createdAt: new Date().toISOString()
     });
     alert("Signup success. Login now");
-    toggle();
-  }else{
-    if(snap.empty){
-      alert("Account not found");
-      return;
-    }
-    let ok=false;
-    snap.forEach(d=>{
-      if(d.data().password === pw){
-        ok=true;
-        sessionStorage.setItem("uid", d.id);
-        sessionStorage.setItem("name", d.data().name);
-        sessionStorage.setItem("phone", d.data().phone);
-      }
-    });
-    if(!ok){
-      alert("Wrong password");
-      return;
-    }
-    location.href="vote.html";
+    toggleBtn.onclick(); // back to login
+    return;
   }
+
+  /* LOGIN */
+  if(snap.empty){
+    alert("Account not found");
+    return;
+  }
+
+  let success = false;
+  snap.forEach(d=>{
+    const u = d.data();
+    if(u.password === pass){
+      success = true;
+      sessionStorage.setItem("uid", d.id);
+      sessionStorage.setItem("name", u.name);
+      sessionStorage.setItem("phone", u.phone);
+    }
+  });
+
+  if(!success){
+    alert("Wrong password");
+    return;
+  }
+
+  location.href = "vote.html";
 };
 </script>
 
