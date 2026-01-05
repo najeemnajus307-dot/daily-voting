@@ -29,12 +29,14 @@ button{
   background:#16a34a;
   color:white;
   border:none;
+  cursor:pointer;
 }
 .link{
   text-align:center;
-  color:blue;
+  color:#2563eb;
   cursor:pointer;
   font-size:14px;
+  margin-top:6px;
 }
 </style>
 </head>
@@ -50,7 +52,7 @@ button{
   <input id="phone" placeholder="Phone Number">
   <input id="password" type="password" placeholder="Password">
   <button onclick="signup()">Signup</button>
-  <div class="link" onclick="showLogin()">Already have account?</div>
+  <div class="link" onclick="showLogin()">Already have account? Login</div>
 </div>
 
 <!-- LOGIN -->
@@ -75,34 +77,40 @@ button{
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
-  getFirestore, collection, addDoc,
-  query, where, getDocs, updateDoc, doc
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  doc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔴 YOUR FIREBASE CONFIG */
+/* 🔴 PASTE YOUR FIREBASE CONFIG HERE */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
+  projectId: "YOUR_PROJECT_ID"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* UI SWITCH */
-window.showLogin=()=>{
+/* UI SWITCH FUNCTIONS */
+window.showLogin = ()=>{
   signupBox.style.display="none";
   forgotBox.style.display="none";
   loginBox.style.display="block";
   title.innerText="Login";
 }
-window.showSignup=()=>{
+window.showSignup = ()=>{
   signupBox.style.display="block";
   loginBox.style.display="none";
   forgotBox.style.display="none";
   title.innerText="Signup";
 }
-window.showForgot=()=>{
+window.showForgot = ()=>{
   signupBox.style.display="none";
   loginBox.style.display="none";
   forgotBox.style.display="block";
@@ -111,17 +119,30 @@ window.showForgot=()=>{
 
 /* SIGNUP */
 window.signup = async ()=>{
-  if(!name.value||!phone.value||!password.value)
-    return alert("Fill all fields");
+  let n = name.value.trim();
+  let p = String(phone.value.trim());
+  let pass = password.value.trim();
 
-  const q=query(collection(db,"users"),where("phone","==",phone.value));
-  if(!(await getDocs(q)).empty)
-    return alert("Phone already registered");
+  if(!n || !p || !pass){
+    alert("Fill all fields");
+    return;
+  }
+
+  const q = query(
+    collection(db,"users"),
+    where("phone","==",p)
+  );
+  const snap = await getDocs(q);
+
+  if(!snap.empty){
+    alert("Phone already registered");
+    return;
+  }
 
   await addDoc(collection(db,"users"),{
-    name:name.value,
-    phone:phone.value,
-    password:password.value
+    name: n,
+    phone: p,          // ✅ always STRING
+    password: pass
   });
 
   alert("Signup successful");
@@ -130,34 +151,54 @@ window.signup = async ()=>{
 
 /* LOGIN */
 window.login = async ()=>{
-  const q=query(collection(db,"users"),
-    where("phone","==",lphone.value),
-    where("password","==",lpassword.value)
+  let p = String(lphone.value.trim());
+  let pass = lpassword.value.trim();
+
+  const q = query(
+    collection(db,"users"),
+    where("phone","==",p),
+    where("password","==",pass)
   );
-  const snap=await getDocs(q);
 
-  if(snap.empty) return alert("Invalid login");
+  const snap = await getDocs(q);
 
-  localStorage.setItem("loginPhone",lphone.value);
-  window.location.href="vote.html";
+  if(snap.empty){
+    alert("Invalid login");
+    return;
+  }
+
+  localStorage.setItem("loginPhone",p);
+  window.location.href = "vote.html";   // ✅ redirect
 }
 
-/* FORGOT PASSWORD */
+/* FORGOT PASSWORD (FIXED) */
 window.resetPassword = async ()=>{
-  if(!fphone.value||!newpass.value)
-    return alert("Fill all fields");
+  let p = String(fphone.value.trim());
+  let np = newpass.value.trim();
 
-  const q=query(collection(db,"users"),where("phone","==",fphone.value));
-  const snap=await getDocs(q);
+  if(!p || !np){
+    alert("Fill all fields");
+    return;
+  }
 
-  if(snap.empty) return alert("Phone not found");
+  const q = query(
+    collection(db,"users"),
+    where("phone","==",p)
+  );
+  const snap = await getDocs(q);
 
-  const userDoc=snap.docs[0];
-  await updateDoc(doc(db,"users",userDoc.id),{
-    password:newpass.value
-  });
+  if(snap.empty){
+    alert("Phone not found");
+    return;
+  }
 
-  alert("Password updated successfully");
+  const userDoc = snap.docs[0];
+  await updateDoc(
+    doc(db,"users",userDoc.id),
+    { password: np }
+  );
+
+  alert("Password reset successful");
   showLogin();
 }
 </script>
