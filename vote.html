@@ -21,6 +21,13 @@ body{
   text-align:center;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
+.task{
+  border:1px solid #ddd;
+  padding:8px;
+  margin:6px 0;
+  border-radius:6px;
+  text-align:left;
+}
 button{
   width:100%;
   padding:12px;
@@ -28,6 +35,7 @@ button{
   border:none;
   color:white;
   cursor:pointer;
+  border-radius:6px;
 }
 .submit{background:#16a34a}
 .logout{background:#dc2626}
@@ -38,20 +46,24 @@ button{
 
 <div class="box">
   <h2>WELCOME<br>FAITH & FITNESS</h2>
+
   <div id="user"></div>
   <div id="date"></div>
 
-  <button class="submit" onclick="vote()">Submit Vote</button>
+  <div id="tasksArea">Loading tasks...</div>
+
+  <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, setDoc
+  getFirestore, collection, getDocs,
+  doc, getDoc, setDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* LOGIN CHECK */
+/* 🔐 LOGIN CHECK */
 const uid = sessionStorage.getItem("uid");
 const name = sessionStorage.getItem("name");
 const phone = sessionStorage.getItem("phone");
@@ -65,38 +77,80 @@ const today = new Date().toISOString().split("T")[0];
 document.getElementById("user").innerText = "Hello " + name;
 document.getElementById("date").innerText = "Date : " + today;
 
-/* FIREBASE */
+/* 🔥 FIREBASE */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const voteId = phone + "_" + today;
-const ref = doc(db,"votes",voteId);
+/* 🔁 LOAD TASKS */
+const tasksArea = document.getElementById("tasksArea");
+let tasks = [];
 
-/* CHECK */
-const snap = await getDoc(ref);
-if(snap.exists()){
-  document.querySelector(".submit").disabled = true;
-  document.querySelector(".submit").innerText = "Already voted today";
+const snap = await getDocs(collection(db,"tasks"));
+tasksArea.innerHTML = "";
+snap.forEach(d=>{
+  const t = d.data();
+  if(t.active){
+    tasks.push({id:d.id, ...t});
+  }
+});
+
+if(tasks.length === 0){
+  tasksArea.innerHTML = "<p style='color:red'>No tasks today</p>";
 }
 
-window.vote = async ()=>{
-  await setDoc(ref,{
+/* Render checkboxes */
+tasks.forEach((t,i)=>{
+  tasksArea.innerHTML += `
+    <div class="task">
+      <label>
+        <input type="checkbox" id="t_${i}">
+        ${t.title} (${t.points} pts)
+      </label>
+    </div>
+  `;
+});
+
+/* 🔒 CHECK ALREADY VOTED */
+const voteId = phone + "_" + today;
+const voteRef = doc(db,"votes",voteId);
+const voted = await getDoc(voteRef);
+if(voted.exists()){
+  document.getElementById("submitBtn").disabled = true;
+  document.getElementById("submitBtn").innerText = "Already voted today";
+}
+
+/* ✅ SUBMIT VOTE */
+window.submitVote = async ()=>{
+  let total = 0;
+  let selected = {};
+
+  tasks.forEach((t,i)=>{
+    const checked = document.getElementById("t_"+i).checked;
+    selected[t.id] = checked;
+    if(checked) total += t.points;
+  });
+
+  await setDoc(voteRef,{
     uid,
     name,
     phone,
     date: today,
-    points: 5,
+    tasks: selected,
+    totalPoints: total,
     createdAt: new Date().toISOString()
   });
-  alert("Vote submitted ✅");
+
+  alert("Vote submitted ✅ Points: " + total);
   location.reload();
 };
 
+/* LOGOUT */
 window.logout = ()=>{
   sessionStorage.clear();
   location.replace("index.html");
