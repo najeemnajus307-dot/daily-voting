@@ -9,53 +9,62 @@ body{font-family:Arial;background:#f1f5f9;padding:20px}
 h2,h3{text-align:center}
 .box{background:#fff;padding:15px;border-radius:10px;
 box-shadow:0 0 10px rgba(0,0,0,.2);margin-bottom:20px}
+input,button{padding:6px;margin:4px}
+button{cursor:pointer}
 table{width:100%;border-collapse:collapse}
 th,td{border:1px solid #ccc;padding:8px;text-align:center}
-th{background:#2563eb;color:white}
-button{padding:6px 10px;cursor:pointer}
-.delBtn{background:#dc2626;color:white;border:none}
-.exBtn{background:#16a34a;color:white;border:none}
+th{background:#2563eb;color:#fff}
+.rank1{background:#fde047}
+.rank2{background:#e5e7eb}
+.rank3{background:#fcd34d}
+.saveBtn{background:#16a34a;color:#fff;border:none;padding:4px 10px}
 .small{font-size:12px;color:#555}
-.count{text-align:center;font-weight:bold;margin-bottom:10px}
 </style>
-
 </head>
+
 <body>
 
 <h2>Admin Voting Dashboard</h2>
-<div class="count" id="totalCount">Loading...</div>
 
-<!-- EXPORT -->
-<div class="box" style="text-align:center">
-  <button class="exBtn" onclick="exportExcel()">⬇ Export Excel</button>
-</div>
-
-<!-- USER VOTES -->
 <div class="box">
-<h3>User Voting Report</h3>
-<table>
-<thead>
-<tr>
-  <th>Name</th>
-  <th>Phone</th>
-  <th>Total Votes</th>
-  <th>Date</th>
-  <th>Points</th>
-  <th>Action</th>
-</tr>
-</thead>
-<tbody id="reportBody"></tbody>
-</table>
+  <h3>Add New User</h3>
+  <input id="newName" placeholder="Name">
+  <input id="newPhone" placeholder="Phone">
+  <button onclick="addUser()">Add User</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<div class="box">
+  <h3>Top 3 Ranking (Lifetime)</h3>
+  <table>
+    <thead>
+      <tr><th>Rank</th><th>Name</th><th>Phone</th><th>Points</th></tr>
+    </thead>
+    <tbody id="rankBody"></tbody>
+  </table>
+</div>
+
+<div class="box">
+  <h3>All Users – Add Points</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Add Points</th>
+        <th>Current</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="userBody"></tbody>
+  </table>
+</div>
 
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs,
-  deleteDoc, doc
+  addDoc, updateDoc, doc, query, where
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
@@ -69,65 +78,119 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let votes = [];
-let voteCount = {};
+const ADMIN_PASSWORD = "1";
 
-async function load(){
-  votes=[];
-  voteCount={};
+let users = [];
 
-  const snap = await getDocs(collection(db,"votes"));
+/* LOAD USERS */
+async function loadUsers(){
+  users=[];
+  const snap = await getDocs(collection(db,"users"));
   snap.forEach(d=>{
-    const v={id:d.id,...d.data()};
-    votes.push(v);
-    voteCount[v.phone]=(voteCount[v.phone]||0)+1;
+    const u=d.data();
+    users.push({
+      id:d.id,
+      name:u.name,
+      phone:u.phone,
+      totalPoints:Number(u.totalPoints||0)
+    });
   });
 
-  totalCount.innerText = "Total Votes : " + votes.length;
-  render();
+  renderUsers();
+  renderRank();
 }
-load();
+loadUsers();
 
-/* RENDER */
-function render(){
-  reportBody.innerHTML="";
-  votes.forEach(v=>{
-    reportBody.innerHTML+=`
+/* RENDER USERS */
+function renderUsers(){
+  userBody.innerHTML="";
+  users.forEach(u=>{
+    userBody.innerHTML+=`
       <tr>
-        <td>${v.name}</td>
-        <td>${v.phone}</td>
-        <td>${voteCount[v.phone]}</td>
-        <td>${v.date}</td>
-        <td>${v.todayPoints||0}</td>
+        <td>${u.name}</td>
+        <td>${u.phone}</td>
         <td>
-          <button class="delBtn"
-            onclick="deleteVote('${v.id}')">Delete</button>
+          <input type="number" id="pt_${u.id}" placeholder="+ points">
+        </td>
+        <td>${u.totalPoints}</td>
+        <td>
+          <button class="saveBtn"
+            onclick="addPoints('${u.id}')">Add</button>
         </td>
       </tr>`;
   });
 }
 
-/* DELETE VOTE */
-window.deleteVote = async (id)=>{
-  if(!confirm("Delete this vote?")) return;
-  await deleteDoc(doc(db,"votes",id));
-  load();
+/* ADD POINTS (SAFE ADD) */
+window.addPoints = async(id)=>{
+  const addPt = Number(document.getElementById("pt_"+id).value || 0);
+  if(addPt<=0){ alert("Enter points"); return; }
+
+  if(prompt("Admin password")!==ADMIN_PASSWORD){
+    alert("Wrong password"); return;
+  }
+
+  const u = users.find(x=>x.id===id);
+  const newTotal = u.totalPoints + addPt;
+
+  /* UPDATE USER TOTAL */
+  await updateDoc(doc(db,"users",id),{
+    totalPoints:newTotal
+  });
+
+  /* ADD DAILY VOTE HISTORY */
+  const today = new Date().toISOString().split("T")[0];
+  await addDoc(collection(db,"votes"),{
+    name:u.name,
+    phone:u.phone,
+    date:today,
+    todayPoints:addPt
+  });
+
+  alert(`✅ Points Added\nOld: ${u.totalPoints}\nAdded: ${addPt}\nNew: ${newTotal}`);
+  loadUsers();
 };
 
-/* EXPORT EXCEL */
-window.exportExcel = ()=>{
-  const data = votes.map(v=>({
-    Name:v.name,
-    Phone:v.phone,
-    Date:v.date,
-    Points:v.todayPoints||0
-  }));
+/* RANKING */
+function renderRank(){
+  rankBody.innerHTML="";
+  const sorted=[...users].sort((a,b)=>b.totalPoints-a.totalPoints);
 
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Votes");
+  let rank=0,last=null;
+  sorted.forEach(u=>{
+    if(u.totalPoints!==last){rank++;last=u.totalPoints}
+    if(rank>3)return;
+    const cls=rank===1?"rank1":rank===2?"rank2":"rank3";
+    rankBody.innerHTML+=`
+      <tr class="${cls}">
+        <td>${rank}</td>
+        <td>${u.name}</td>
+        <td>${u.phone}</td>
+        <td>${u.totalPoints}</td>
+      </tr>`;
+  });
+}
 
-  XLSX.writeFile(wb, "Voting_Report.xlsx");
+/* ADD USER */
+window.addUser = async()=>{
+  const name=newName.value.trim();
+  const phone=newPhone.value.trim();
+  if(!name||!phone){alert("Fill all");return;}
+
+  const q=query(collection(db,"users"),where("phone","==",phone));
+  const snap=await getDocs(q);
+  if(!snap.empty){alert("User exists");return;}
+
+  await addDoc(collection(db,"users"),{
+    name, phone,
+    totalPoints:0,
+    password:"1",
+    createdAt:new Date().toISOString()
+  });
+
+  alert("User added");
+  newName.value=""; newPhone.value="";
+  loadUsers();
 };
 </script>
 
