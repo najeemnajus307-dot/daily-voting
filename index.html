@@ -1,189 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-
-    <!-- prevent cache -->
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-
-    <title>Login / Signup</title>
-
-    <style>
-        body{
-            font-family:Arial;
-            background:#f1f5f9;
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            height:100vh;
-        }
-        .box{
-            background:white;
-            padding:25px;
-            width:300px;
-            border-radius:10px;
-            text-align:center;
-            box-shadow:0 0 10px rgba(0,0,0,0.2);
-        }
-        input{
-            width:100%;
-            padding:8px;
-            margin:6px 0;
-        }
-        button{
-            width:100%;
-            padding:10px;
-            margin-top:10px;
-            background:#2563eb;
-            color:white;
-            border:none;
-            cursor:pointer;
-            border-radius:6px;
-        }
-        .link{
-            margin-top:10px;
-            color:#2563eb;
-            cursor:pointer;
-            font-size:14px;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Faith & Fitness - Login</title>
+<style>
+body{
+  font-family:Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.box{
+  background:#fff;
+  padding:25px;
+  width:320px;
+  border-radius:10px;
+}
+input,button{
+  width:100%;
+  padding:10px;
+  margin:8px 0;
+}
+button{
+  background:#2563eb;
+  color:#fff;
+  border:none;
+}
+</style>
 </head>
 
 <body>
-
 <div class="box">
+<h3>Login</h3>
 
-    <!-- SIGNUP -->
-    <div id="signupBox">
-        <h3>Sign Up</h3>
-        <input id="su_name" placeholder="Name">
-        <input id="su_phone" placeholder="Phone">
-        <input id="su_pass" type="password" placeholder="Password">
-        <button onclick="signup()">Create Account</button>
-        <div class="link" onclick="showLogin()">Already have account? Login</div>
-    </div>
-
-    <!-- LOGIN -->
-    <div id="loginBox" style="display:none">
-        <h3>Login</h3>
-        <input id="li_phone" placeholder="Phone">
-        <input id="li_pass" type="password" placeholder="Password">
-        <button onclick="login()">Login</button>
-        <div class="link" onclick="showForgot()">Forgot password?</div>
-        <div class="link" onclick="showSignup()">New user? Sign up</div>
-    </div>
-
-    <!-- FORGOT PASSWORD -->
-    <div id="forgotBox" style="display:none">
-        <h3>Reset Password</h3>
-        <input id="fp_phone" placeholder="Phone">
-        <input id="fp_pass" type="password" placeholder="New Password">
-        <button onclick="resetPassword()">Reset Password</button>
-        <div class="link" onclick="showLogin()">Back to Login</div>
-    </div>
-
+<input id="phone" placeholder="Phone number">
+<button onclick="login()">Login</button>
 </div>
 
-<script>
-/* 🔁 AUTO REDIRECT IF ALREADY LOGGED IN */
-document.addEventListener("DOMContentLoaded", function () {
-    let u = localStorage.getItem("currentUser");
-    let p = localStorage.getItem("currentPhone");
-    if (u && p) {
-        window.location.replace("vote.html");
-    }
-});
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* SHOW PAGES */
-function showLogin(){
-    signupBox.style.display="none";
-    forgotBox.style.display="none";
-    loginBox.style.display="block";
-}
-function showSignup(){
-    loginBox.style.display="none";
-    forgotBox.style.display="none";
-    signupBox.style.display="block";
-}
-function showForgot(){
-    loginBox.style.display="none";
-    signupBox.style.display="none";
-    forgotBox.style.display="block";
-}
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
 
-/* SIGNUP */
-function signup(){
-    let name = su_name.value.trim();
-    let phone = su_phone.value.trim();
-    let pass = su_pass.value.trim();
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-    if(name=="" || phone=="" || pass==""){
-        alert("All fields required");
-        return;
-    }
+window.login = async function(){
+  let phone = document.getElementById("phone").value.trim();
 
-    if(localStorage.getItem("user_"+phone)){
-        alert("Account already exists");
-        return;
-    }
+  if(!phone){
+    alert("Enter phone number");
+    return;
+  }
 
-    let user = {name:name, phone:phone, pass:pass};
-    localStorage.setItem("user_"+phone, JSON.stringify(user));
+  const ref = doc(db,"users",phone);
+  const snap = await getDoc(ref);
 
-    alert("Account created. Login now.");
-    showLogin();
-}
+  if(!snap.exists()){
+    alert("Account not found");
+    return;
+  }
 
-/* LOGIN */
-function login(){
-    let phone = li_phone.value.trim();
-    let pass = li_pass.value.trim();
+  localStorage.setItem("currentUser", snap.data().name);
+  localStorage.setItem("currentPhone", phone);
 
-    let data = localStorage.getItem("user_"+phone);
-    if(!data){
-        alert("Account not found");
-        return;
-    }
-
-    let user = JSON.parse(data);
-    if(user.pass !== pass){
-        alert("Wrong password");
-        return;
-    }
-
-    localStorage.setItem("currentUser", user.name);
-    localStorage.setItem("currentPhone", user.phone);
-
-    window.location.replace("vote.html");
-}
-
-/* RESET PASSWORD */
-function resetPassword(){
-    let phone = fp_phone.value.trim();
-    let newPass = fp_pass.value.trim();
-
-    if(phone=="" || newPass==""){
-        alert("All fields required");
-        return;
-    }
-
-    let data = localStorage.getItem("user_"+phone);
-    if(!data){
-        alert("User not found");
-        return;
-    }
-
-    let user = JSON.parse(data);
-    user.pass = newPass;
-
-    localStorage.setItem("user_"+phone, JSON.stringify(user));
-
-    alert("Password reset successful. Login now.");
-    showLogin();
+  window.location.href = "vote.html";
 }
 </script>
-
 </body>
 </html>
