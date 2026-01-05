@@ -1,43 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Login System</title>
+<title>Login</title>
 
 <style>
 body{
-  font-family: Arial;
-  background:#f1f5f9;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+    font-family:Arial;
+    background:#f1f5f9;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
 }
 .box{
-  background:#fff;
-  padding:25px;
-  width:360px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,0.2);
+    background:#fff;
+    padding:25px;
+    width:300px;
+    border-radius:10px;
+    text-align:center;
+    box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2{text-align:center;}
-input,button{
-  width:100%;
-  padding:10px;
-  margin:6px 0;
+input{
+    width:100%;
+    padding:8px;
+    margin:6px 0;
 }
 button{
-  background:#16a34a;
-  color:white;
-  border:none;
-  cursor:pointer;
-}
-.link{
-  text-align:center;
-  color:#2563eb;
-  cursor:pointer;
-  font-size:14px;
-  margin-top:6px;
+    width:100%;
+    padding:10px;
+    background:#2563eb;
+    color:white;
+    border:none;
+    margin-top:10px;
 }
 </style>
 </head>
@@ -45,173 +40,37 @@ button{
 <body>
 
 <div class="box">
-<h2 id="title">Signup</h2>
+<h3>Login</h3>
 
-<!-- SIGNUP -->
-<div id="signupBox">
-  <input id="name" placeholder="Name">
-  <input id="phone" placeholder="Phone Number">
-  <input id="password" type="password" placeholder="Password">
-  <button onclick="signup()">Signup</button>
-  <div class="link" onclick="showLogin()">Already have account?</div>
+<input id="phone" placeholder="Phone">
+<input id="pass" type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
 </div>
 
-<!-- LOGIN -->
-<div id="loginBox" style="display:none;">
-  <input id="lphone" placeholder="Phone Number">
-  <input id="lpassword" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <div class="link" onclick="showForgot()">Forgot password?</div>
-  <div class="link" onclick="showSignup()">New user? Signup</div>
-</div>
+<script>
+/* Already logged in */
+if(sessionStorage.getItem("userPhone")){
+    window.location.replace("vote.html");
+}
 
-<!-- FORGOT PASSWORD -->
-<div id="forgotBox" style="display:none;">
-  <input id="fphone" placeholder="Phone Number">
-  <input id="newpass" type="password" placeholder="New Password">
-  <button onclick="resetPassword()">Reset Password</button>
-  <div class="link" onclick="showLogin()">Back to Login</div>
-</div>
-</div>
+function login(){
+    let phone = phone.value;
+    let pass  = pass.value;
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  doc
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-/* 🔴 PASTE YOUR FULL FIREBASE CONFIG HERE */
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-/* UI SWITCH */
-window.showLogin = ()=>{
-  signupBox.style.display="none";
-  forgotBox.style.display="none";
-  loginBox.style.display="block";
-  title.innerText="Login";
-};
-window.showSignup = ()=>{
-  signupBox.style.display="block";
-  loginBox.style.display="none";
-  forgotBox.style.display="none";
-  title.innerText="Signup";
-};
-window.showForgot = ()=>{
-  signupBox.style.display="none";
-  loginBox.style.display="none";
-  forgotBox.style.display="block";
-  title.innerText="Forgot Password";
-};
-
-/* SIGNUP */
-window.signup = async ()=>{
-  try{
-    const nameVal  = document.getElementById("name").value.trim();
-    const phoneVal = document.getElementById("phone").value.trim();
-    const passVal  = document.getElementById("password").value.trim();
-
-    if(!nameVal || !phoneVal || !passVal){
-      alert("Fill all fields");
-      return;
+    if(phone=="" || pass==""){
+        alert("Fill all fields");
+        return;
     }
 
-    const q = query(
-      collection(db,"users"),
-      where("phone","==",String(phoneVal))
-    );
-    const snap = await getDocs(q);
+    /* 🔴 TEMP SIMPLE LOGIN
+       (later Firebase auth add cheyyam) */
 
-    if(!snap.empty){
-      alert("Phone already registered");
-      return;
-    }
+    sessionStorage.setItem("userName", phone);
+    sessionStorage.setItem("userPhone", phone);
 
-    await addDoc(collection(db,"users"),{
-      name: nameVal,
-      phone: String(phoneVal),
-      password: passVal
-    });
-
-    alert("Signup successful ✅");
-    showLogin();
-  }catch(err){
-    alert("Error: " + err.message);
-    console.error(err);
-  }
-};
-
-/* LOGIN */
-window.login = async ()=>{
-  const phoneVal = document.getElementById("lphone").value.trim();
-  const passVal  = document.getElementById("lpassword").value.trim();
-
-  if(!phoneVal || !passVal){
-    alert("Fill all fields");
-    return;
-  }
-
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",String(phoneVal)),
-    where("password","==",passVal)
-  );
-
-  const snap = await getDocs(q);
-
-  if(snap.empty){
-    alert("Invalid login");
-    return;
-  }
-
-  localStorage.setItem("loginPhone",phoneVal);
-  window.location.href = "vote.html";
-};
-
-/* FORGOT PASSWORD */
-window.resetPassword = async ()=>{
-  const phoneVal = document.getElementById("fphone").value.trim();
-  const newPass  = document.getElementById("newpass").value.trim();
-
-  if(!phoneVal || !newPass){
-    alert("Fill all fields");
-    return;
-  }
-
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",String(phoneVal))
-  );
-  const snap = await getDocs(q);
-
-  if(snap.empty){
-    alert("Phone not found");
-    return;
-  }
-
-  await updateDoc(doc(db,"users",snap.docs[0].id),{
-    password: newPass
-  });
-
-  alert("Password reset successful");
-  showLogin();
-};
+    window.location.replace("vote.html");
+}
 </script>
 
 </body>
