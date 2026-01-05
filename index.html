@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <title>Login System</title>
+
 <style>
 body{
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
@@ -40,6 +41,7 @@ button{
 }
 </style>
 </head>
+
 <body>
 
 <div class="box">
@@ -52,7 +54,7 @@ button{
   <input id="phone" placeholder="Phone Number">
   <input id="password" type="password" placeholder="Password">
   <button onclick="signup()">Signup</button>
-  <div class="link" onclick="showLogin()">Already have account? Login</div>
+  <div class="link" onclick="showLogin()">Already have account?</div>
 </div>
 
 <!-- LOGIN -->
@@ -74,6 +76,7 @@ button{
 
 </div>
 
+<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
@@ -97,40 +100,42 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* UI SWITCH FUNCTIONS */
+/* UI SWITCH */
 window.showLogin = ()=>{
-  signupBox.style.display="none";
-  forgotBox.style.display="none";
-  loginBox.style.display="block";
-  title.innerText="Login";
-}
+  document.getElementById("signupBox").style.display="none";
+  document.getElementById("forgotBox").style.display="none";
+  document.getElementById("loginBox").style.display="block";
+  document.getElementById("title").innerText="Login";
+};
+
 window.showSignup = ()=>{
-  signupBox.style.display="block";
-  loginBox.style.display="none";
-  forgotBox.style.display="none";
-  title.innerText="Signup";
-}
+  document.getElementById("signupBox").style.display="block";
+  document.getElementById("loginBox").style.display="none";
+  document.getElementById("forgotBox").style.display="none";
+  document.getElementById("title").innerText="Signup";
+};
+
 window.showForgot = ()=>{
-  signupBox.style.display="none";
-  loginBox.style.display="none";
-  forgotBox.style.display="block";
-  title.innerText="Forgot Password";
-}
+  document.getElementById("signupBox").style.display="none";
+  document.getElementById("loginBox").style.display="none";
+  document.getElementById("forgotBox").style.display="block";
+  document.getElementById("title").innerText="Forgot Password";
+};
 
 /* SIGNUP */
 window.signup = async ()=>{
-  let n = name.value.trim();
-  let p = String(phone.value.trim());
-  let pass = password.value.trim();
+  const nameVal  = document.getElementById("name").value.trim();
+  const phoneVal = document.getElementById("phone").value.trim();
+  const passVal  = document.getElementById("password").value.trim();
 
-  if(!n || !p || !pass){
+  if(!nameVal || !phoneVal || !passVal){
     alert("Fill all fields");
     return;
   }
 
   const q = query(
     collection(db,"users"),
-    where("phone","==",p)
+    where("phone","==",String(phoneVal))
   );
   const snap = await getDocs(q);
 
@@ -140,24 +145,29 @@ window.signup = async ()=>{
   }
 
   await addDoc(collection(db,"users"),{
-    name: n,
-    phone: p,          // ✅ always STRING
-    password: pass
+    name: nameVal,
+    phone: String(phoneVal),
+    password: passVal
   });
 
   alert("Signup successful");
   showLogin();
-}
+};
 
 /* LOGIN */
 window.login = async ()=>{
-  let p = String(lphone.value.trim());
-  let pass = lpassword.value.trim();
+  const phoneVal = document.getElementById("lphone").value.trim();
+  const passVal  = document.getElementById("lpassword").value.trim();
+
+  if(!phoneVal || !passVal){
+    alert("Fill all fields");
+    return;
+  }
 
   const q = query(
     collection(db,"users"),
-    where("phone","==",p),
-    where("password","==",pass)
+    where("phone","==",String(phoneVal)),
+    where("password","==",passVal)
   );
 
   const snap = await getDocs(q);
@@ -167,24 +177,25 @@ window.login = async ()=>{
     return;
   }
 
-  localStorage.setItem("loginPhone",p);
-  window.location.href = "vote.html";   // ✅ redirect
-}
+  localStorage.setItem("loginPhone",phoneVal);
+  window.location.href = "vote.html";
+};
 
-/* FORGOT PASSWORD (FIXED) */
+/* FORGOT PASSWORD */
 window.resetPassword = async ()=>{
-  let p = String(fphone.value.trim());
-  let np = newpass.value.trim();
+  const phoneVal = document.getElementById("fphone").value.trim();
+  const newPass  = document.getElementById("newpass").value.trim();
 
-  if(!p || !np){
+  if(!phoneVal || !newPass){
     alert("Fill all fields");
     return;
   }
 
   const q = query(
     collection(db,"users"),
-    where("phone","==",p)
+    where("phone","==",String(phoneVal))
   );
+
   const snap = await getDocs(q);
 
   if(snap.empty){
@@ -193,14 +204,13 @@ window.resetPassword = async ()=>{
   }
 
   const userDoc = snap.docs[0];
-  await updateDoc(
-    doc(db,"users",userDoc.id),
-    { password: np }
-  );
+  await updateDoc(doc(db,"users",userDoc.id),{
+    password: newPass
+  });
 
-  alert("Password reset successful");
+  alert("Password updated successfully");
   showLogin();
-}
+};
 </script>
 
 </body>
