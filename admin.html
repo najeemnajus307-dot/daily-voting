@@ -7,10 +7,11 @@
 <style>
 body{font-family:Arial;background:#f1f5f9;padding:20px}
 h2,h3{text-align:center}
-.box{background:#fff;padding:15px;border-radius:10px;
-box-shadow:0 0 10px rgba(0,0,0,.2);margin-bottom:20px}
-.controls{text-align:center;margin-bottom:10px}
-input,select,button{padding:6px;margin:3px}
+.box{
+  background:#fff;padding:15px;border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);margin-bottom:20px
+}
+input,button{padding:6px;margin:4px}
 button{cursor:pointer}
 table{width:100%;border-collapse:collapse}
 th,td{border:1px solid #ccc;padding:8px;text-align:center}
@@ -19,12 +20,8 @@ th{background:#2563eb;color:white}
 .rank2{background:#e5e7eb}
 .rank3{background:#fcd34d}
 .saveBtn{background:#16a34a;color:white;border:none;padding:4px 8px}
-.delBtn{background:#dc2626;color:white;border:none;padding:4px 8px}
-.editInp{width:90%}
 .small{font-size:12px;color:#555}
 .count{text-align:center;font-weight:bold;margin-bottom:10px}
-.summary{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.card{background:#f8fafc;padding:10px;border-radius:8px;min-width:160px;text-align:center}
 </style>
 </head>
 
@@ -33,8 +30,18 @@ th{background:#2563eb;color:white}
 <h2>Admin Voting Dashboard</h2>
 <div class="count" id="totalCount">Loading...</div>
 
+<!-- ADD USER -->
 <div class="box">
-  <h3>Top 3 Ranking</h3>
+  <h3>Add New User</h3>
+  <input id="uName" placeholder="Name">
+  <input id="uPhone" placeholder="Phone">
+  <input id="uPass" placeholder="Password" value="1">
+  <button class="saveBtn" onclick="addUser()">Add User</button>
+</div>
+
+<!-- TOP 3 -->
+<div class="box">
+  <h3>Top 3 Ranking (Lifetime)</h3>
   <table>
     <thead>
       <tr><th>Rank</th><th>Name</th><th>Phone</th><th>Points</th></tr>
@@ -43,16 +50,19 @@ th{background:#2563eb;color:white}
   </table>
 </div>
 
+<!-- POINT ADD -->
 <div class="box">
-  <h3>All Voting Report</h3>
+  <h3>Add Points to Users</h3>
   <table>
     <thead>
       <tr>
-        <th>Name</th><th>Phone</th>
-        <th>Add Points</th><th>Date</th><th>Action</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Add Points</th>
+        <th>Action</th>
       </tr>
     </thead>
-    <tbody id="reportBody"></tbody>
+    <tbody id="userBody"></tbody>
   </table>
 </div>
 
@@ -61,11 +71,11 @@ import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs,
-  updateDoc, doc
+  addDoc, updateDoc, doc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE CONFIG */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -75,72 +85,113 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const ADMIN_PASSWORD="1";
-let votes=[];
+const ADMIN_PASSWORD = "1";
+let users = [];
 
-/* LOAD */
-async function load(){
-  votes=[];
-  const snap=await getDocs(collection(db,"votes"));
-  snap.forEach(d=>votes.push({id:d.id,...d.data()}));
-  totalCount.innerText="Total Voters : "+votes.length;
-  render(votes);
+/* LOAD USERS */
+async function loadUsers(){
+  users=[];
+  const snap = await getDocs(collection(db,"users"));
+  snap.forEach(d=>users.push({id:d.id,...d.data()}));
+  totalCount.innerText = "Total Users : " + users.length;
+  render(users);
 }
-load();
+loadUsers();
 
 /* RENDER */
-function render(v){
+function render(list){
   rankBody.innerHTML="";
-  reportBody.innerHTML="";
-  v.sort((a,b)=>b.totalPoints-a.totalPoints);
+  userBody.innerHTML="";
+
+  const sorted=[...list].sort((a,b)=>(b.totalPoints||0)-(a.totalPoints||0));
 
   let rank=0,last=null;
-  v.forEach(x=>{
-    if(x.totalPoints!==last){rank++;last=x.totalPoints}
+  sorted.forEach(u=>{
+    if(u.totalPoints!==last){
+      rank++; last=u.totalPoints;
+    }
     if(rank<=3){
       const cls=rank===1?"rank1":rank===2?"rank2":"rank3";
       rankBody.innerHTML+=`
         <tr class="${cls}">
           <td>${rank}</td>
-          <td>${x.name}</td>
-          <td>${x.phone}</td>
-          <td>${x.totalPoints}</td>
+          <td>${u.name}</td>
+          <td>${u.phone}</td>
+          <td>${u.totalPoints||0}</td>
         </tr>`;
     }
 
-    reportBody.innerHTML+=`
+    userBody.innerHTML+=`
       <tr>
-        <td>${x.name}</td>
-        <td>${x.phone}</td>
+        <td>${u.name}</td>
+        <td>${u.phone}</td>
         <td>
-          <input type="number" id="pt_${x.id}" placeholder="+ points">
-          <div class="small">Current: ${x.totalPoints}</div>
+          <input type="number" id="pt_${u.id}" placeholder="+ points">
+          <div class="small">Current: ${u.totalPoints||0}</div>
         </td>
-        <td>${x.date}</td>
         <td>
           <button class="saveBtn"
-            onclick="addPoint('${x.id}')">Save</button>
+            onclick="addPoint('${u.id}')">Add</button>
         </td>
       </tr>`;
   });
 }
 
-/* ADD POINT */
-window.addPoint=async(id)=>{
-  const addPt=Number(document.getElementById("pt_"+id).value||0);
-  if(addPt<=0)return alert("Enter points");
+/* ADD POINTS (MAIN FIX) */
+window.addPoint = async (id)=>{
+  const addPt = Number(document.getElementById("pt_"+id).value||0);
+  if(addPt<=0) return alert("Enter points");
 
-  if(prompt("Admin password")!==ADMIN_PASSWORD)return;
+  if(prompt("Admin password")!==ADMIN_PASSWORD){
+    alert("Wrong password");
+    return;
+  }
 
-  const v=votes.find(x=>x.id===id);
-  const newTotal=v.totalPoints+addPt;
+  const u = users.find(x=>x.id===id);
+  const monthKey = new Date().toISOString().slice(0,7);
 
-  await updateDoc(doc(db,"votes",id),{
-    totalPoints:newTotal
+  const total = (u.totalPoints||0) + addPt;
+  const monthly = u.monthlyPoints || {};
+  monthly[monthKey] = (monthly[monthKey]||0) + addPt;
+
+  await updateDoc(doc(db,"users",id),{
+    totalPoints: total,
+    monthlyPoints: monthly
   });
 
-  alert(`Points added ✅ New total: ${newTotal}`);
-  load();
+  alert(`Points added ✅ (+${addPt})`);
+  loadUsers();
+};
+
+/* ADD USER */
+window.addUser = async ()=>{
+  const name=uName.value.trim();
+  const phone=uPhone.value.trim();
+  const pass=uPass.value.trim();
+
+  if(!name||!phone||!pass){
+    alert("Fill all fields");
+    return;
+  }
+
+  if(prompt("Admin password")!==ADMIN_PASSWORD){
+    alert("Wrong password");
+    return;
+  }
+
+  await addDoc(collection(db,"users"),{
+    name,
+    phone,
+    password:pass,
+    totalPoints:0,
+    monthlyPoints:{},
+    createdFrom:"admin",
+    createdAt:new Date().toISOString()
+  });
+
+  alert("User added successfully ✅");
+  uName.value=""; uPhone.value=""; uPass.value="1";
+  loadUsers();
 };
 </script>
 
