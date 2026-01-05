@@ -46,8 +46,8 @@ button{
   <h3>Login</h3>
   <input id="lPhone" placeholder="Phone">
   <input id="lPass" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <div class="link" onclick="showSignup()">New user? Signup</div>
+  <button id="loginBtn">Login</button>
+  <div class="link" id="toSignup">New user? Signup</div>
 </div>
 
 <div class="box" id="signupBox" style="display:none">
@@ -55,21 +55,17 @@ button{
   <input id="sName" placeholder="Name">
   <input id="sPhone" placeholder="Phone">
   <input id="sPass" type="password" placeholder="Password">
-  <button onclick="signup()">Signup</button>
-  <div class="link" onclick="showLogin()">Already user? Login</div>
+  <button id="signupBtn">Signup</button>
+  <div class="link" id="toLogin">Already user? Login</div>
 </div>
 
 <script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, setDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE CONFIG */
+/* 🔥 FIREBASE CONFIG – 반드시 YOUR_API_KEY മാറ്റുക */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "PASTE_YOUR_API_KEY_HERE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
@@ -77,26 +73,28 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* AUTO REDIRECT IF LOGGED */
+/* Auto redirect if logged */
 if(sessionStorage.getItem("logged")==="yes"){
   location.replace("vote.html");
 }
 
-/* UI TOGGLE */
-window.showSignup=()=>{
+/* UI toggle */
+const loginBox = document.getElementById("loginBox");
+const signupBox = document.getElementById("signupBox");
+document.getElementById("toSignup").onclick = ()=>{
   loginBox.style.display="none";
   signupBox.style.display="block";
 };
-window.showLogin=()=>{
+document.getElementById("toLogin").onclick = ()=>{
   signupBox.style.display="none";
   loginBox.style.display="block";
 };
 
 /* SIGNUP */
-window.signup = async ()=>{
-  const name = sName.value.trim();
-  const phone = sPhone.value.trim();
-  const pass = sPass.value.trim();
+document.getElementById("signupBtn").onclick = async ()=>{
+  const name = document.getElementById("sName").value.trim();
+  const phone = document.getElementById("sPhone").value.trim();
+  const pass = document.getElementById("sPass").value.trim();
 
   if(!name || !phone || !pass){
     alert("All fields required");
@@ -108,26 +106,23 @@ window.signup = async ()=>{
 
   if(!snap.exists()){
     await setDoc(ref,{
-      name,
-      phone,
+      name, phone,
       password: pass,
       totalPoints: 0,
       createdAt: new Date().toISOString()
     });
   }
 
-  // AUTO LOGIN
   sessionStorage.setItem("logged","yes");
   sessionStorage.setItem("userName",name);
   sessionStorage.setItem("userPhone",phone);
-
   location.replace("vote.html");
 };
 
 /* LOGIN */
-window.login = async ()=>{
-  const phone = lPhone.value.trim();
-  const pass  = lPass.value.trim();
+document.getElementById("loginBtn").onclick = async ()=>{
+  const phone = document.getElementById("lPhone").value.trim();
+  const pass  = document.getElementById("lPass").value.trim();
 
   if(!phone || !pass){
     alert("Enter phone & password");
@@ -142,16 +137,14 @@ window.login = async ()=>{
     return;
   }
 
-  const u = snap.data();
-  if(u.password !== pass){
+  if(snap.data().password !== pass){
     alert("Wrong password");
     return;
   }
 
   sessionStorage.setItem("logged","yes");
-  sessionStorage.setItem("userName",u.name);
+  sessionStorage.setItem("userName",snap.data().name);
   sessionStorage.setItem("userPhone",phone);
-
   location.replace("vote.html");
 };
 </script>
