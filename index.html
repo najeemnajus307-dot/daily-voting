@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness – Login</title>
+<title>Login</title>
 
 <style>
 body{
@@ -16,11 +16,10 @@ body{
 .box{
   background:#fff;
   padding:25px;
-  width:360px;
-  border-radius:12px;
-  box-shadow:0 0 12px rgba(0,0,0,.2);
+  width:320px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2{text-align:center}
 input{
   width:100%;
   padding:10px;
@@ -28,18 +27,11 @@ input{
 }
 button{
   width:100%;
-  padding:12px;
+  padding:10px;
   background:#16a34a;
   color:white;
   border:none;
-  border-radius:8px;
-  font-size:16px;
-  cursor:pointer;
-}
-.link{
-  text-align:center;
-  margin-top:10px;
-  color:#2563eb;
+  border-radius:6px;
   cursor:pointer;
 }
 </style>
@@ -48,86 +40,29 @@ button{
 <body>
 
 <div class="box">
-  <h2 id="title">Login</h2>
+  <h3 style="text-align:center">Login</h3>
 
-  <input id="name" placeholder="Name" style="display:none">
-  <input id="phone" placeholder="Phone Number">
-  <input id="pass" type="password" placeholder="Password">
+  <input id="phone" placeholder="Phone number">
+  <input id="password" type="password" placeholder="Password">
 
-  <button onclick="submit()">Submit</button>
-
-  <div class="link" onclick="toggle()" id="toggleText">
-    New user? Sign up
-  </div>
+  <button onclick="login()">Login</button>
 </div>
 
 <script>
-let mode="login";
+function login(){
+  const phone = document.getElementById("phone").value.trim();
+  const pass  = document.getElementById("password").value.trim();
 
-const nameInp  = document.getElementById("name");
-const phoneInp = document.getElementById("phone");
-const passInp  = document.getElementById("pass");
-
-function toggle(){
-  if(mode==="login"){
-    mode="signup";
-    title.innerText="Sign Up";
-    nameInp.style.display="block";
-    toggleText.innerText="Already have account? Login";
-  }else{
-    mode="login";
-    title.innerText="Login";
-    nameInp.style.display="none";
-    toggleText.innerText="New user? Sign up";
-  }
-}
-
-function submit(){
-  const phone = phoneInp.value.trim();
-  const pass  = passInp.value.trim();
-  const name  = nameInp.value.trim();
-
-  if(!phone || !pass){
-    alert("Phone & Password required");
+  if(phone==="" || pass===""){
+    alert("Fill all fields");
     return;
   }
 
-  /* SIGNUP */
-  if(mode==="signup"){
-    if(!name){
-      alert("Name required");
-      return;
-    }
-    const user = { name, phone, pass };
+  // TEMP LOGIN (testing)
+  sessionStorage.setItem("userPhone", phone);
+  sessionStorage.setItem("userName", phone);
 
-    // ✅ NEW KEY
-    localStorage.setItem("ff_user_"+phone, JSON.stringify(user));
-
-    alert("Account created ✅ Login now");
-    toggle();
-    return;
-  }
-
-  /* LOGIN */
-  let data =
-    localStorage.getItem("ff_user_"+phone) ||     // new
-    localStorage.getItem("user_"+phone);           // old support
-
-  if(!data){
-    alert("Account not found");
-    return;
-  }
-
-  const user = JSON.parse(data);
-  if(user.pass !== pass){
-    alert("Wrong password");
-    return;
-  }
-
-  sessionStorage.setItem("userName", user.name);
-  sessionStorage.setItem("userPhone", user.phone);
-
-  location.replace("vote.html");
+  window.location.href = "vote.html";
 }
 </script>
 
