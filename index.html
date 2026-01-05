@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Signup & Login (Phone)</title>
+<title>Login System</title>
 <style>
 body{
   font-family:Arial;
@@ -20,30 +20,28 @@ body{
   box-shadow:0 0 10px rgba(0,0,0,0.2);
 }
 h2{text-align:center;}
-input{
+input,button{
   width:100%;
   padding:10px;
   margin:6px 0;
 }
 button{
-  width:100%;
-  padding:10px;
   background:#16a34a;
   color:white;
   border:none;
-  cursor:pointer;
 }
-.switch{
+.link{
   text-align:center;
-  margin-top:10px;
-  color:#2563eb;
+  color:blue;
   cursor:pointer;
+  font-size:14px;
 }
 </style>
 </head>
 <body>
 
 <div class="box">
+
 <h2 id="title">Signup</h2>
 
 <!-- SIGNUP -->
@@ -52,6 +50,7 @@ button{
   <input id="phone" placeholder="Phone Number">
   <input id="password" type="password" placeholder="Password">
   <button onclick="signup()">Signup</button>
+  <div class="link" onclick="showLogin()">Already have account?</div>
 </div>
 
 <!-- LOGIN -->
@@ -59,22 +58,25 @@ button{
   <input id="lphone" placeholder="Phone Number">
   <input id="lpassword" type="password" placeholder="Password">
   <button onclick="login()">Login</button>
+  <div class="link" onclick="showForgot()">Forgot password?</div>
+  <div class="link" onclick="showSignup()">New user? Signup</div>
 </div>
 
-<div class="switch" onclick="toggleBox()">Already have account? Login</div>
+<!-- FORGOT PASSWORD -->
+<div id="forgotBox" style="display:none;">
+  <input id="fphone" placeholder="Phone Number">
+  <input id="newpass" type="password" placeholder="New Password">
+  <button onclick="resetPassword()">Reset Password</button>
+  <div class="link" onclick="showLogin()">Back to Login</div>
 </div>
 
-<!-- FIREBASE -->
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  serverTimestamp
+  getFirestore, collection, addDoc,
+  query, where, getDocs, updateDoc, doc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* 🔴 YOUR FIREBASE CONFIG */
@@ -82,88 +84,81 @@ const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",
   projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "XXXX",
-  appId: "XXXX"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* TOGGLE */
-window.toggleBox = function(){
-  let s = document.getElementById("signupBox");
-  let l = document.getElementById("loginBox");
-  let t = document.getElementById("title");
-  let sw = document.querySelector(".switch");
-
-  if(s.style.display==="none"){
-    s.style.display="block";
-    l.style.display="none";
-    t.innerText="Signup";
-    sw.innerText="Already have account? Login";
-  }else{
-    s.style.display="none";
-    l.style.display="block";
-    t.innerText="Login";
-    sw.innerText="New user? Signup";
-  }
+/* UI SWITCH */
+window.showLogin=()=>{
+  signupBox.style.display="none";
+  forgotBox.style.display="none";
+  loginBox.style.display="block";
+  title.innerText="Login";
+}
+window.showSignup=()=>{
+  signupBox.style.display="block";
+  loginBox.style.display="none";
+  forgotBox.style.display="none";
+  title.innerText="Signup";
+}
+window.showForgot=()=>{
+  signupBox.style.display="none";
+  loginBox.style.display="none";
+  forgotBox.style.display="block";
+  title.innerText="Forgot Password";
 }
 
 /* SIGNUP */
-window.signup = async function(){
-  let name = document.getElementById("name").value;
-  let phone = document.getElementById("phone").value;
-  let pass = document.getElementById("password").value;
+window.signup = async ()=>{
+  if(!name.value||!phone.value||!password.value)
+    return alert("Fill all fields");
 
-  if(!name || !phone || !pass){
-    alert("Fill all fields");
-    return;
-  }
+  const q=query(collection(db,"users"),where("phone","==",phone.value));
+  if(!(await getDocs(q)).empty)
+    return alert("Phone already registered");
 
-  // 🔍 Check phone already exists
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",phone)
-  );
-  const snap = await getDocs(q);
-
-  if(!snap.empty){
-    alert("Phone number already registered");
-    return;
-  }
-
-  // ✅ Save new user
   await addDoc(collection(db,"users"),{
-    name: name,
-    phone: phone,
-    password: pass,   // ⚠️ later hash cheyyam
-    createdAt: serverTimestamp()
+    name:name.value,
+    phone:phone.value,
+    password:password.value
   });
 
-  alert("Signup successful (Saved in Firebase)");
-  toggleBox();
+  alert("Signup successful");
+  showLogin();
 }
 
 /* LOGIN */
-window.login = async function(){
-  let phone = document.getElementById("lphone").value;
-  let pass = document.getElementById("lpassword").value;
-
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",phone),
-    where("password","==",pass)
+window.login = async ()=>{
+  const q=query(collection(db,"users"),
+    where("phone","==",lphone.value),
+    where("password","==",lpassword.value)
   );
+  const snap=await getDocs(q);
 
-  const snap = await getDocs(q);
+  if(snap.empty) return alert("Invalid login");
 
-  if(snap.empty){
-    alert("Invalid login");
-  }else{
-    alert("Login successful");
-    // window.location.href="home.html";
-  }
+  localStorage.setItem("loginPhone",lphone.value);
+  window.location.href="vote.html";
+}
+
+/* FORGOT PASSWORD */
+window.resetPassword = async ()=>{
+  if(!fphone.value||!newpass.value)
+    return alert("Fill all fields");
+
+  const q=query(collection(db,"users"),where("phone","==",fphone.value));
+  const snap=await getDocs(q);
+
+  if(snap.empty) return alert("Phone not found");
+
+  const userDoc=snap.docs[0];
+  await updateDoc(doc(db,"users",userDoc.id),{
+    password:newpass.value
+  });
+
+  alert("Password updated successfully");
+  showLogin();
 }
 </script>
 
