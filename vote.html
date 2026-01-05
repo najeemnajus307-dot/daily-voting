@@ -1,85 +1,145 @@
 <!DOCTYPE html>
-<html>
+<html lang="ml">
 <head>
-<title>Daily Voting</title>
+<meta charset="UTF-8">
+<title>Daily Challenge Vote</title>
+
 <style>
-body{font-family:Arial;background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh}
-.box{background:#fff;padding:20px;width:360px;border-radius:10px}
-.task{border:1px solid #ddd;padding:8px;border-radius:6px;margin-bottom:8px}
-button{width:100%;padding:10px;background:#16a34a;color:#fff;border:none}
+body{
+    font-family: Arial;
+    background:#f1f5f9;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+.box{
+    background:white;
+    padding:25px;
+    width:360px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+h2{text-align:center;margin-bottom:10px}
+.task{
+    border:1px solid #ddd;
+    padding:10px;
+    border-radius:6px;
+    margin-bottom:10px;
+}
+.task label{
+    font-weight:bold;
+}
+.points{
+    font-size:13px;
+    margin-top:5px;
+}
+button{
+    width:100%;
+    padding:10px;
+    margin-top:15px;
+    background:#16a34a;
+    color:white;
+    border:none;
+    border-radius:6px;
+    font-size:16px;
+    cursor:pointer;
+}
+button:disabled{
+    background:#9ca3af;
+}
 </style>
 </head>
+
 <body>
 
 <div class="box">
-<h3>Daily Tasks</h3>
-<div id="tasks"></div>
-<button id="btn" onclick="submitVote()">Submit Vote</button>
+    <h2>Daily Challenge Vote</h2>
+    <div id="taskBox"></div>
+    <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+/* 🔥 FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+  projectId: "daily-voting-793ee",
+  storageBucket: "daily-voting-793ee.firebasestorage.app",
+  messagingSenderId: "1065830068376",
+  appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const user = sessionStorage.getItem("userName");
+/* 🔐 LOGIN CHECK */
+const user  = sessionStorage.getItem("userName");
 const phone = sessionStorage.getItem("userPhone");
-if(!user || !phone) location.replace("index.html");
+if(!user || !phone){
+    location.replace("index.html");
+}
 
+/* 📅 DATE */
 const today = new Date().toISOString().split("T")[0];
 const voteRef = doc(db,"votes",phone+"_"+today);
 
-// Load tasks
+const taskBox = document.getElementById("taskBox");
+const btn = document.getElementById("submitBtn");
+
+/* 📥 LOAD TASKS (ADMIN ADD ചെയ്തവ) */
 const taskSnap = await getDoc(doc(db,"config","tasks"));
+
 if(!taskSnap.exists()){
-  tasks.innerHTML="No tasks today";
-  btn.disabled=true;
+    taskBox.innerHTML="<p style='color:red'>No tasks added</p>";
+    btn.disabled=true;
 }else{
-  taskSnap.data().list.forEach((t,i)=>{
-    tasks.innerHTML += `
-      <div class="task">
-        <label>
-          <input type="checkbox" id="t${i}"> ${t.name}
-        </label>
-        <small>Points: ${t.points}</small>
-      </div>`;
-  });
+    taskSnap.data().list.forEach((t,i)=>{
+        taskBox.innerHTML += `
+        <div class="task">
+            <label>
+                <input type="checkbox" id="task_${i}">
+                ${t.name}
+            </label>
+            <div class="points">Points : ${t.points}</div>
+        </div>`;
+    });
 }
 
-// Already voted?
+/* 🔒 ALREADY VOTED CHECK */
 const voted = await getDoc(voteRef);
 if(voted.exists()){
-  btn.disabled=true;
-  btn.innerText="Already voted today";
+    btn.disabled=true;
+    btn.innerText="Already Voted Today";
 }
 
+/* ✅ SUBMIT */
 window.submitVote = async ()=>{
-  let total=0, data={};
-  taskSnap.data().list.forEach((t,i)=>{
-    const ok=document.getElementById("t"+i).checked;
-    data[t.name]=ok;
-    if(ok) total+=t.points;
-  });
+    let tasks = {};
+    let total = 0;
 
-  await setDoc(voteRef,{
-    name:user,
-    phone:phone,
-    date:today,
-    tasks:data,
-    points:total
-  });
+    taskSnap.data().list.forEach((t,i)=>{
+        const checked = document.getElementById("task_"+i).checked;
+        tasks[t.name] = checked;
+        if(checked) total += t.points;
+    });
 
-  alert("Vote saved");
-  location.reload();
+    await setDoc(voteRef,{
+        name:user,
+        phone:phone,
+        date:today,
+        tasks:tasks,
+        points:total,
+        submittedAt:new Date().toISOString()
+    });
+
+    alert("Vote submitted 👍");
+    location.reload();
 };
 </script>
+
 </body>
 </html>
