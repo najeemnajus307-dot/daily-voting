@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin – Voting Dashboard</title>
+<title>Admin – Voting Report</title>
 
 <style>
 body{
@@ -10,7 +10,7 @@ body{
   background:#f1f5f9;
   padding:20px;
 }
-h2{text-align:center;}
+h2,h3{text-align:center;}
 .box{
   background:#fff;
   padding:15px;
@@ -18,14 +18,10 @@ h2{text-align:center;}
   box-shadow:0 0 10px rgba(0,0,0,.2);
   margin-bottom:20px;
 }
-input,button{
-  padding:8px;
-  margin:5px;
-}
-button{cursor:pointer;}
 table{
   width:100%;
   border-collapse:collapse;
+  margin-top:10px;
 }
 th,td{
   border:1px solid #ccc;
@@ -44,9 +40,11 @@ th{
   color:white;
   border:none;
   padding:4px 8px;
+  cursor:pointer;
 }
 .count{
   font-weight:bold;
+  text-align:center;
   margin-bottom:10px;
 }
 </style>
@@ -56,22 +54,17 @@ th{
 
 <h2>Admin Voting Dashboard</h2>
 
-<!-- 🔢 TOTAL VOTERS -->
-<div class="box">
-  <div class="count" id="totalCount">Total Voters: Loading...</div>
-</div>
+<div class="count" id="totalCount">Total Voters: Loading...</div>
 
 <!-- 📅 DATE FILTER -->
 <div class="box">
   <h3>Date Filter</h3>
-  From:
-  <input type="date" id="fromDate">
-  To:
-  <input type="date" id="toDate">
+  From <input type="date" id="fromDate">
+  To <input type="date" id="toDate">
   <button onclick="applyFilter()">Apply</button>
 </div>
 
-<!-- 🏆 TOP 3 RANKING -->
+<!-- 🏆 TOP 3 RANK -->
 <div class="box">
   <h3>Top 3 Ranking</h3>
   <table>
@@ -81,11 +74,26 @@ th{
         <th>Name</th>
         <th>Phone</th>
         <th>Points</th>
+      </tr>
+    </thead>
+    <tbody id="rankBody"></tbody>
+  </table>
+</div>
+
+<!-- 📋 ALL VOTING REPORT -->
+<div class="box">
+  <h3>All Voting Report (High → Low Points)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Points</th>
         <th>Date</th>
         <th>Delete</th>
       </tr>
     </thead>
-    <tbody id="rankBody"></tbody>
+    <tbody id="reportBody"></tbody>
   </table>
 </div>
 
@@ -113,7 +121,7 @@ const db = getFirestore(app);
 
 let allVotes = [];
 
-/* LOAD ALL VOTES */
+/* LOAD VOTES */
 async function loadVotes(){
   allVotes = [];
   const snap = await getDocs(collection(db,"votes"));
@@ -124,54 +132,73 @@ async function loadVotes(){
   document.getElementById("totalCount").innerText =
     "Total Voters : " + allVotes.length;
 
-  renderRanking(allVotes);
+  renderAll(allVotes);
 }
 
 loadVotes();
 
-/* APPLY DATE FILTER */
+/* DATE FILTER */
 window.applyFilter = ()=>{
   const from = document.getElementById("fromDate").value;
   const to   = document.getElementById("toDate").value;
 
   let filtered = allVotes;
+  if(from) filtered = filtered.filter(v=>v.date >= from);
+  if(to)   filtered = filtered.filter(v=>v.date <= to);
 
-  if(from){
-    filtered = filtered.filter(v=> v.date >= from);
-  }
-  if(to){
-    filtered = filtered.filter(v=> v.date <= to);
-  }
-
-  renderRanking(filtered);
+  renderAll(filtered);
 };
 
-/* RENDER TOP 3 ONLY */
-function renderRanking(votes){
+/* RENDER BOTH SECTIONS */
+function renderAll(votes){
+  if(votes.length === 0){
+    document.getElementById("rankBody").innerHTML="";
+    document.getElementById("reportBody").innerHTML="";
+    return;
+  }
+
+  // sort by points desc
+  votes = [...votes].sort((a,b)=>b.totalPoints - a.totalPoints);
+
+  renderRank(votes);
+  renderReport(votes);
+}
+
+/* 🏆 TOP 3 RANK */
+function renderRank(votes){
   const tbody = document.getElementById("rankBody");
-  tbody.innerHTML = "";
+  tbody.innerHTML="";
 
-  if(votes.length === 0) return;
-
-  votes.sort((a,b)=> b.totalPoints - a.totalPoints);
-
-  let rank = 0;
-  let lastPoints = null;
-  let shown = 0;
+  let rank=0, lastPoints=null;
 
   for(const v of votes){
     if(v.totalPoints !== lastPoints){
       rank++;
       lastPoints = v.totalPoints;
     }
-
-    if(rank > 3) break;
+    if(rank>3) break;
 
     let cls = rank===1?"rank1":rank===2?"rank2":"rank3";
 
     tbody.innerHTML += `
       <tr class="${cls}">
         <td>${rank}</td>
+        <td>${v.name || "-"}</td>
+        <td>${v.phone || "-"}</td>
+        <td>${v.totalPoints}</td>
+      </tr>
+    `;
+  }
+}
+
+/* 📋 FULL REPORT (WITH DELETE) */
+function renderReport(votes){
+  const tbody = document.getElementById("reportBody");
+  tbody.innerHTML="";
+
+  votes.forEach(v=>{
+    tbody.innerHTML += `
+      <tr>
         <td>${v.name || "-"}</td>
         <td>${v.phone || "-"}</td>
         <td>${v.totalPoints}</td>
@@ -182,13 +209,12 @@ function renderRanking(votes){
         </td>
       </tr>
     `;
-    shown++;
-  }
+  });
 }
 
-/* DELETE SINGLE USER VOTE */
+/* DELETE USER VOTE */
 window.deleteVote = async (id)=>{
-  if(!confirm("Delete this vote?")) return;
+  if(!confirm("Delete this user vote?")) return;
   await deleteDoc(doc(db,"votes",id));
   alert("Vote deleted");
   loadVotes();
