@@ -60,6 +60,14 @@ th{background:#2563eb;color:white;}
   <button onclick="resetFilter()">Reset</button>
 </div>
 
+<!-- SEARCH -->
+<div class="box controls">
+  <input type="text" id="searchBox"
+         placeholder="🔍 Search by name or phone"
+         oninput="applySearch()"
+         style="width:260px">
+</div>
+
 <!-- SUMMARY -->
 <div class="box">
   <h3>Summary</h3>
@@ -147,7 +155,7 @@ async function loadVotes(){
 }
 loadVotes();
 
-/* FILTER */
+/* DATE FILTER */
 window.applyFilter = ()=>{
   const f = fromDate.value;
   const t = toDate.value;
@@ -158,9 +166,31 @@ window.applyFilter = ()=>{
   });
   renderAll(filteredVotes);
 };
+
+/* RESET */
 window.resetFilter = ()=>{
-  fromDate.value=""; toDate.value="";
+  fromDate.value="";
+  toDate.value="";
+  document.getElementById("searchBox").value="";
   filteredVotes=[...allVotes];
+  renderAll(filteredVotes);
+};
+
+/* SEARCH */
+window.applySearch = ()=>{
+  const q = document.getElementById("searchBox").value
+              .toLowerCase().trim();
+
+  if(q === ""){
+    filteredVotes = [...allVotes];
+  }else{
+    filteredVotes = allVotes.filter(v=>{
+      return (
+        (v.name && v.name.toLowerCase().includes(q)) ||
+        (v.phone && v.phone.toLowerCase().includes(q))
+      );
+    });
+  }
   renderAll(filteredVotes);
 };
 
@@ -242,7 +272,6 @@ window.saveEdit = async (id)=>{
   const old = allVotes.find(v=>v.id===id);
   const newTotal = old.totalPoints + addPt;
 
-  /* UPDATE VOTE */
   await updateDoc(doc(db,"votes",id),{
     name,
     phone,
@@ -250,7 +279,6 @@ window.saveEdit = async (id)=>{
     date
   });
 
-  /* USER SYNC */
   const q = query(collection(db,"users"), where("phone","==",phone));
   const snap = await getDocs(q);
 
