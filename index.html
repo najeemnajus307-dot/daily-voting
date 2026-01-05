@@ -45,7 +45,6 @@ button{
 <body>
 
 <div class="box">
-
 <h2 id="title">Signup</h2>
 
 <!-- SIGNUP -->
@@ -73,10 +72,8 @@ button{
   <button onclick="resetPassword()">Reset Password</button>
   <div class="link" onclick="showLogin()">Back to Login</div>
 </div>
-
 </div>
 
-<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
@@ -90,11 +87,14 @@ import {
   doc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔴 PASTE YOUR FIREBASE CONFIG HERE */
+/* 🔴 PASTE YOUR FULL FIREBASE CONFIG HERE */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID"
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -102,56 +102,59 @@ const db = getFirestore(app);
 
 /* UI SWITCH */
 window.showLogin = ()=>{
-  document.getElementById("signupBox").style.display="none";
-  document.getElementById("forgotBox").style.display="none";
-  document.getElementById("loginBox").style.display="block";
-  document.getElementById("title").innerText="Login";
+  signupBox.style.display="none";
+  forgotBox.style.display="none";
+  loginBox.style.display="block";
+  title.innerText="Login";
 };
-
 window.showSignup = ()=>{
-  document.getElementById("signupBox").style.display="block";
-  document.getElementById("loginBox").style.display="none";
-  document.getElementById("forgotBox").style.display="none";
-  document.getElementById("title").innerText="Signup";
+  signupBox.style.display="block";
+  loginBox.style.display="none";
+  forgotBox.style.display="none";
+  title.innerText="Signup";
 };
-
 window.showForgot = ()=>{
-  document.getElementById("signupBox").style.display="none";
-  document.getElementById("loginBox").style.display="none";
-  document.getElementById("forgotBox").style.display="block";
-  document.getElementById("title").innerText="Forgot Password";
+  signupBox.style.display="none";
+  loginBox.style.display="none";
+  forgotBox.style.display="block";
+  title.innerText="Forgot Password";
 };
 
 /* SIGNUP */
 window.signup = async ()=>{
-  const nameVal  = document.getElementById("name").value.trim();
-  const phoneVal = document.getElementById("phone").value.trim();
-  const passVal  = document.getElementById("password").value.trim();
+  try{
+    const nameVal  = document.getElementById("name").value.trim();
+    const phoneVal = document.getElementById("phone").value.trim();
+    const passVal  = document.getElementById("password").value.trim();
 
-  if(!nameVal || !phoneVal || !passVal){
-    alert("Fill all fields");
-    return;
+    if(!nameVal || !phoneVal || !passVal){
+      alert("Fill all fields");
+      return;
+    }
+
+    const q = query(
+      collection(db,"users"),
+      where("phone","==",String(phoneVal))
+    );
+    const snap = await getDocs(q);
+
+    if(!snap.empty){
+      alert("Phone already registered");
+      return;
+    }
+
+    await addDoc(collection(db,"users"),{
+      name: nameVal,
+      phone: String(phoneVal),
+      password: passVal
+    });
+
+    alert("Signup successful ✅");
+    showLogin();
+  }catch(err){
+    alert("Error: " + err.message);
+    console.error(err);
   }
-
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",String(phoneVal))
-  );
-  const snap = await getDocs(q);
-
-  if(!snap.empty){
-    alert("Phone already registered");
-    return;
-  }
-
-  await addDoc(collection(db,"users"),{
-    name: nameVal,
-    phone: String(phoneVal),
-    password: passVal
-  });
-
-  alert("Signup successful");
-  showLogin();
 };
 
 /* LOGIN */
@@ -195,7 +198,6 @@ window.resetPassword = async ()=>{
     collection(db,"users"),
     where("phone","==",String(phoneVal))
   );
-
   const snap = await getDocs(q);
 
   if(snap.empty){
@@ -203,12 +205,11 @@ window.resetPassword = async ()=>{
     return;
   }
 
-  const userDoc = snap.docs[0];
-  await updateDoc(doc(db,"users",userDoc.id),{
+  await updateDoc(doc(db,"users",snap.docs[0].id),{
     password: newPass
   });
 
-  alert("Password updated successfully");
+  alert("Password reset successful");
   showLogin();
 };
 </script>
