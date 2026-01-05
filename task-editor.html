@@ -2,43 +2,56 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Task Editor</title>
+<title>Task Editor – Faith & Fitness</title>
 
 <style>
 body{
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
-  padding:20px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
 .box{
-  background:white;
-  max-width:500px;
-  margin:auto;
+  background:#fff;
   padding:20px;
+  width:380px;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2{text-align:center}
-input,button{
+h2{text-align:center;margin-bottom:10px}
+input,textarea,button{
+  width:100%;
   padding:8px;
-  margin:4px;
+  margin:6px 0;
 }
-button{cursor:pointer}
+button{
+  background:#16a34a;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
 .task{
-  border-bottom:1px solid #ddd;
-  padding:6px 0;
+  border:1px solid #ddd;
+  padding:8px;
+  margin-top:6px;
+  border-radius:6px;
 }
-.del{background:#dc2626;color:white;border:none}
-.save{background:#16a34a;color:white;border:none}
+.del{
+  background:#dc2626;
+  margin-top:4px;
+}
+.small{font-size:12px;color:#555}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>Daily Task Editor</h2>
+  <h2>Task Editor</h2>
 
-  <input id="taskText" placeholder="Task name">
+  <input id="taskText" placeholder="Task text (eg: sugar cut)">
   <input id="taskPoints" type="number" placeholder="Points">
   <button onclick="addTask()">Add Task</button>
 
@@ -46,15 +59,22 @@ button{cursor:pointer}
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  updateDoc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+/* 🔐 ADMIN PASSWORD CHECK */
+const ADMIN_PASS = "1";
+const p = prompt("Enter admin password");
+if(p !== ADMIN_PASS){
+  alert("Access denied");
+  location.href="index.html";
+}
 
-/* FIREBASE CONFIG */
+/* 🔥 FIREBASE */
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, doc, setDoc, getDoc, updateDoc
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -63,54 +83,60 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const ref = doc(db,"tasks","daily");
 
-let tasks=[];
+const today = new Date().toISOString().slice(0,10);
+const ref = doc(db,"tasks",today);
 
-/* LOAD */
-async function load(){
-  const snap = await getDoc(ref);
-  tasks = snap.exists() ? snap.data().list || [] : [];
-  render();
-}
-load();
-
-/* RENDER */
-function render(){
+/* LOAD TASKS */
+async function loadTasks(){
   taskList.innerHTML="";
-  tasks.forEach((t,i)=>{
+  const snap = await getDoc(ref);
+  if(!snap.exists()) return;
+
+  snap.data().list.forEach((t,i)=>{
     taskList.innerHTML+=`
       <div class="task">
-        <input value="${t.text}" id="t_${i}">
-        <input type="number" value="${t.points}" id="p_${i}">
-        <button class="save" onclick="save(${i})">Save</button>
-        <button class="del" onclick="remove(${i})">Delete</button>
+        <b>${t.text}</b><br>
+        <span class="small">${t.points} points</span>
+        <button class="del" onclick="deleteTask(${i})">Delete</button>
       </div>`;
   });
 }
+loadTasks();
 
-/* ADD */
+/* ADD TASK */
 window.addTask = async ()=>{
-  if(!taskText.value || !taskPoints.value) return alert("Fill all");
-  tasks.push({text:taskText.value,points:Number(taskPoints.value)});
-  await updateDoc(ref,{list:tasks});
-  taskText.value=""; taskPoints.value="";
-  load();
+  const text = taskText.value.trim();
+  const points = Number(taskPoints.value);
+
+  if(!text || points<=0){
+    alert("Enter task & points");
+    return;
+  }
+
+  const snap = await getDoc(ref);
+  let list = [];
+
+  if(snap.exists()) list = snap.data().list;
+
+  list.push({ text, points });
+
+  await setDoc(ref,{ list });
+  taskText.value="";
+  taskPoints.value="";
+  loadTasks();
 };
 
-/* SAVE */
-window.save = async (i)=>{
-  tasks[i].text = document.getElementById("t_"+i).value;
-  tasks[i].points = Number(document.getElementById("p_"+i).value);
-  await updateDoc(ref,{list:tasks});
-  alert("Task updated ✅");
-};
+/* DELETE TASK */
+window.deleteTask = async (i)=>{
+  const snap = await getDoc(ref);
+  if(!snap.exists()) return;
 
-/* DELETE */
-window.remove = async (i)=>{
-  tasks.splice(i,1);
-  await updateDoc(ref,{list:tasks});
-  load();
+  const list = snap.data().list;
+  list.splice(i,1);
+
+  await updateDoc(ref,{ list });
+  loadTasks();
 };
 </script>
 
