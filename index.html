@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Login – Faith & Fitness</title>
-
+<title>Faith & Fitness Login</title>
 <style>
 body{
   font-family:Arial;
@@ -17,128 +16,58 @@ body{
   background:#fff;
   padding:25px;
   width:320px;
-  border-radius:12px;
-  box-shadow:0 0 12px rgba(0,0,0,.2);
-  text-align:center;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
 }
 input,button{
   width:100%;
   padding:10px;
-  margin:6px 0;
+  margin:8px 0;
 }
 button{
   background:#16a34a;
-  color:white;
+  color:#fff;
   border:none;
-  border-radius:6px;
   cursor:pointer;
 }
-a{cursor:pointer;color:#2563eb}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>Login</h2>
-
+  <h3 style="text-align:center">Login</h3>
   <input id="phone" placeholder="Phone number">
-  <input id="pass" type="password" placeholder="Password">
+  <input id="password" type="password" placeholder="Password">
   <button onclick="login()">Login</button>
-
-  <p><a onclick="showSignup()">Create account</a></p>
-
-  <div id="signup" style="display:none">
-    <input id="name" placeholder="Name">
-    <button onclick="signup()">Create</button>
-  </div>
 </div>
 
-<script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, setDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+<script>
+/* Already logged in */
+if(sessionStorage.getItem("userPhone")){
+  location.replace("vote.html");
+}
 
-/* FIREBASE CONFIG */
-const firebaseConfig={
-  apiKey:"YOUR_API_KEY",
-  authDomain:"daily-voting-793ee.firebaseapp.com",
-  projectId:"daily-voting-793ee"
-};
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
+function login(){
+  const phone = document.getElementById("phone").value.trim();
+  const pass  = document.getElementById("password").value.trim();
 
-/* SHOW SIGNUP */
-window.showSignup=()=>{
-  document.getElementById("signup").style.display="block";
-};
-
-/* LOGIN */
-window.login = async ()=>{
-  const phone=phoneInp();
-  const pass=passInp();
-
-  if(!phone||!pass){
+  if(!phone || !pass){
     alert("Enter phone & password");
     return;
   }
 
-  const ref = doc(db,"users",phone);
-  const snap = await getDoc(ref);
-
-  if(!snap.exists()){
-    alert("User not found");
-    return;
-  }
-
-  if(snap.data().password !== pass){
+  /* demo password = 1 */
+  if(pass !== "1"){
     alert("Wrong password");
     return;
   }
 
-  // session storage (NOT localStorage)
   sessionStorage.setItem("userPhone", phone);
-  sessionStorage.setItem("userName", snap.data().name);
 
-  location.href="vote.html";
-};
-
-/* SIGNUP */
-window.signup = async ()=>{
-  const phone=phoneInp();
-  const pass=passInp();
-  const name=document.getElementById("name").value.trim();
-
-  if(!name||!phone||!pass){
-    alert("All fields required");
-    return;
-  }
-
-  const ref=doc(db,"users",phone);
-  const snap=await getDoc(ref);
-
-  if(snap.exists()){
-    alert("User already exists");
-    return;
-  }
-
-  await setDoc(ref,{
-    name,
-    phone,
-    password:pass,
-    totalPoints:0,
-    createdAt:new Date().toISOString()
-  });
-
-  alert("Account created. Login now");
-};
-
-/* HELPERS */
-function phoneInp(){return document.getElementById("phone").value.trim()}
-function passInp(){return document.getElementById("pass").value.trim()}
+  /* 🔥 IMPORTANT */
+  location.replace("vote.html");
+}
 </script>
 
 </body>
