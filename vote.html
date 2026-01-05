@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Faith & Fitness Voting</title>
@@ -15,121 +15,67 @@ body{
 }
 .box{
   background:#fff;
-  padding:25px;
+  padding:30px;
   width:360px;
   border-radius:12px;
   text-align:center;
-  box-shadow:0 0 12px rgba(0,0,0,.2);
-}
-h2{margin-bottom:10px}
-.task{
-  border:1px solid #ddd;
-  padding:10px;
-  margin:8px 0;
-  border-radius:6px;
-  text-align:left;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
 }
 button{
   width:100%;
   padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:8px;
+  margin-top:12px;
   font-size:16px;
+  border:none;
   cursor:pointer;
+  border-radius:6px;
 }
-.submit{background:#16a34a;color:white}
-.logout{background:#dc2626;color:white}
+.submit{background:#16a34a;color:#fff}
+.logout{background:#dc2626;color:#fff}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>WELCOME<br>FAITH & FITNESS</h2>
-  <div id="userInfo"></div>
-  <div id="taskArea">Loading tasks...</div>
+  <h2>WELCOME</h2>
+  <h3>FAITH & FITNESS</h3>
+
+  <p id="userInfo"></p>
+  <p>Date : <span id="today"></span></p>
+
+  <p style="color:red" id="taskText">No tasks today</p>
+
   <button class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
-<script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, doc, getDoc,
-  updateDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-/* FIREBASE CONFIG */
-const firebaseConfig={
-  apiKey:"YOUR_API_KEY",
-  authDomain:"daily-voting-793ee.firebaseapp.com",
-  projectId:"daily-voting-793ee"
-};
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-
-/* LOGIN CHECK */
-const phone = localStorage.getItem("currentPhone");
-const name  = localStorage.getItem("currentUser");
-if(!phone || !name){
-  location.href="index.html";
+<script>
+/* 🔐 Block direct access */
+const phone = sessionStorage.getItem("userPhone");
+if(!phone){
+  location.replace("index.html");
 }
 
-userInfo.innerHTML = `
-Hello <b>${name}</b><br>
-Date : ${new Date().toISOString().slice(0,10)}
-`;
+/* Prevent back button */
+history.pushState(null,null,location.href);
+window.onpopstate = ()=> history.go(1);
 
-/* LOAD TASK (daily) */
-let taskPoints = 0;
-const taskDoc = await getDoc(doc(db,"tasks","daily"));
+document.getElementById("userInfo").innerText =
+  "Logged in as : " + phone;
 
-if(taskDoc.exists()){
-  const t = taskDoc.data();
-  taskPoints = Number(t.points || 0);
-  taskArea.innerHTML = `
-    <div class="task">
-      <input type="checkbox" id="chk">
-      ${t.text} (${taskPoints} pts)
-    </div>`;
-}else{
-  taskArea.innerHTML = "<b>No tasks today</b>";
+document.getElementById("today").innerText =
+  new Date().toISOString().split("T")[0];
+
+/* Demo submit */
+function submitVote(){
+  alert("Vote submitted successfully ✅");
 }
 
-/* SUBMIT VOTE */
-window.submitVote = async ()=>{
-  if(!document.getElementById("chk")?.checked){
-    alert("Select task first");
-    return;
-  }
-
-  const userRef = doc(db,"users",phone);
-  const snap = await getDoc(userRef);
-
-  if(!snap.exists()){
-    alert("User not found");
-    return;
-  }
-
-  const oldPoints = Number(snap.data().totalPoints || 0);
-  const newTotal  = oldPoints + taskPoints;
-
-  await updateDoc(userRef,{
-    totalPoints: newTotal
-  });
-
-  alert(`Vote submitted ✅\nTotal points: ${newTotal}`);
-  document.querySelector(".submit").disabled=true;
-};
-
-/* LOGOUT */
-window.logout=()=>{
-  localStorage.clear();
-  location.href="index.html";
-};
+function logout(){
+  sessionStorage.clear();
+  location.replace("index.html");
+}
 </script>
 
 </body>
