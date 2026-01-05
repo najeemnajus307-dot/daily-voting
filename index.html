@@ -1,181 +1,53 @@
 <!DOCTYPE html>
-<html lang="ml">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Daily Voting – Login</title>
-
+<title>Daily Voting - Login</title>
 <style>
-body{
-    font-family:Arial;
-    background:#f1f5f9;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-}
-.box{
-    background:white;
-    padding:25px;
-    width:320px;
-    border-radius:10px;
-    box-shadow:0 0 10px rgba(0,0,0,0.2);
-    text-align:center;
-}
-input{
-    width:100%;
-    padding:8px;
-    margin:6px 0;
-}
-button{
-    width:100%;
-    padding:10px;
-    margin-top:10px;
-    background:#2563eb;
-    color:white;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
-}
-.link{
-    margin-top:10px;
-    color:#2563eb;
-    cursor:pointer;
-    font-size:14px;
-}
-.hidden{display:none;}
+body{font-family:Arial;background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh}
+.box{background:#fff;padding:25px;width:320px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,.2)}
+input,button{width:100%;padding:10px;margin:8px 0}
+button{background:#2563eb;color:#fff;border:none;border-radius:6px}
 </style>
 </head>
-
 <body>
 
 <div class="box">
-
-<!-- 🔐 LOGIN -->
-<div id="loginBox">
-    <h3>Login</h3>
-    <input id="li_phone" placeholder="Phone">
-    <input id="li_pass" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <div class="link" onclick="showSignup()">New user? Sign up</div>
-    <div class="link" onclick="showForgot()">Forgot password?</div>
+<h3>Login</h3>
+<input id="phone" placeholder="Phone">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
 </div>
 
-<!-- 📝 SIGNUP -->
-<div id="signupBox" class="hidden">
-    <h3>Sign Up</h3>
-    <input id="su_name" placeholder="Name">
-    <input id="su_phone" placeholder="Phone">
-    <input id="su_pass" type="password" placeholder="Password">
-    <button onclick="signup()">Create Account</button>
-    <div class="link" onclick="showLogin()">Already have account? Login</div>
-</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-<!-- 🔁 FORGOT PASSWORD -->
-<div id="forgotBox" class="hidden">
-    <h3>Forgot Password</h3>
-    <input id="fp_phone" placeholder="Phone">
-    <input id="fp_newpass" type="password" placeholder="New Password">
-    <button onclick="resetPassword()">Reset Password</button>
-    <div class="link" onclick="showLogin()">Back to Login</div>
-</div>
+const firebaseConfig = {
+ apiKey: "YOUR_KEY",
+ authDomain: "daily-voting-793ee.firebaseapp.com",
+ projectId: "daily-voting-793ee"
+};
 
-</div>
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-<script>
-// 🔄 PAGE SWITCH
-function showLogin(){
-    loginBox.style.display="block";
-    signupBox.style.display="none";
-    forgotBox.style.display="none";
+window.login = async ()=>{
+  let phone = document.getElementById("phone").value;
+  let pass  = document.getElementById("pass").value;
+
+  let ref = doc(db,"users",phone);
+  let snap = await getDoc(ref);
+
+  if(!snap.exists() || snap.data().password !== pass){
+    alert("Account not found");
+    return;
+  }
+
+  sessionStorage.setItem("phone",phone);
+  sessionStorage.setItem("name",snap.data().name);
+  location.href="vote.html";
 }
-function showSignup(){
-    loginBox.style.display="none";
-    signupBox.style.display="block";
-    forgotBox.style.display="none";
-}
-function showForgot(){
-    loginBox.style.display="none";
-    signupBox.style.display="none";
-    forgotBox.style.display="block";
-}
-
-/* =======================
-   📝 SIGNUP
-======================= */
-function signup(){
-    let name = su_name.value.trim();
-    let phone = su_phone.value.trim();
-    let pass = su_pass.value.trim();
-
-    if(!name || !phone || !pass){
-        alert("All fields required");
-        return;
-    }
-
-    if(localStorage.getItem("user_"+phone)){
-        alert("User already exists");
-        return;
-    }
-
-    let user = { name, phone, pass };
-    localStorage.setItem("user_"+phone, JSON.stringify(user));
-
-    alert("Account created. Login now.");
-    showLogin();
-}
-
-/* =======================
-   🔐 LOGIN
-======================= */
-function login(){
-    let phone = li_phone.value.trim();
-    let pass = li_pass.value.trim();
-
-    let data = localStorage.getItem("user_"+phone);
-    if(!data){
-        alert("Account not found");
-        return;
-    }
-
-    let user = JSON.parse(data);
-    if(user.pass !== pass){
-        alert("Wrong password");
-        return;
-    }
-
-    // 🔒 SESSION SAVE
-    localStorage.setItem("currentUser", user.name);
-    localStorage.setItem("currentPhone", user.phone);
-
-    // 🔑 replace prevents back-login issue
-    window.location.replace("vote.html");
-}
-
-/* =======================
-   🔁 FORGOT PASSWORD
-======================= */
-function resetPassword(){
-    let phone = fp_phone.value.trim();
-    let newpass = fp_newpass.value.trim();
-
-    let data = localStorage.getItem("user_"+phone);
-    if(!data){
-        alert("Account not found");
-        return;
-    }
-
-    let user = JSON.parse(data);
-    user.pass = newpass;
-    localStorage.setItem("user_"+phone, JSON.stringify(user));
-
-    alert("Password reset successfully");
-    showLogin();
-}
-
-/* 🚫 BACK BUTTON BLOCK */
-history.pushState(null, null, location.href);
-window.onpopstate = () => history.go(1);
 </script>
-
 </body>
 </html>
