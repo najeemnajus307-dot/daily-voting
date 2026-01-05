@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Faith & Fitness Voting</title>
@@ -18,16 +18,23 @@ body{
   padding:25px;
   width:360px;
   border-radius:12px;
-  box-shadow:0 0 15px rgba(0,0,0,.2);
   text-align:center;
+  box-shadow:0 0 12px rgba(0,0,0,.2);
 }
-.task{text-align:left;margin:6px 0}
+h2{margin-bottom:10px}
+.task{
+  border:1px solid #ddd;
+  padding:10px;
+  margin:8px 0;
+  border-radius:6px;
+  text-align:left;
+}
 button{
   width:100%;
-  padding:10px;
+  padding:12px;
   margin-top:10px;
   border:none;
-  border-radius:6px;
+  border-radius:8px;
   font-size:16px;
   cursor:pointer;
 }
@@ -40,11 +47,8 @@ button{
 
 <div class="box">
   <h2>WELCOME<br>FAITH & FITNESS</h2>
-  <div id="userBox"></div>
-  <div id="dateBox"></div>
-
-  <div id="tasksBox">Loading tasks...</div>
-
+  <div id="userInfo"></div>
+  <div id="taskArea">Loading tasks...</div>
   <button class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
@@ -54,80 +58,76 @@ import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, doc, getDoc,
-  updateDoc, increment
+  updateDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE */
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+/* FIREBASE CONFIG */
+const firebaseConfig={
+  apiKey:"YOUR_API_KEY",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
 };
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
 
 /* LOGIN CHECK */
-const phone = sessionStorage.getItem("phone");
-const name  = sessionStorage.getItem("name");
-if(!phone) location.href="index.html";
-
-/* UI */
-const today = new Date().toISOString().slice(0,10);
-userBox.innerHTML = `<b>Hello ${name}</b>`;
-dateBox.innerHTML = `Date : ${today}`;
-
-/* LOAD TASKS (tasks/daily/list) */
-async function loadTasks(){
-  const snap = await getDoc(doc(db,"tasks","daily"));
-  if(!snap.exists()){
-    tasksBox.innerHTML="<span style='color:red'>No tasks today</span>";
-    return;
-  }
-
-  const list = snap.data().list || [];
-  if(list.length===0){
-    tasksBox.innerHTML="<span style='color:red'>No tasks today</span>";
-    return;
-  }
-
-  tasksBox.innerHTML="";
-  list.forEach((t,i)=>{
-    tasksBox.innerHTML+=`
-      <div class="task">
-        <label>
-          <input type="checkbox" value="${t.points}">
-          ${t.text} (${t.points} pts)
-        </label>
-      </div>`;
-  });
+const phone = localStorage.getItem("currentPhone");
+const name  = localStorage.getItem("currentUser");
+if(!phone || !name){
+  location.href="index.html";
 }
-loadTasks();
 
-/* SUBMIT VOTE (ADD POINTS) */
+userInfo.innerHTML = `
+Hello <b>${name}</b><br>
+Date : ${new Date().toISOString().slice(0,10)}
+`;
+
+/* LOAD TASK (daily) */
+let taskPoints = 0;
+const taskDoc = await getDoc(doc(db,"tasks","daily"));
+
+if(taskDoc.exists()){
+  const t = taskDoc.data();
+  taskPoints = Number(t.points || 0);
+  taskArea.innerHTML = `
+    <div class="task">
+      <input type="checkbox" id="chk">
+      ${t.text} (${taskPoints} pts)
+    </div>`;
+}else{
+  taskArea.innerHTML = "<b>No tasks today</b>";
+}
+
+/* SUBMIT VOTE */
 window.submitVote = async ()=>{
-  const checked = document.querySelectorAll("#tasksBox input:checked");
-  if(checked.length===0){
-    alert("Select at least one task");
+  if(!document.getElementById("chk")?.checked){
+    alert("Select task first");
     return;
   }
 
-  let votePoints=0;
-  checked.forEach(c=>votePoints+=Number(c.value));
+  const userRef = doc(db,"users",phone);
+  const snap = await getDoc(userRef);
 
-  /* ADD points to user */
-  await updateDoc(
-    doc(db,"users",phone),
-    { totalPoints: increment(votePoints) }
-  );
+  if(!snap.exists()){
+    alert("User not found");
+    return;
+  }
 
-  alert("Vote submitted ✅ Points added: "+votePoints);
-  location.reload();
+  const oldPoints = Number(snap.data().totalPoints || 0);
+  const newTotal  = oldPoints + taskPoints;
+
+  await updateDoc(userRef,{
+    totalPoints: newTotal
+  });
+
+  alert(`Vote submitted ✅\nTotal points: ${newTotal}`);
+  document.querySelector(".submit").disabled=true;
 };
 
 /* LOGOUT */
-window.logout = ()=>{
-  sessionStorage.clear();
+window.logout=()=>{
+  localStorage.clear();
   location.href="index.html";
 };
 </script>
