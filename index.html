@@ -1,53 +1,176 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Daily Voting - Login</title>
+<title>Firebase Signup & Login</title>
 <style>
-body{font-family:Arial;background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh}
-.box{background:#fff;padding:25px;width:320px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,.2)}
-input,button{width:100%;padding:10px;margin:8px 0}
-button{background:#2563eb;color:#fff;border:none;border-radius:6px}
+body{
+  font-family: Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.box{
+  background:#fff;
+  padding:25px;
+  width:360px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+h2{text-align:center;}
+input{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+}
+button{
+  width:100%;
+  padding:10px;
+  background:#16a34a;
+  color:#fff;
+  border:none;
+  margin-top:10px;
+  cursor:pointer;
+}
+.switch{
+  text-align:center;
+  margin-top:10px;
+  color:#2563eb;
+  cursor:pointer;
+}
 </style>
 </head>
 <body>
 
 <div class="box">
-<h3>Login</h3>
-<input id="phone" placeholder="Phone">
-<input id="pass" type="password" placeholder="Password">
-<button onclick="login()">Login</button>
+<h2 id="title">Signup</h2>
+
+<!-- SIGNUP -->
+<div id="signupBox">
+  <input id="name" placeholder="Name">
+  <input id="phone" placeholder="Phone Number">
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="signup()">Signup</button>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+<!-- LOGIN -->
+<div id="loginBox" style="display:none;">
+  <input id="lemail" placeholder="Email">
+  <input id="lpassword" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
 
+<div class="switch" onclick="toggleBox()">Already have account? Login</div>
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { 
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* 🔴 YOUR FIREBASE CONFIG */
 const firebaseConfig = {
- apiKey: "YOUR_KEY",
- authDomain: "daily-voting-793ee.firebaseapp.com",
- projectId: "daily-voting-793ee"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "XXXX",
+  appId: "XXXX"
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getFirestore(app);
 
-window.login = async ()=>{
+/* TOGGLE */
+window.toggleBox = function(){
+  let s = document.getElementById("signupBox");
+  let l = document.getElementById("loginBox");
+  let t = document.getElementById("title");
+  let sw = document.querySelector(".switch");
+
+  if(s.style.display==="none"){
+    s.style.display="block";
+    l.style.display="none";
+    t.innerText="Signup";
+    sw.innerText="Already have account? Login";
+  }else{
+    s.style.display="none";
+    l.style.display="block";
+    t.innerText="Login";
+    sw.innerText="New user? Signup";
+  }
+}
+
+/* SIGNUP WITH EXIST CHECK */
+window.signup = async function(){
+  let name = document.getElementById("name").value;
   let phone = document.getElementById("phone").value;
-  let pass  = document.getElementById("pass").value;
+  let email = document.getElementById("email").value;
+  let pass = document.getElementById("password").value;
 
-  let ref = doc(db,"users",phone);
-  let snap = await getDoc(ref);
-
-  if(!snap.exists() || snap.data().password !== pass){
-    alert("Account not found");
+  if(!name || !phone || !email || !pass){
+    alert("Fill all fields");
     return;
   }
 
-  sessionStorage.setItem("phone",phone);
-  sessionStorage.setItem("name",snap.data().name);
-  location.href="vote.html";
+  // 🔍 Check phone already exists
+  const q = query(
+    collection(db,"users"),
+    where("phone","==",phone)
+  );
+  const snap = await getDocs(q);
+
+  if(!snap.empty){
+    alert("This phone number already registered");
+    return;
+  }
+
+  // 🔐 Create auth account
+  createUserWithEmailAndPassword(auth,email,pass)
+  .then(async(res)=>{
+    await setDoc(doc(db,"users",res.user.uid),{
+      name:name,
+      phone:phone,
+      email:email,
+      createdAt:new Date()
+    });
+    alert("Signup successful (Saved in Firebase)");
+    toggleBox();
+  })
+  .catch(e=>alert(e.message));
+}
+
+/* LOGIN */
+window.login = function(){
+  let email = document.getElementById("lemail").value;
+  let pass = document.getElementById("lpassword").value;
+
+  signInWithEmailAndPassword(auth,email,pass)
+  .then(()=>{
+    alert("Login successful");
+    // window.location.href="home.html";
+  })
+  .catch(()=>alert("Invalid login"));
 }
 </script>
+
 </body>
 </html>
