@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Voting</title>
+<title>Faith & Fitness Voting</title>
 
 <style>
 body{
@@ -16,45 +16,92 @@ body{
 .box{
   background:#fff;
   padding:25px;
-  width:350px;
+  width:360px;
   border-radius:10px;
   text-align:center;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
 }
 button{
   width:100%;
-  padding:10px;
+  padding:12px;
   margin-top:10px;
   border:none;
-  border-radius:6px;
+  color:white;
   cursor:pointer;
 }
-.logout{background:#dc2626;color:white}
+.submit{background:#16a34a}
+.logout{background:#dc2626}
 </style>
 </head>
 
 <body>
 
-<script>
-const phone = sessionStorage.getItem("userPhone");
-if(!phone){
-  location.href="index.html";
-}
-</script>
-
 <div class="box">
   <h2>WELCOME<br>FAITH & FITNESS</h2>
-  <p>Logged in as: <b id="u"></b></p>
 
+  <div id="user"></div>
+  <div id="date"></div>
+
+  <button class="submit" onclick="vote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
-<script>
-document.getElementById("u").innerText = phone;
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-function logout(){
-  sessionStorage.clear();
-  location.href="index.html";
+/* LOGIN CHECK */
+const uid = sessionStorage.getItem("uid");
+const name = sessionStorage.getItem("name");
+const phone = sessionStorage.getItem("phone");
+
+if(!uid){
+  location.replace("index.html");
 }
+
+/* UI */
+const today = new Date().toISOString().split("T")[0];
+user.innerText = "Hello " + name;
+date.innerText = "Date : " + today;
+
+/* FIREBASE */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const voteId = phone + "_" + today;
+const ref = doc(db,"votes",voteId);
+
+/* CHECK ALREADY VOTED */
+const snap = await getDoc(ref);
+if(snap.exists()){
+  document.querySelector(".submit").disabled=true;
+  document.querySelector(".submit").innerText="Already voted today";
+}
+
+window.vote = async ()=>{
+  await setDoc(ref,{
+    uid,
+    name,
+    phone,
+    date:today,
+    points:5,
+    createdAt:new Date().toISOString()
+  });
+  alert("Vote submitted ✅");
+  location.reload();
+};
+
+window.logout = ()=>{
+  sessionStorage.clear();
+  location.replace("index.html");
+};
 </script>
 
 </body>
