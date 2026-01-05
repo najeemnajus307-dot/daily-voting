@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Daily Voting</title>
+<title>Faith & Fitness – Daily Voting</title>
 
 <style>
 body{
@@ -20,6 +20,14 @@ body{
   border-radius:12px;
   box-shadow:0 0 15px rgba(0,0,0,.2);
 }
+.topTitle{
+  text-align:center;
+  font-size:22px;
+  font-weight:bold;
+  margin-bottom:8px;
+  color:#0f172a;
+}
+h3{text-align:center;margin-top:0;}
 .task{
   border:1px solid #ddd;
   padding:10px;
@@ -29,11 +37,16 @@ body{
 button{
   width:100%;
   padding:12px;
-  margin-top:15px;
+  margin-top:12px;
   background:#16a34a;
   color:white;
   border:none;
   border-radius:8px;
+  font-size:16px;
+  cursor:pointer;
+}
+button:disabled{
+  background:#9ca3af;
 }
 .logout{
   background:#dc2626;
@@ -41,6 +54,10 @@ button{
 .info{
   text-align:center;
   font-size:14px;
+  margin-bottom:6px;
+}
+input[type="checkbox"]{
+  accent-color:#16a34a;
 }
 </style>
 </head>
@@ -48,7 +65,7 @@ button{
 <body>
 
 <script>
-/* LOGIN CHECK */
+/* 🔐 LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
 const name  = localStorage.getItem("userName");
 if(!phone || !name){
@@ -57,20 +74,25 @@ if(!phone || !name){
 </script>
 
 <div class="box">
-<button class="logout" onclick="logout()">Logout</button>
 
-<h2>Daily Tasks</h2>
+<!-- ✅ TOP TITLE -->
+<div class="topTitle">Welcome Faith & Fitness</div>
 
-<div class="info">Welcome <b id="user"></b></div>
+<h3>Daily Tasks</h3>
+
 <div class="info" id="date"></div>
 
 <div id="tasksArea"></div>
 
 <button id="submitBtn">Submit Vote</button>
+
+<!-- ✅ LOGOUT BELOW SUBMIT -->
+<button class="logout" onclick="logout()">Logout</button>
+
 </div>
 
+<!-- NORMAL SCRIPT -->
 <script>
-document.getElementById("user").innerText = name;
 const today = new Date().toISOString().split("T")[0];
 document.getElementById("date").innerText = "Date : " + today;
 
@@ -81,12 +103,17 @@ let tasks = [];
 let state = {};
 </script>
 
+<!-- FIREBASE MODULE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, setDoc
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+/* 🔴 FIREBASE CONFIG (same project as task editor) */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -96,49 +123,62 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ✅ LOAD TASKS FROM tasks/daily */
+/* ✅ LOAD TASKS FROM task editor (tasks/daily) */
 const snap = await getDoc(doc(db,"tasks","daily"));
 if(snap.exists()){
   tasks = snap.data().list || [];
 }
 
 /* RENDER TASKS */
-tasksArea.innerHTML="";
+tasksArea.innerHTML = "";
 tasks.forEach((t,i)=>{
-  const div=document.createElement("div");
-  div.className="task";
-  div.innerHTML=`
+  const div = document.createElement("div");
+  div.className = "task";
+  div.innerHTML = `
     <label>
       <input type="checkbox">
       ${t.text} (${t.points} pts)
     </label>
   `;
   const cb = div.querySelector("input");
-  cb.onchange = ()=> state[i]=cb.checked;
+  cb.onchange = ()=> state[i] = cb.checked;
   tasksArea.appendChild(div);
 });
 
-/* SUBMIT */
+/* CHECK ALREADY VOTED (ONE DAY – ONE VOTE) */
+const voteId = phone + "_" + today;
+const voteRef = doc(db,"votes",voteId);
+const existing = await getDoc(voteRef);
+if(existing.exists()){
+  submitBtn.disabled = true;
+  submitBtn.innerText = "Already submitted today";
+}
+
+/* SUBMIT VOTE */
 submitBtn.onclick = async ()=>{
-  let total=0;
-  let selected={};
+  if(submitBtn.disabled) return;
+
+  let total = 0;
+  let selected = {};
 
   tasks.forEach((t,i)=>{
-    selected[i]=!!state[i];
-    if(state[i]) total+=t.points;
+    selected[i] = !!state[i];
+    if(state[i]) total += t.points;
   });
 
-  await setDoc(doc(db,"votes", phone+"_"+today),{
-    name, phone, date:today,
-    tasks:selected,
-    totalPoints:total,
-    submittedAt:new Date().toISOString()
+  await setDoc(voteRef,{
+    name,
+    phone,
+    date: today,
+    tasks: selected,
+    totalPoints: total,
+    submittedAt: new Date().toISOString()
   });
 
-  alert("Vote submitted ✅");
-  submitBtn.disabled=true;
+  alert("Vote submitted successfully 👍");
+  submitBtn.disabled = true;
+  submitBtn.innerText = "Already submitted today";
 };
-
 </script>
 
 <script>
