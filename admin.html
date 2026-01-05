@@ -90,13 +90,13 @@ th{background:#2563eb;color:white;}
 
 <!-- FULL REPORT -->
 <div class="box">
-  <h3>All Voting Report (ADD / REPLACE Points)</h3>
+  <h3>All Voting Report (ADD Points Only)</h3>
   <table>
     <thead>
       <tr>
         <th>Name</th>
         <th>Phone</th>
-        <th>Points</th>
+        <th>Add Points</th>
         <th>Date</th>
         <th>Action</th>
       </tr>
@@ -205,14 +205,8 @@ function renderReport(votes){
         <td><input class="editInp" id="n_${v.id}" value="${v.name}"></td>
         <td><input class="editInp" id="p_${v.id}" value="${v.phone}"></td>
         <td>
-          <input class="editInp" type="number" id="pt_${v.id}" placeholder="Points">
+          <input class="editInp" type="number" id="pt_${v.id}" placeholder="+ points">
           <div class="small">Current: ${v.totalPoints}</div>
-          <label class="small">
-            <input type="radio" name="mode_${v.id}" value="add" checked> Add (+)
-          </label>
-          <label class="small">
-            <input type="radio" name="mode_${v.id}" value="replace"> Replace (=)
-          </label>
         </td>
         <td><input class="editInp" type="date" id="d_${v.id}" value="${v.date}"></td>
         <td>
@@ -223,16 +217,19 @@ function renderReport(votes){
   });
 }
 
-/* SAVE (ADD / REPLACE LOGIC) */
+/* SAVE (ADD POINTS ONLY) */
 window.saveEdit = async (id)=>{
   const name  = document.getElementById("n_"+id).value.trim();
   const phone = document.getElementById("p_"+id).value.trim();
+  const addPt = Number(document.getElementById("pt_"+id).value || 0);
   const date  = document.getElementById("d_"+id).value;
-  const input = document.getElementById("pt_"+id).value;
-  const mode  = document.querySelector(`input[name="mode_${id}"]:checked`).value;
 
   if(!name || !phone || !date){
     alert("Name, Phone, Date required");
+    return;
+  }
+  if(addPt < 0){
+    alert("Negative points not allowed");
     return;
   }
 
@@ -243,13 +240,7 @@ window.saveEdit = async (id)=>{
   }
 
   const old = allVotes.find(v=>v.id===id);
-  let newTotal = old.totalPoints;
-
-  if(input !== ""){
-    const val = Number(input);
-    if(isNaN(val)){ alert("Invalid points"); return; }
-    newTotal = (mode==="add") ? (old.totalPoints + val) : val;
-  }
+  const newTotal = old.totalPoints + addPt;
 
   /* UPDATE VOTE */
   await updateDoc(doc(db,"votes",id),{
@@ -259,7 +250,7 @@ window.saveEdit = async (id)=>{
     date
   });
 
-  /* USER SYNC (ADD / UPDATE) */
+  /* USER SYNC */
   const q = query(collection(db,"users"), where("phone","==",phone));
   const snap = await getDocs(q);
 
@@ -276,7 +267,7 @@ window.saveEdit = async (id)=>{
     });
   }
 
-  alert(`Saved ✅ New Points: ${newTotal}`);
+  alert(`Points added ✅ New total: ${newTotal}`);
   loadVotes();
 };
 
