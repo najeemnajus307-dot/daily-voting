@@ -5,52 +5,40 @@
 <title>Admin Voting Dashboard</title>
 
 <style>
-body{
-  font-family:Arial;
-  background:#f1f5f9;
-  padding:20px;
-}
-h2,h3{text-align:center;}
+body{font-family:Arial;background:#f1f5f9;padding:20px}
+h2,h3{text-align:center}
 .box{
-  background:#fff;
-  padding:15px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
-  margin-bottom:20px;
+  background:#fff;padding:15px;border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);margin-bottom:20px
 }
-.controls{text-align:center;margin-bottom:10px;}
-input,select,button{padding:6px;margin:3px;}
-button{cursor:pointer;}
-table{width:100%;border-collapse:collapse;}
-th,td{border:1px solid #ccc;padding:8px;text-align:center;}
-th{background:#2563eb;color:white;}
-.rank1{background:#fde047;}
-.rank2{background:#e5e7eb;}
-.rank3{background:#fcd34d;}
-.delBtn{background:#dc2626;color:white;border:none;padding:4px 8px;}
-.saveBtn{background:#16a34a;color:white;border:none;padding:4px 8px;}
-.editInp{width:90%;}
-.small{font-size:12px;color:#555;}
-.count{font-weight:bold;text-align:center;margin-bottom:10px;}
-.summary{
-  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+.controls{text-align:center;margin-bottom:10px}
+input,select,button{padding:6px;margin:3px}
+button{cursor:pointer}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #ccc;padding:8px;text-align:center}
+th{background:#2563eb;color:white}
+.rank1{background:#fde047}
+.rank2{background:#e5e7eb}
+.rank3{background:#fcd34d}
+.saveBtn{background:#16a34a;color:white;border:none;padding:4px 8px}
+.delBtn{background:#dc2626;color:white;border:none;padding:4px 8px}
+.editInp{width:90%}
+.small{font-size:12px;color:#555}
+.count{text-align:center;font-weight:bold;margin-bottom:10px}
+.summary{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.card{
+  background:#f8fafc;padding:10px;border-radius:8px;
+  min-width:160px;text-align:center
 }
-.summary .card{
-  background:#f8fafc;
-  padding:10px 14px;
-  border-radius:8px;
-  min-width:160px;
-  text-align:center;
-  box-shadow:0 0 6px rgba(0,0,0,.1);
-}
+.bonusBtn{background:#7c3aed;color:#fff;border:none}
+.exportBtn{background:#0ea5e9;color:#fff;border:none}
 </style>
 </head>
 
 <body>
 
 <h2>Admin Voting Dashboard</h2>
-
-<div class="count" id="totalCount">Total Voters: Loading...</div>
+<div class="count" id="totalCount">Loading...</div>
 
 <!-- DATE FILTER -->
 <div class="box controls">
@@ -63,50 +51,46 @@ th{background:#2563eb;color:white;}
 <!-- SEARCH -->
 <div class="box controls">
   <input type="text" id="searchBox"
-         placeholder="🔍 Search by name or phone"
+         placeholder="🔍 Search name or phone"
          oninput="applySearch()"
          style="width:260px">
+  <button class="exportBtn" onclick="exportExcel()">📤 Export Excel</button>
+</div>
+
+<!-- BONUS -->
+<div class="box controls">
+  Bonus Points:
+  <input type="number" id="bonusPoint" placeholder="eg: 5" style="width:80px">
+  <button class="bonusBtn" onclick="addBonusToRank1All()">
+    🏆 Add Bonus to ALL Rank 1
+  </button>
 </div>
 
 <!-- SUMMARY -->
 <div class="box">
-  <h3>Summary</h3>
-  <div class="controls">
-    <select id="summaryType" onchange="renderSummary()">
-      <option value="daily">Daily</option>
-      <option value="monthly">Monthly</option>
-    </select>
-  </div>
+  <h3>Summary (Daily)</h3>
   <div class="summary" id="summaryCards"></div>
 </div>
 
 <!-- TOP 3 -->
 <div class="box">
-  <h3>Top 3 Ranking</h3>
+  <h3>Top 3 Ranking (Life-time Points)</h3>
   <table>
     <thead>
-      <tr>
-        <th>Rank</th>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Points</th>
-      </tr>
+      <tr><th>Rank</th><th>Name</th><th>Phone</th><th>Points</th></tr>
     </thead>
     <tbody id="rankBody"></tbody>
   </table>
 </div>
 
-<!-- FULL REPORT -->
+<!-- REPORT -->
 <div class="box">
   <h3>All Voting Report (ADD Points Only)</h3>
   <table>
     <thead>
       <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Add Points</th>
-        <th>Date</th>
-        <th>Action</th>
+        <th>Name</th><th>Phone</th>
+        <th>Add Points</th><th>Date</th><th>Action</th>
       </tr>
     </thead>
     <tbody id="reportBody"></tbody>
@@ -116,38 +100,53 @@ th{background:#2563eb;color:white;}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  getDocs,
-  updateDoc,
-  deleteDoc,
-  doc,
-  query,
-  where,
-  addDoc
+  getFirestore, collection, getDocs,
+  updateDoc, deleteDoc, doc,
+  addDoc, query, where
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔴 FIREBASE CONFIG */
+/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 ADMIN PASSWORD */
-const ADMIN_PASSWORD = "1";
+const ADMIN_PASS = "1";
+
+/* HELPERS */
+function normalizePhone(p){
+  return (p||"").replace(/\D/g,"").slice(-10);
+}
 
 let allVotes = [];
 let filteredVotes = [];
+let userPoints = {}; // phone -> totalPoints
 
-/* LOAD VOTES */
+/* LOAD DATA */
 async function loadVotes(){
   allVotes = [];
-  const snap = await getDocs(collection(db,"votes"));
-  snap.forEach(d=>allVotes.push({ id:d.id, ...d.data() }));
+  userPoints = {};
+
+  // users = source of points
+  const uSnap = await getDocs(collection(db,"users"));
+  uSnap.forEach(d=>{
+    const u = d.data();
+    userPoints[ normalizePhone(u.phone) ] = u.totalPoints || 0;
+  });
+
+  // votes = history
+  const vSnap = await getDocs(collection(db,"votes"));
+  vSnap.forEach(d=>{
+    const v = d.data();
+    allVotes.push({
+      id:d.id,
+      ...v,
+      phoneNorm: normalizePhone(v.phone)
+    });
+  });
 
   totalCount.innerText = "Total Voters : " + allVotes.length;
   filteredVotes = [...allVotes];
@@ -155,7 +154,7 @@ async function loadVotes(){
 }
 loadVotes();
 
-/* DATE FILTER */
+/* FILTERS */
 window.applyFilter = ()=>{
   const f = fromDate.value;
   const t = toDate.value;
@@ -167,78 +166,91 @@ window.applyFilter = ()=>{
   renderAll(filteredVotes);
 };
 
-/* RESET */
 window.resetFilter = ()=>{
-  fromDate.value="";
-  toDate.value="";
-  document.getElementById("searchBox").value="";
+  fromDate.value=""; toDate.value="";
+  searchBox.value="";
   filteredVotes=[...allVotes];
   renderAll(filteredVotes);
 };
 
-/* SEARCH */
 window.applySearch = ()=>{
-  const q = document.getElementById("searchBox").value
-              .toLowerCase().trim();
-
-  if(q === ""){
-    filteredVotes = [...allVotes];
-  }else{
-    filteredVotes = allVotes.filter(v=>{
-      return (
+  const q = searchBox.value.toLowerCase().trim();
+  filteredVotes = q===""
+    ? [...allVotes]
+    : allVotes.filter(v =>
         (v.name && v.name.toLowerCase().includes(q)) ||
-        (v.phone && v.phone.toLowerCase().includes(q))
+        (v.phone && v.phone.includes(q))
       );
-    });
-  }
   renderAll(filteredVotes);
 };
 
-/* RENDER ALL */
+/* RENDER */
 function renderAll(votes){
   rankBody.innerHTML="";
   reportBody.innerHTML="";
   summaryCards.innerHTML="";
-  if(votes.length===0){
-    summaryCards.innerHTML="<p>No votes</p>";
-    return;
-  }
-  const sorted=[...votes].sort((a,b)=>b.totalPoints-a.totalPoints);
-  renderRank(sorted);
-  renderReport(sorted);
-  renderSummary();
+  if(votes.length===0) return;
+  renderSummary(votes);
+  renderRank(votes);
+  renderReport(votes);
 }
 
-/* TOP 3 */
-function renderRank(votes){
-  let rank=0,last=null;
+/* SUMMARY */
+function renderSummary(votes){
+  const map={};
   votes.forEach(v=>{
-    if(v.totalPoints!==last){rank++;last=v.totalPoints;}
-    if(rank>3) return;
+    if(!map[v.date]) map[v.date]={v:0,p:0};
+    map[v.date].v++;
+    map[v.date].p+=v.todayPoints||0;
+  });
+  Object.keys(map).sort().forEach(d=>{
+    summaryCards.innerHTML+=`
+      <div class="card">
+        <b>${d}</b><br>
+        Voters: ${map[d].v}<br>
+        Points: ${map[d].p}
+      </div>`;
+  });
+}
+
+/* RANKING */
+function renderRank(votes){
+  const uniq={};
+  votes.forEach(v=>uniq[v.phoneNorm]=v.name);
+  const arr=Object.keys(uniq).map(p=>({
+    phone:p,
+    name:uniq[p],
+    points:userPoints[p]||0
+  }));
+  arr.sort((a,b)=>b.points-a.points);
+
+  let rank=0,last=null;
+  arr.forEach(u=>{
+    if(u.points!==last){rank++;last=u.points;}
+    if(rank>3)return;
     const cls=rank===1?"rank1":rank===2?"rank2":"rank3";
     rankBody.innerHTML+=`
       <tr class="${cls}">
         <td>${rank}</td>
-        <td>${v.name}</td>
-        <td>${v.phone}</td>
-        <td>${v.totalPoints}</td>
+        <td>${u.name}</td>
+        <td>${u.phone}</td>
+        <td>${u.points}</td>
       </tr>`;
   });
 }
 
 /* REPORT */
 function renderReport(votes){
-  reportBody.innerHTML="";
   votes.forEach(v=>{
     reportBody.innerHTML+=`
       <tr>
         <td><input class="editInp" id="n_${v.id}" value="${v.name}"></td>
-        <td><input class="editInp" id="p_${v.id}" value="${v.phone}"></td>
+        <td><input class="editInp" id="p_${v.id}" value="${v.phoneNorm}"></td>
         <td>
-          <input class="editInp" type="number" id="pt_${v.id}" placeholder="+ points">
-          <div class="small">Current: ${v.totalPoints}</div>
+          <input class="editInp" id="pt_${v.id}" type="number" placeholder="+ points">
+          <div class="small">Current: ${userPoints[v.phoneNorm]||0}</div>
         </td>
-        <td><input class="editInp" type="date" id="d_${v.id}" value="${v.date}"></td>
+        <td><input class="editInp" id="d_${v.id}" type="date" value="${v.date}"></td>
         <td>
           <button class="saveBtn" onclick="saveEdit('${v.id}')">Save</button>
           <button class="delBtn" onclick="deleteVote('${v.id}')">Delete</button>
@@ -247,85 +259,83 @@ function renderReport(votes){
   });
 }
 
-/* SAVE (ADD POINTS ONLY) */
+/* SAVE (ADD POINTS MANUAL) */
 window.saveEdit = async (id)=>{
-  const name  = document.getElementById("n_"+id).value.trim();
-  const phone = document.getElementById("p_"+id).value.trim();
-  const addPt = Number(document.getElementById("pt_"+id).value || 0);
-  const date  = document.getElementById("d_"+id).value;
+  const name=document.getElementById("n_"+id).value.trim();
+  const phone=normalizePhone(document.getElementById("p_"+id).value);
+  const addPt=Number(document.getElementById("pt_"+id).value||0);
+  const date=document.getElementById("d_"+id).value;
 
-  if(!name || !phone || !date){
-    alert("Name, Phone, Date required");
-    return;
-  }
-  if(addPt < 0){
-    alert("Negative points not allowed");
-    return;
-  }
+  if(prompt("Admin password")!==ADMIN_PASS)return;
 
-  const pass = prompt("Enter admin password:");
-  if(pass !== ADMIN_PASSWORD){
-    alert("Wrong password ❌");
-    return;
-  }
+  const newTotal=(userPoints[phone]||0)+addPt;
 
-  const old = allVotes.find(v=>v.id===id);
-  const newTotal = old.totalPoints + addPt;
+  await updateDoc(doc(db,"votes",id),{name,phone,date});
 
-  await updateDoc(doc(db,"votes",id),{
-    name,
-    phone,
-    totalPoints: newTotal,
-    date
-  });
-
-  const q = query(collection(db,"users"), where("phone","==",phone));
-  const snap = await getDocs(q);
-
+  const q=query(collection(db,"users"),where("phone","==",phone));
+  const snap=await getDocs(q);
   if(snap.empty){
     await addDoc(collection(db,"users"),{
-      name, phone,
-      password:"1",
-      createdFrom:"admin",
-      createdAt:new Date().toISOString()
+      name,phone,totalPoints:newTotal,password:"1"
     });
   }else{
     snap.forEach(async u=>{
-      await updateDoc(doc(db,"users",u.id),{ name, phone });
+      await updateDoc(doc(db,"users",u.id),{
+        name,phone,totalPoints:newTotal
+      });
     });
   }
-
-  alert(`Points added ✅ New total: ${newTotal}`);
+  alert("Points added. New total: "+newTotal);
   loadVotes();
 };
 
 /* DELETE */
 window.deleteVote = async (id)=>{
-  if(!confirm("Delete this vote?")) return;
+  if(!confirm("Delete vote?"))return;
   await deleteDoc(doc(db,"votes",id));
   loadVotes();
 };
 
-/* SUMMARY */
-window.renderSummary = ()=>{
-  const type = summaryType.value;
-  summaryCards.innerHTML="";
-  const map={};
+/* EXCEL EXPORT */
+window.exportExcel = ()=>{
+  if(filteredVotes.length===0){alert("No data");return;}
+  let csv="Name,Phone,Date,Today Points,Total Points\n";
   filteredVotes.forEach(v=>{
-    const k = type==="daily" ? v.date : v.date.slice(0,7);
-    if(!map[k]) map[k]={voters:0,points:0};
-    map[k].voters++;
-    map[k].points+=v.totalPoints;
+    csv+=`${v.name},${v.phoneNorm},${v.date},${v.todayPoints||0},${userPoints[v.phoneNorm]||0}\n`;
   });
-  Object.keys(map).sort().forEach(k=>{
-    if(map[k].voters===0) return;
-    summaryCards.innerHTML+=`
-      <div class="card">
-        <b>${k}</b><br>
-        Voters: ${map[k].voters}<br>
-        Points: ${map[k].points}
-      </div>`;
-  });
+  const blob=new Blob([csv],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="voting_report.csv";
+  a.click();
+};
+
+/* BONUS TO ALL RANK 1 (MANUAL) */
+window.addBonusToRank1All = async ()=>{
+  const bonus=Number(bonusPoint.value||0);
+  if(bonus<=0){alert("Enter bonus");return;}
+  if(prompt("Admin password")!==ADMIN_PASS)return;
+
+  const arr=Object.keys(userPoints).map(p=>({
+    phone:p,points:userPoints[p]
+  }));
+  if(arr.length===0)return;
+
+  arr.sort((a,b)=>b.points-a.points);
+  const topPoint=arr[0].points;
+  const rank1=arr.filter(u=>u.points===topPoint);
+
+  for(const u of rank1){
+    const q=query(collection(db,"users"),where("phone","==",u.phone));
+    const snap=await getDocs(q);
+    snap.forEach(async d=>{
+      await updateDoc(doc(db,"users",d.id),{
+        totalPoints:u.points+bonus
+      });
+    });
+  }
+  alert(`Bonus ${bonus} added to ${rank1.length} rank-1 users`);
+  loadVotes();
 };
 </script>
 
