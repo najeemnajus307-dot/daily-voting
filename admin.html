@@ -20,7 +20,7 @@ th{background:#2563eb;color:white}
 .rank2{background:#e5e7eb}
 .rank3{background:#fcd34d}
 .saveBtn{background:#16a34a;color:white;border:none;padding:4px 8px}
-.fixBtn{background:#f59e0b;color:white;border:none;padding:6px 10px}
+.fixBtn{background:#0ea5e9;color:white;border:none;padding:6px 12px}
 .small{font-size:12px;color:#555}
 .count{text-align:center;font-weight:bold;margin-bottom:10px}
 </style>
@@ -31,9 +31,11 @@ th{background:#2563eb;color:white}
 <h2>Admin Voting Dashboard</h2>
 <div class="count" id="totalCount">Loading...</div>
 
-<!-- FIX NaN -->
+<!-- 🔄 REBUILD -->
 <div class="box" style="text-align:center">
-  <button class="fixBtn" onclick="fixNaNUsers()">Fix NaN Users</button>
+  <button class="fixBtn" onclick="rebuildAllPoints()">
+    🔄 Rebuild All Points (ONE TIME)
+  </button>
 </div>
 
 <!-- ADD USER -->
@@ -201,19 +203,54 @@ window.addUser = async ()=>{
   loadUsers();
 };
 
-/* 🔧 FIX NaN USERS */
-window.fixNaNUsers = async ()=>{
-  const snap = await getDocs(collection(db,"users"));
-  snap.forEach(async d=>{
-    const u = d.data();
-    if(isNaN(Number(u.totalPoints))){
-      await updateDoc(doc(db,"users",d.id),{
-        totalPoints:0,
-        monthlyPoints:u.monthlyPoints||{}
-      });
+/* 🔄 REBUILD ALL POINTS FROM VOTES */
+window.rebuildAllPoints = async ()=>{
+  if(!confirm("Rebuild ALL user points from votes?")) return;
+
+  const voteSnap = await getDocs(collection(db,"votes"));
+  const map = {};
+
+  voteSnap.forEach(d=>{
+    const v=d.data();
+    const phone=v.phone;
+    const pts=Number(v.todayPoints||0);
+    const month=v.date?v.date.slice(0,7):null;
+
+    if(!map[phone]){
+      map[phone]={name:v.name||phone,total:0,monthly:{}};
+    }
+    map[phone].total+=pts;
+    if(month){
+      map[phone].monthly[month]=(map[phone].monthly[month]||0)+pts;
     }
   });
-  alert("NaN users fixed ✅");
+
+  const userSnap=await getDocs(collection(db,"users"));
+  const exist={};
+  userSnap.forEach(d=>exist[d.data().phone]=d.id);
+
+  for(const phone in map){
+    const d=map[phone];
+    if(exist[phone]){
+      await updateDoc(doc(db,"users",exist[phone]),{
+        name:d.name,
+        totalPoints:d.total,
+        monthlyPoints:d.monthly
+      });
+    }else{
+      await addDoc(collection(db,"users"),{
+        name:d.name,
+        phone,
+        password:"1",
+        totalPoints:d.total,
+        monthlyPoints:d.monthly,
+        createdFrom:"rebuild",
+        createdAt:new Date().toISOString()
+      });
+    }
+  }
+
+  alert("✅ All points rebuilt successfully");
   loadUsers();
 };
 </script>
