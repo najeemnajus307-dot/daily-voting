@@ -29,7 +29,8 @@ th{background:#2563eb;color:white;}
 .rank3{background:#fcd34d;}
 .delBtn{background:#dc2626;color:white;border:none;padding:4px 8px;}
 .saveBtn{background:#16a34a;color:white;border:none;padding:4px 8px;}
-.editInp{width:95%;}
+.editInp{width:90%;}
+.small{font-size:12px;color:#555;}
 .count{font-weight:bold;text-align:center;margin-bottom:10px;}
 .summary{
   display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
@@ -89,7 +90,7 @@ th{background:#2563eb;color:white;}
 
 <!-- FULL REPORT -->
 <div class="box">
-  <h3>All Voting Report (Editable)</h3>
+  <h3>All Voting Report (ADD / REPLACE Points)</h3>
   <table>
     <thead>
       <tr>
@@ -138,9 +139,7 @@ let filteredVotes = [];
 async function loadVotes(){
   allVotes = [];
   const snap = await getDocs(collection(db,"votes"));
-  snap.forEach(d=>{
-    allVotes.push({ id:d.id, ...d.data() });
-  });
+  snap.forEach(d=>allVotes.push({ id:d.id, ...d.data() }));
 
   totalCount.innerText = "Total Voters : " + allVotes.length;
   filteredVotes = [...allVotes];
@@ -152,19 +151,15 @@ loadVotes();
 window.applyFilter = ()=>{
   const f = fromDate.value;
   const t = toDate.value;
-
   filteredVotes = allVotes.filter(v=>{
     if(f && v.date < f) return false;
     if(t && v.date > t) return false;
     return true;
   });
-
   renderAll(filteredVotes);
 };
-
 window.resetFilter = ()=>{
-  fromDate.value="";
-  toDate.value="";
+  fromDate.value=""; toDate.value="";
   filteredVotes=[...allVotes];
   renderAll(filteredVotes);
 };
@@ -174,12 +169,10 @@ function renderAll(votes){
   rankBody.innerHTML="";
   reportBody.innerHTML="";
   summaryCards.innerHTML="";
-
   if(votes.length===0){
     summaryCards.innerHTML="<p>No votes</p>";
     return;
   }
-
   const sorted=[...votes].sort((a,b)=>b.totalPoints-a.totalPoints);
   renderRank(sorted);
   renderReport(sorted);
@@ -190,12 +183,8 @@ function renderAll(votes){
 function renderRank(votes){
   let rank=0,last=null;
   votes.forEach(v=>{
-    if(v.totalPoints!==last){
-      rank++;
-      last=v.totalPoints;
-    }
+    if(v.totalPoints!==last){rank++;last=v.totalPoints;}
     if(rank>3) return;
-
     const cls=rank===1?"rank1":rank===2?"rank2":"rank3";
     rankBody.innerHTML+=`
       <tr class="${cls}">
@@ -215,7 +204,16 @@ function renderReport(votes){
       <tr>
         <td><input class="editInp" id="n_${v.id}" value="${v.name}"></td>
         <td><input class="editInp" id="p_${v.id}" value="${v.phone}"></td>
-        <td><input class="editInp" type="number" id="pt_${v.id}" value="${v.totalPoints}"></td>
+        <td>
+          <input class="editInp" type="number" id="pt_${v.id}" placeholder="Points">
+          <div class="small">Current: ${v.totalPoints}</div>
+          <label class="small">
+            <input type="radio" name="mode_${v.id}" value="add" checked> Add (+)
+          </label>
+          <label class="small">
+            <input type="radio" name="mode_${v.id}" value="replace"> Replace (=)
+          </label>
+        </td>
         <td><input class="editInp" type="date" id="d_${v.id}" value="${v.date}"></td>
         <td>
           <button class="saveBtn" onclick="saveEdit('${v.id}')">Save</button>
@@ -225,15 +223,16 @@ function renderReport(votes){
   });
 }
 
-/* SAVE (VOTES + USERS AUTO ADD / UPDATE) */
+/* SAVE (ADD / REPLACE LOGIC) */
 window.saveEdit = async (id)=>{
   const name  = document.getElementById("n_"+id).value.trim();
   const phone = document.getElementById("p_"+id).value.trim();
-  const points= Number(document.getElementById("pt_"+id).value);
   const date  = document.getElementById("d_"+id).value;
+  const input = document.getElementById("pt_"+id).value;
+  const mode  = document.querySelector(`input[name="mode_${id}"]:checked`).value;
 
-  if(!name || !phone || !date || isNaN(points)){
-    alert("All fields required");
+  if(!name || !phone || !date){
+    alert("Name, Phone, Date required");
     return;
   }
 
@@ -243,41 +242,41 @@ window.saveEdit = async (id)=>{
     return;
   }
 
+  const old = allVotes.find(v=>v.id===id);
+  let newTotal = old.totalPoints;
+
+  if(input !== ""){
+    const val = Number(input);
+    if(isNaN(val)){ alert("Invalid points"); return; }
+    newTotal = (mode==="add") ? (old.totalPoints + val) : val;
+  }
+
   /* UPDATE VOTE */
   await updateDoc(doc(db,"votes",id),{
     name,
     phone,
-    totalPoints: points,
+    totalPoints: newTotal,
     date
   });
 
-  /* CHECK USER */
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",phone)
-  );
+  /* USER SYNC (ADD / UPDATE) */
+  const q = query(collection(db,"users"), where("phone","==",phone));
   const snap = await getDocs(q);
 
   if(snap.empty){
-    /* CREATE USER IF NOT EXISTS */
     await addDoc(collection(db,"users"),{
-      name: name,
-      phone: phone,
-      password: "1",
-      createdFrom: "admin",
-      createdAt: new Date().toISOString()
+      name, phone,
+      password:"1",
+      createdFrom:"admin",
+      createdAt:new Date().toISOString()
     });
   }else{
-    /* UPDATE EXISTING USER */
     snap.forEach(async u=>{
-      await updateDoc(doc(db,"users",u.id),{
-        name: name,
-        phone: phone
-      });
+      await updateDoc(doc(db,"users",u.id),{ name, phone });
     });
   }
 
-  alert("Saved ✔ Vote + User synced");
+  alert(`Saved ✅ New Points: ${newTotal}`);
   loadVotes();
 };
 
@@ -293,14 +292,12 @@ window.renderSummary = ()=>{
   const type = summaryType.value;
   summaryCards.innerHTML="";
   const map={};
-
   filteredVotes.forEach(v=>{
     const k = type==="daily" ? v.date : v.date.slice(0,7);
     if(!map[k]) map[k]={voters:0,points:0};
     map[k].voters++;
     map[k].points+=v.totalPoints;
   });
-
   Object.keys(map).sort().forEach(k=>{
     if(map[k].voters===0) return;
     summaryCards.innerHTML+=`
