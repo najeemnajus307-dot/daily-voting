@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin Voting Dashboard</title>
+<title>Admin – Total Points</title>
 
 <style>
 body{
@@ -10,7 +10,9 @@ body{
   background:#f1f5f9;
   padding:20px;
 }
-h2{text-align:center;}
+h2{
+  text-align:center;
+}
 table{
   width:100%;
   border-collapse:collapse;
@@ -30,26 +32,26 @@ th{
 
 <body>
 
-<h2>Admin Voting Dashboard</h2>
+<h2>Admin Dashboard – Total Points</h2>
 
 <table>
   <thead>
     <tr>
-      <th>Name</th>
+      <th>User Name</th>
       <th>Phone</th>
-      <th>Tasks</th>
-      <th>Date</th>
-      <th>Points</th>
+      <th>Total Points</th>
     </tr>
   </thead>
-  <tbody id="data"></tbody>
+  <tbody id="rows"></tbody>
 </table>
 
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, getDocs, collection }
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import {
+  getFirestore, getDocs, collection
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔐 ADMIN ONLY */
 const ADMIN_PHONE = "7994302567";
@@ -66,20 +68,33 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* LOAD VOTES */
+/* 🔢 CALCULATE TOTAL POINTS */
 const snap = await getDocs(collection(db,"votes"));
-snap.forEach(docu=>{
-  const v = docu.data();
-  data.innerHTML += `
+
+const users = {}; // phone → {name, points}
+
+snap.forEach(d=>{
+  const v = d.data();
+  if(!users[v.phone]){
+    users[v.phone] = {
+      name: v.name,
+      points: 0
+    };
+  }
+  users[v.phone].points += v.points;
+});
+
+/* SHOW TABLE */
+for(const phone in users){
+  const u = users[phone];
+  rows.innerHTML += `
     <tr>
-      <td>${v.name}</td>
-      <td>${v.phone}</td>
-      <td>${v.tasks.join(", ")}</td>
-      <td>${v.date}</td>
-      <td><b>${v.points}</b></td>
+      <td>${u.name}</td>
+      <td>${phone}</td>
+      <td><b>${u.points}</b></td>
     </tr>
   `;
-});
+}
 </script>
 
 </body>
