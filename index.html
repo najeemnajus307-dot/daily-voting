@@ -6,135 +6,128 @@
 
 <style>
 body{
-  font-family: Arial, sans-serif;
-  background: #f1f5f9;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
+  font-family:Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
 .box{
-  background: #fff;
-  padding: 25px;
-  width: 360px;
-  border-radius: 12px;
-  box-shadow: 0 0 12px rgba(0,0,0,.2);
+  background:#fff;
+  padding:25px;
+  width:360px;
+  border-radius:12px;
+  box-shadow:0 0 12px rgba(0,0,0,.2);
 }
-h2{text-align: center; margin-bottom: 10px;}
+h2{text-align:center}
 input{
-  width: 100%;
-  padding: 10px;
-  margin: 8px 0;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  width:100%;
+  padding:10px;
+  margin:8px 0;
 }
 button{
-  width: 100%;
-  padding: 12px;
-  background: #16a34a;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
+  width:100%;
+  padding:12px;
+  background:#16a34a;
+  color:white;
+  border:none;
+  border-radius:8px;
+  font-size:16px;
+  cursor:pointer;
 }
-button:hover{background:#15803d;}
 .link{
-  text-align: center;
-  margin-top: 10px;
-  color: #2563eb;
-  cursor: pointer;
+  text-align:center;
+  margin-top:10px;
+  color:#2563eb;
+  cursor:pointer;
 }
-.link:hover{text-decoration: underline;}
 </style>
 </head>
 
 <body>
 
 <div class="box">
+  <h2 id="title">Login</h2>
 
-<h2 id="title">Login</h2>
+  <input id="name" placeholder="Name" style="display:none">
+  <input id="phone" placeholder="Phone Number">
+  <input id="pass" type="password" placeholder="Password">
 
-<input id="name" placeholder="Name" style="display:none">
-<input id="phone" placeholder="Phone Number">
-<input id="pass" type="password" placeholder="Password">
+  <button onclick="submit()">Submit</button>
 
-<button onclick="submitForm()">Submit</button>
-
-<div class="link" onclick="toggleMode()" id="toggleText">
-New user? Sign up
-</div>
-
+  <div class="link" onclick="toggle()" id="toggleText">
+    New user? Sign up
+  </div>
 </div>
 
 <script>
-let mode = "login"; // current mode: login or signup
+let mode="login";
 
-function toggleMode(){
-  if(mode === "login"){
-    mode = "signup";
-    title.innerText = "Sign Up";
-    name.style.display = "block";
-    toggleText.innerText = "Already have account? Login";
-  } else {
-    mode = "login";
-    title.innerText = "Login";
-    name.style.display = "none";
-    toggleText.innerText = "New user? Sign up";
+const nameInp  = document.getElementById("name");
+const phoneInp = document.getElementById("phone");
+const passInp  = document.getElementById("pass");
+
+function toggle(){
+  if(mode==="login"){
+    mode="signup";
+    title.innerText="Sign Up";
+    nameInp.style.display="block";
+    toggleText.innerText="Already have account? Login";
+  }else{
+    mode="login";
+    title.innerText="Login";
+    nameInp.style.display="none";
+    toggleText.innerText="New user? Sign up";
   }
 }
 
-function submitForm(){
-  const phone = document.getElementById("phone").value.trim();
-  const pass = document.getElementById("pass").value.trim();
-  const nm = document.getElementById("name").value.trim();
+function submit(){
+  const phone = phoneInp.value.trim();
+  const pass  = passInp.value.trim();
+  const name  = nameInp.value.trim();
 
   if(!phone || !pass){
     alert("Phone & Password required");
     return;
   }
 
-  if(mode === "signup"){
-    if(!nm){
+  /* SIGNUP */
+  if(mode==="signup"){
+    if(!name){
       alert("Name required");
       return;
     }
+    const user = { name, phone, pass };
 
-    // check if user already exists
-    if(localStorage.getItem("ff_user_" + phone)){
-      alert("User already exists, please login.");
-      toggleMode();
-      return;
-    }
-
-    const user = { name: nm, phone: phone, pass: pass, points: 0 };
-    localStorage.setItem("ff_user_" + phone, JSON.stringify(user));
+    // ✅ NEW KEY
+    localStorage.setItem("ff_user_"+phone, JSON.stringify(user));
 
     alert("Account created ✅ Login now");
-    toggleMode();
+    toggle();
     return;
   }
 
-  // LOGIN section
-  const data = localStorage.getItem("ff_user_" + phone);
+  /* LOGIN */
+  let data =
+    localStorage.getItem("ff_user_"+phone) ||     // new
+    localStorage.getItem("user_"+phone);           // old support
+
   if(!data){
-    alert("Account not found. Please sign up.");
+    alert("Account not found");
     return;
   }
 
   const user = JSON.parse(data);
   if(user.pass !== pass){
-    alert("Wrong password ❌");
+    alert("Wrong password");
     return;
   }
 
-  // save current session
   sessionStorage.setItem("userName", user.name);
   sessionStorage.setItem("userPhone", user.phone);
 
-  alert("Login successful ✅");
-  window.location.replace("vote.html");
+  location.replace("vote.html");
 }
 </script>
 
