@@ -63,16 +63,12 @@ button:disabled{
 </div>
 
 <script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, setDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG (API KEY MUST BE REAL) */
+/* 🔥 FIREBASE CONFIG – MUST REPLACE */
 const firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY_HERE",
+  apiKey: "PASTE_YOUR_REAL_API_KEY_HERE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
@@ -81,14 +77,13 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* AUTO REDIRECT IF LOGGED */
-if(sessionStorage.getItem("logged")==="yes"){
+if(sessionStorage.getItem("logged") === "yes"){
   location.replace("vote.html");
 }
 
-/* UI TOGGLE */
+/* UI SWITCH */
 const loginBox = document.getElementById("loginBox");
 const signupBox = document.getElementById("signupBox");
-
 document.getElementById("toSignup").onclick = ()=>{
   loginBox.style.display="none";
   signupBox.style.display="block";
@@ -98,16 +93,16 @@ document.getElementById("toLogin").onclick = ()=>{
   loginBox.style.display="block";
 };
 
-/* 🔒 LOGIN LOCK (BLINK FIX) */
+/* LOCKS (BLINK FIX) */
 let loggingIn = false;
 let signingUp = false;
 
 /* LOGIN */
 document.getElementById("loginBtn").onclick = async ()=>{
-  if(loggingIn) return;          // 🚫 double click block
+  if(loggingIn) return;
   loggingIn = true;
 
-  const btn = document.getElementById("loginBtn");
+  const btn = loginBtn;
   btn.disabled = true;
   btn.innerText = "Logging in...";
 
@@ -136,14 +131,13 @@ document.getElementById("loginBtn").onclick = async ()=>{
       return;
     }
 
-    // ✅ SUCCESS
     sessionStorage.setItem("logged","yes");
     sessionStorage.setItem("userName",snap.data().name);
     sessionStorage.setItem("userPhone",phone);
 
     location.replace("vote.html");
 
-  }catch(e){
+  }catch(err){
     alert("Login error");
     resetLogin();
   }
@@ -151,17 +145,16 @@ document.getElementById("loginBtn").onclick = async ()=>{
 
 function resetLogin(){
   loggingIn = false;
-  const btn = document.getElementById("loginBtn");
-  btn.disabled = false;
-  btn.innerText = "Login";
+  loginBtn.disabled = false;
+  loginBtn.innerText = "Login";
 }
 
 /* SIGNUP */
 document.getElementById("signupBtn").onclick = async ()=>{
-  if(signingUp) return;          // 🚫 double click block
+  if(signingUp) return;
   signingUp = true;
 
-  const btn = document.getElementById("signupBtn");
+  const btn = signupBtn;
   btn.disabled = true;
   btn.innerText = "Signing up...";
 
@@ -189,14 +182,13 @@ document.getElementById("signupBtn").onclick = async ()=>{
       });
     }
 
-    // ✅ AUTO LOGIN
     sessionStorage.setItem("logged","yes");
     sessionStorage.setItem("userName",name);
     sessionStorage.setItem("userPhone",phone);
 
     location.replace("vote.html");
 
-  }catch(e){
+  }catch(err){
     alert("Signup error");
     resetSignup();
   }
@@ -204,9 +196,8 @@ document.getElementById("signupBtn").onclick = async ()=>{
 
 function resetSignup(){
   signingUp = false;
-  const btn = document.getElementById("signupBtn");
-  btn.disabled = false;
-  btn.innerText = "Signup";
+  signupBtn.disabled = false;
+  signupBtn.innerText = "Signup";
 }
 </script>
 
