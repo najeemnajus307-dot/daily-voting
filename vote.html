@@ -1,145 +1,75 @@
 <!DOCTYPE html>
-<html lang="ml">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Daily Challenge Vote</title>
-
+<title>Daily Voting</title>
 <style>
-body{
-    font-family: Arial;
-    background:#f1f5f9;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-}
-.box{
-    background:white;
-    padding:25px;
-    width:360px;
-    border-radius:10px;
-    box-shadow:0 0 10px rgba(0,0,0,0.2);
-}
-h2{text-align:center;margin-bottom:10px}
-.task{
-    border:1px solid #ddd;
-    padding:10px;
-    border-radius:6px;
-    margin-bottom:10px;
-}
-.task label{
-    font-weight:bold;
-}
-.points{
-    font-size:13px;
-    margin-top:5px;
-}
-button{
-    width:100%;
-    padding:10px;
-    margin-top:15px;
-    background:#16a34a;
-    color:white;
-    border:none;
-    border-radius:6px;
-    font-size:16px;
-    cursor:pointer;
-}
-button:disabled{
-    background:#9ca3af;
-}
+body{font-family:Arial;background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh}
+.box{background:#fff;padding:25px;width:360px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,.2)}
+button{width:100%;padding:10px;background:#16a34a;color:#fff;border:none;border-radius:6px;margin-top:15px}
 </style>
 </head>
-
 <body>
 
 <div class="box">
-    <h2>Daily Challenge Vote</h2>
-    <div id="taskBox"></div>
-    <button id="submitBtn" onclick="submitVote()">Submit Vote</button>
+<h3>Daily Tasks</h3>
+<div id="info"></div>
+<div id="tasks"></div>
+<button onclick="submitVote()">Submit Vote</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE */
-const firebaseConfig = {
-  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee",
-  storageBucket: "daily-voting-793ee.firebasestorage.app",
-  messagingSenderId: "1065830068376",
-  appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
-};
-
-const app = initializeApp(firebaseConfig);
+const app = initializeApp({
+  apiKey:"YOUR_KEY",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK */
-const user  = sessionStorage.getItem("userName");
-const phone = sessionStorage.getItem("userPhone");
-if(!user || !phone){
-    location.replace("index.html");
-}
+let phone = sessionStorage.getItem("phone");
+let name  = sessionStorage.getItem("name");
+if(!phone) location.href="index.html";
 
-/* 📅 DATE */
-const today = new Date().toISOString().split("T")[0];
-const voteRef = doc(db,"votes",phone+"_"+today);
+let today = new Date().toISOString().split("T")[0];
+document.getElementById("info").innerText = `Welcome ${name} | ${today}`;
 
-const taskBox = document.getElementById("taskBox");
-const btn = document.getElementById("submitBtn");
+let taskBox = document.getElementById("tasks");
+let tasksSnap = await getDocs(collection(db,"tasks"));
 
-/* 📥 LOAD TASKS (ADMIN ADD ചെയ്തവ) */
-const taskSnap = await getDoc(doc(db,"config","tasks"));
+tasksSnap.forEach(t=>{
+  taskBox.innerHTML += `
+   <label>
+    <input type="checkbox" data-id="${t.id}">
+    ${t.data().title} (${t.data().points})
+   </label><br>`;
+});
 
-if(!taskSnap.exists()){
-    taskBox.innerHTML="<p style='color:red'>No tasks added</p>";
-    btn.disabled=true;
-}else{
-    taskSnap.data().list.forEach((t,i)=>{
-        taskBox.innerHTML += `
-        <div class="task">
-            <label>
-                <input type="checkbox" id="task_${i}">
-                ${t.name}
-            </label>
-            <div class="points">Points : ${t.points}</div>
-        </div>`;
-    });
-}
-
-/* 🔒 ALREADY VOTED CHECK */
-const voted = await getDoc(voteRef);
-if(voted.exists()){
-    btn.disabled=true;
-    btn.innerText="Already Voted Today";
-}
-
-/* ✅ SUBMIT */
 window.submitVote = async ()=>{
-    let tasks = {};
-    let total = 0;
+  let checks = document.querySelectorAll("input[type=checkbox]");
+  let total = 0, done={};
 
-    taskSnap.data().list.forEach((t,i)=>{
-        const checked = document.getElementById("task_"+i).checked;
-        tasks[t.name] = checked;
-        if(checked) total += t.points;
-    });
+  checks.forEach(c=>{
+    let pts = parseInt(c.parentElement.innerText.match(/\d+/)[0]);
+    done[c.dataset.id] = c.checked;
+    if(c.checked) total += pts;
+  });
 
-    await setDoc(voteRef,{
-        name:user,
-        phone:phone,
-        date:today,
-        tasks:tasks,
-        points:total,
-        submittedAt:new Date().toISOString()
-    });
+  let ref = doc(db,"votes",phone+"_"+today);
+  let exist = await getDoc(ref);
+  if(exist.exists()){ alert("Already voted"); return; }
 
-    alert("Vote submitted 👍");
-    location.reload();
-};
+  await setDoc(ref,{
+    name, phone, date:today,
+    tasks:done,
+    totalPoints:total
+  });
+
+  alert("Vote submitted 👍");
+  location.reload();
+}
 </script>
-
 </body>
 </html>
