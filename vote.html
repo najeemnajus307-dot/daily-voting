@@ -1,60 +1,153 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Vote</title>
+<title>Faith & Fitness - Voting</title>
+
 <style>
-body{font-family:Arial;background:#eef2f7}
-.box{background:#fff;padding:20px;width:320px;margin:40px auto;border-radius:10px}
-button{width:100%;padding:10px;margin-top:10px}
+body{
+  font-family: Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+
+.box{
+  background:white;
+  padding:25px;
+  width:320px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+
+h3{
+  text-align:center;
+  margin-bottom:10px;
+}
+
+.info{
+  text-align:center;
+  font-size:14px;
+  margin-bottom:10px;
+}
+
+.task{
+  margin:6px 0;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  margin-top:12px;
+  background:#16a34a;
+  color:white;
+  border:none;
+  cursor:pointer;
+  border-radius:6px;
+}
+
+.logout{
+  background:#e5e7eb;
+  color:black;
+}
 </style>
 </head>
+
 <body>
 
 <div class="box">
-<h3 id="uname"></h3>
-<div id="tasks"></div>
-<button onclick="submitVote()">Submit</button>
+
+  <h3>Faith & Fitness</h3>
+
+  <div class="info">
+    Hi <b id="uname"></b><br>
+    <span id="today"></span>
+  </div>
+
+  <!-- TASK LIST -->
+  <div id="tasks"></div>
+
+  <button onclick="submitVote()">Submit Today Task</button>
+  <button class="logout" onclick="logout()">Logout</button>
+
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-const app=initializeApp({
+/* FIREBASE CONFIG */
+const app = initializeApp({
   apiKey:"YOUR_API_KEY",
   authDomain:"daily-voting-793ee.firebaseapp.com",
   projectId:"daily-voting-793ee"
 });
-const db=getFirestore(app);
+const db = getFirestore(app);
 
-const phone=sessionStorage.getItem("phone");
-const name=sessionStorage.getItem("name");
+/* SESSION */
+const phone = sessionStorage.getItem("phone");
+const name  = sessionStorage.getItem("name");
 if(!phone) location.href="index.html";
-uname.innerText="Hi "+name;
 
-const taskSnap=await getDoc(doc(db,"settings","tasks"));
-const taskList=taskSnap.exists()?taskSnap.data().list:[];
+/* USER INFO */
+uname.innerText = name;
+today.innerText = new Date().toDateString();
+
+/* LOAD TASKS (FROM TASK EDITOR) */
+const taskSnap = await getDoc(doc(db,"settings","tasks"));
+const taskList = taskSnap.exists() ? taskSnap.data().list : [];
 
 taskList.forEach(t=>{
-  tasks.innerHTML+=`
-    <label>
-      <input type="checkbox" value="${t}"> ${t}
-    </label><br>`;
+  tasks.innerHTML += `
+    <div class="task">
+      <label>
+        <input type="checkbox" value="${t}"> ${t}
+      </label>
+    </div>
+  `;
 });
 
-window.submitVote=async()=>{
-  const sel=[...document.querySelectorAll("input:checked")].map(i=>i.value);
-  if(sel.length===0){alert("Select task");return;}
+/* SUBMIT VOTE */
+window.submitVote = async ()=>{
+  const selected = [...document.querySelectorAll(
+    'input[type="checkbox"]:checked'
+  )].map(i=>i.value);
 
-  const d=new Date().toISOString().slice(0,10);
-  const ref=doc(db,"votes",phone+"_"+d);
-  if((await getDoc(ref)).exists()){
-    alert("Already voted today");return;
+  if(selected.length === 0){
+    alert("Select at least one task");
+    return;
   }
-  await setDoc(ref,{phone,name,tasks:sel,date:d});
-  alert("Vote submitted");
+
+  const dateKey = new Date().toISOString().slice(0,10);
+  const ref = doc(db,"votes", phone+"_"+dateKey);
+
+  if((await getDoc(ref)).exists()){
+    alert("Already submitted today");
+    return;
+  }
+
+  await setDoc(ref,{
+    phone:phone,
+    name:name,
+    tasks:selected,
+    date:dateKey
+  });
+
+  alert("Task submitted successfully ✅");
+};
+
+/* LOGOUT */
+window.logout = ()=>{
+  sessionStorage.clear();
+  location.href="index.html";
 };
 </script>
+
 </body>
 </html>
