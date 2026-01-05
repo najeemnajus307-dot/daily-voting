@@ -18,53 +18,21 @@ h2,h3{text-align:center;}
   box-shadow:0 0 10px rgba(0,0,0,.2);
   margin-bottom:20px;
 }
-.controls{
-  text-align:center;
-  margin-bottom:10px;
-}
-input,select,button{
-  padding:6px;
-  margin:3px;
-}
+.controls{text-align:center;margin-bottom:10px;}
+input,select,button{padding:6px;margin:3px;}
 button{cursor:pointer;}
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-th,td{
-  border:1px solid #ccc;
-  padding:8px;
-  text-align:center;
-}
-th{
-  background:#2563eb;
-  color:white;
-}
+table{width:100%;border-collapse:collapse;}
+th,td{border:1px solid #ccc;padding:8px;text-align:center;}
+th{background:#2563eb;color:white;}
 .rank1{background:#fde047;}
 .rank2{background:#e5e7eb;}
 .rank3{background:#fcd34d;}
-.delBtn{
-  background:#dc2626;
-  color:white;
-  border:none;
-  padding:4px 8px;
-}
-.saveBtn{
-  background:#16a34a;
-  color:white;
-  border:none;
-  padding:4px 8px;
-}
-.count{
-  font-weight:bold;
-  text-align:center;
-  margin-bottom:10px;
-}
+.delBtn{background:#dc2626;color:white;border:none;padding:4px 8px;}
+.saveBtn{background:#16a34a;color:white;border:none;padding:4px 8px;}
+.editInp{width:95%;}
+.count{font-weight:bold;text-align:center;margin-bottom:10px;}
 .summary{
-  display:flex;
-  gap:10px;
-  justify-content:center;
-  flex-wrap:wrap;
+  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
 }
 .summary .card{
   background:#f8fafc;
@@ -73,9 +41,6 @@ th{
   min-width:160px;
   text-align:center;
   box-shadow:0 0 6px rgba(0,0,0,.1);
-}
-.editInp{
-  width:95%;
 }
 </style>
 </head>
@@ -106,7 +71,7 @@ th{
   <div class="summary" id="summaryCards"></div>
 </div>
 
-<!-- TOP 3 RANK -->
+<!-- TOP 3 -->
 <div class="box">
   <h3>Top 3 Ranking</h3>
   <table>
@@ -122,9 +87,9 @@ th{
   </table>
 </div>
 
-<!-- ALL VOTING REPORT -->
+<!-- FULL REPORT -->
 <div class="box">
-  <h3>All Voting Report (High → Low)</h3>
+  <h3>All Voting Report (Name & Phone Editable)</h3>
   <table>
     <thead>
       <tr>
@@ -145,9 +110,9 @@ import {
   getFirestore,
   collection,
   getDocs,
+  updateDoc,
   deleteDoc,
-  doc,
-  updateDoc
+  doc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔴 FIREBASE CONFIG */
@@ -160,6 +125,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+/* 🔐 ADMIN PASSWORD */
+const ADMIN_PASSWORD = "1";
+
 let allVotes = [];
 let filteredVotes = [];
 
@@ -171,31 +139,30 @@ async function loadVotes(){
     allVotes.push({ id:d.id, ...d.data() });
   });
 
-  document.getElementById("totalCount").innerText =
-    "Total Voters : " + allVotes.length;
-
+  totalCount.innerText = "Total Voters : " + allVotes.length;
   filteredVotes = [...allVotes];
   renderAll(filteredVotes);
 }
 loadVotes();
 
-/* DATE FILTER */
+/* FILTER */
 window.applyFilter = ()=>{
-  const from = fromDate.value;
-  const to = toDate.value;
+  const f = fromDate.value;
+  const t = toDate.value;
 
   filteredVotes = allVotes.filter(v=>{
-    if(from && v.date < from) return false;
-    if(to && v.date > to) return false;
+    if(f && v.date < f) return false;
+    if(t && v.date > t) return false;
     return true;
   });
 
   renderAll(filteredVotes);
 };
+
 window.resetFilter = ()=>{
   fromDate.value="";
   toDate.value="";
-  filteredVotes = [...allVotes];
+  filteredVotes=[...allVotes];
   renderAll(filteredVotes);
 };
 
@@ -210,13 +177,13 @@ function renderAll(votes){
     return;
   }
 
-  const sorted = [...votes].sort((a,b)=>b.totalPoints - a.totalPoints);
+  const sorted=[...votes].sort((a,b)=>b.totalPoints-a.totalPoints);
   renderRank(sorted);
   renderReport(sorted);
   renderSummary();
 }
 
-/* TOP 3 RANK */
+/* TOP 3 */
 function renderRank(votes){
   let rank=0,last=null;
   votes.forEach(v=>{
@@ -230,66 +197,84 @@ function renderRank(votes){
     rankBody.innerHTML+=`
       <tr class="${cls}">
         <td>${rank}</td>
-        <td>${v.name||"-"}</td>
-        <td>${v.phone||"-"}</td>
+        <td>${v.name}</td>
+        <td>${v.phone}</td>
         <td>${v.totalPoints}</td>
       </tr>`;
   });
 }
 
-/* FULL REPORT WITH EDIT */
+/* REPORT (POINTS READ-ONLY) */
 function renderReport(votes){
   votes.forEach(v=>{
     reportBody.innerHTML+=`
       <tr>
-        <td><input class="editInp" id="name_${v.id}" value="${v.name||""}"></td>
-        <td><input class="editInp" id="phone_${v.id}" value="${v.phone||""}"></td>
-        <td>${v.totalPoints}</td>
-        <td>${v.date}</td>
         <td>
-          <button class="saveBtn" onclick="updateUser('${v.id}')">Save</button>
+          <input class="editInp" id="n_${v.id}" value="${v.name}">
+        </td>
+        <td>
+          <input class="editInp" id="p_${v.id}" value="${v.phone}">
+        </td>
+        <td>${v.totalPoints}</td>
+        <td>
+          <input class="editInp" type="date" id="d_${v.id}" value="${v.date}">
+        </td>
+        <td>
+          <button class="saveBtn" onclick="saveEdit('${v.id}')">Save</button>
           <button class="delBtn" onclick="deleteVote('${v.id}')">Delete</button>
         </td>
       </tr>`;
   });
 }
 
-/* UPDATE NAME & PHONE ONLY */
-window.updateUser = async (id)=>{
-  const name = document.getElementById("name_"+id).value.trim();
-  const phone = document.getElementById("phone_"+id).value.trim();
+/* SAVE NAME & PHONE (POINTS SAME) */
+window.saveEdit = async (id)=>{
+  const name  = document.getElementById("n_"+id).value.trim();
+  const phone = document.getElementById("p_"+id).value.trim();
+  const date  = document.getElementById("d_"+id).value;
 
-  if(!name || !phone){
-    alert("Name & Phone required");
+  if(!name || !phone || !date){
+    alert("All fields required");
     return;
   }
 
+  const pass = prompt("Enter admin password:");
+  if(pass !== ADMIN_PASSWORD){
+    alert("Wrong password ❌");
+    return;
+  }
+
+  const old = allVotes.find(v=>v.id===id);
+
   await updateDoc(doc(db,"votes",id),{
-    name:name,
-    phone:phone
+    name: name,
+    phone: phone,
+    date: date,
+    totalPoints: old.totalPoints   // 🔒 SAME POINT
   });
 
-  alert("User details updated ✅");
+  alert("User data saved to Firebase ✅");
+  loadVotes();
 };
 
-/* DELETE VOTE */
+/* DELETE */
 window.deleteVote = async (id)=>{
   if(!confirm("Delete this vote?")) return;
   await deleteDoc(doc(db,"votes",id));
   loadVotes();
 };
 
-/* SUMMARY (NO EMPTY DATES) */
+/* SUMMARY */
 window.renderSummary = ()=>{
   const type = summaryType.value;
   summaryCards.innerHTML="";
   const map={};
 
   filteredVotes.forEach(v=>{
-    const key = type==="daily" ? v.date : v.date.slice(0,7);
-    if(!map[key]) map[key]={voters:0,points:0};
-    map[key].voters++;
-    map[key].points+=v.totalPoints||0;
+    const k = type==="daily" ? v.date : v.date.slice(0,7);
+    if(!map[k]) map[k]={voters:0,points:0};
+    map[k].voters++;
+    map[k].points+=v.totalPoints;
   });
 
   Object.keys(map).sort().forEach(k=>{
@@ -301,10 +286,6 @@ window.renderSummary = ()=>{
         Points: ${map[k].points}
       </div>`;
   });
-
-  if(summaryCards.innerHTML===""){
-    summaryCards.innerHTML="<p>No data</p>";
-  }
 };
 </script>
 
