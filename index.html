@@ -1,58 +1,132 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Login</title>
+<title>Faith & Fitness - Login</title>
+
 <style>
-body{font-family:Arial;background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh}
-.box{background:#fff;padding:25px;width:300px;border-radius:10px}
-input,button{width:100%;padding:10px;margin:6px 0}
-button{background:#16a34a;color:#fff;border:none}
+body{
+  font-family:Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.box{
+  background:#fff;
+  padding:25px;
+  width:320px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+input,button{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+}
+button{
+  background:#16a34a;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
+.link{
+  text-align:center;
+  color:blue;
+  cursor:pointer;
+  margin-top:6px;
+}
 </style>
 </head>
+
 <body>
 
 <div class="box">
-  <h3>Login</h3>
+  <h3 id="title">Login</h3>
+
+  <input id="name" placeholder="Name" style="display:none">
   <input id="phone" placeholder="Phone">
   <input id="pass" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
+
+  <button onclick="submit()">Login</button>
+
+  <div class="link" onclick="toggle()">Create account</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import {
+  getFirestore, collection, addDoc,
+  getDocs, query, where
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-const app = initializeApp({
-  apiKey:"YOUR_API_KEY",
-  authDomain:"daily-voting-793ee.firebaseapp.com",
-  projectId:"daily-voting-793ee"
-});
+/* 🔥 FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+
+const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const ADMIN_PHONE = "7994302567";
+let signup = false;
 
-window.login = async ()=>{
-  const phone = document.getElementById("phone").value.trim();
-  const pass  = document.getElementById("pass").value.trim();
+window.toggle = ()=>{
+  signup = !signup;
+  title.innerText = signup ? "Signup" : "Login";
+  name.style.display = signup ? "block" : "none";
+};
 
-  const ref = doc(db,"users",phone);
-  const snap = await getDoc(ref);
+window.submit = async ()=>{
+  const n = name.value.trim();
+  const p = phone.value.trim();
+  const pw = pass.value.trim();
 
-  if(!snap.exists() || snap.data().password !== pass){
-    alert("Invalid login");
+  if(!p || !pw || (signup && !n)){
+    alert("Fill all fields");
     return;
   }
 
-  sessionStorage.setItem("phone",phone);
-  sessionStorage.setItem("name",snap.data().name);
+  const q = query(collection(db,"users"), where("phone","==",p));
+  const snap = await getDocs(q);
 
-  if(phone === ADMIN_PHONE){
-    location.href="task-editor.html"; // admin
+  if(signup){
+    if(!snap.empty){
+      alert("Account already exists");
+      return;
+    }
+    await addDoc(collection(db,"users"),{
+      name:n,
+      phone:p,
+      password:pw,
+      createdAt:new Date().toISOString()
+    });
+    alert("Signup success. Login now");
+    toggle();
   }else{
-    location.href="vote.html";        // user
+    if(snap.empty){
+      alert("Account not found");
+      return;
+    }
+    let ok=false;
+    snap.forEach(d=>{
+      if(d.data().password === pw){
+        ok=true;
+        sessionStorage.setItem("uid", d.id);
+        sessionStorage.setItem("name", d.data().name);
+        sessionStorage.setItem("phone", d.data().phone);
+      }
+    });
+    if(!ok){
+      alert("Wrong password");
+      return;
+    }
+    location.href="vote.html";
   }
 };
 </script>
+
 </body>
 </html>
