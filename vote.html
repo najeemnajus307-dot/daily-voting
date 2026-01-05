@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness - Vote</title>
+<title>Faith & Fitness - Voting</title>
 
 <style>
 body{
@@ -13,80 +13,47 @@ body{
   align-items:center;
   height:100vh;
 }
-
-/* MAIN BOX */
 .box{
   background:white;
   padding:25px;
-  width:340px;
+  width:320px;
   border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,0.2);
+  box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-
-/* TITLE */
-h2{
+h2{text-align:center;margin:0;}
+.info{
   text-align:center;
-  margin:0;
-}
-.sub{
-  text-align:center;
-  font-size:13px;
-  color:#555;
-  margin-bottom:15px;
-}
-
-/* USER INFO */
-.user{
-  text-align:center;
-  margin-bottom:15px;
   font-size:14px;
+  margin-bottom:12px;
 }
-
-/* TASKS */
-.task{
-  margin:6px 0;
-  font-size:15px;
-}
-
-/* BUTTONS */
+.task{margin:6px 0;}
 button{
   width:100%;
   padding:10px;
   margin-top:12px;
   border:none;
   cursor:pointer;
-  font-size:15px;
   border-radius:6px;
 }
-.submit{
-  background:#16a34a;
-  color:white;
-}
-.logout{
-  background:#e5e7eb;
-  color:black;
-}
+.submit{background:#16a34a;color:white;}
+.logout{background:#e5e7eb;}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-
   <h2>Faith & Fitness</h2>
-  <div class="sub">Daily Task Voting</div>
 
-  <div class="user">
+  <div class="info">
     Hi <b id="uname"></b><br>
     <span id="today"></span>
   </div>
 
-  <!-- TASK LIST -->
   <div id="tasks"></div>
 
-  <button class="submit" onclick="submitVote()">Submit</button>
+  <button class="submit" onclick="submitVote()">Submit Today Task</button>
   <button class="logout" onclick="logout()">Logout</button>
-
 </div>
 
 <script type="module">
@@ -95,7 +62,7 @@ import { initializeApp } from
 import { getFirestore, doc, getDoc, setDoc }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE CONFIG */
+/* FIREBASE */
 const app = initializeApp({
   apiKey:"YOUR_API_KEY",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -108,37 +75,31 @@ const phone = sessionStorage.getItem("phone");
 const name  = sessionStorage.getItem("name");
 if(!phone) location.href="index.html";
 
-/* USER INFO */
 uname.innerText = name;
 today.innerText = new Date().toDateString();
 
-/* LOAD TASKS */
+/* LOAD TASKS FROM ADMIN */
 const snap = await getDoc(doc(db,"settings","tasks"));
 const list = snap.exists() ? snap.data().list : [];
 
 list.forEach(t=>{
   tasks.innerHTML += `
     <div class="task">
-      <label>
-        <input type="checkbox" value="${t}"> ${t}
-      </label>
-    </div>
-  `;
+      <label><input type="checkbox" value="${t}"> ${t}</label>
+    </div>`;
 });
 
 /* SUBMIT */
 window.submitVote = async ()=>{
-  const selected = [...document.querySelectorAll(
-    'input[type="checkbox"]:checked'
-  )].map(i=>i.value);
-
-  if(selected.length === 0){
+  const sel = [...document.querySelectorAll("input:checked")]
+              .map(i=>i.value);
+  if(sel.length===0){
     alert("Select at least one task");
     return;
   }
 
-  const dateKey = new Date().toISOString().slice(0,10);
-  const ref = doc(db,"votes", phone+"_"+dateKey);
+  const d = new Date().toISOString().slice(0,10);
+  const ref = doc(db,"votes", phone+"_"+d);
 
   if((await getDoc(ref)).exists()){
     alert("Already submitted today");
@@ -148,14 +109,13 @@ window.submitVote = async ()=>{
   await setDoc(ref,{
     phone:phone,
     name:name,
-    tasks:selected,
-    date:dateKey
+    tasks:sel,
+    date:d
   });
 
   alert("Task submitted successfully ✅");
 };
 
-/* LOGOUT */
 window.logout = ()=>{
   sessionStorage.clear();
   location.href="index.html";
