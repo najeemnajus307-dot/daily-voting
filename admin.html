@@ -23,14 +23,13 @@ h2,h3{text-align:center;}
   margin-bottom:10px;
 }
 input,select,button{
-  padding:8px;
-  margin:5px;
+  padding:6px;
+  margin:3px;
 }
 button{cursor:pointer;}
 table{
   width:100%;
   border-collapse:collapse;
-  margin-top:10px;
 }
 th,td{
   border:1px solid #ccc;
@@ -46,6 +45,12 @@ th{
 .rank3{background:#fcd34d;}
 .delBtn{
   background:#dc2626;
+  color:white;
+  border:none;
+  padding:4px 8px;
+}
+.saveBtn{
+  background:#16a34a;
   color:white;
   border:none;
   padding:4px 8px;
@@ -69,6 +74,9 @@ th{
   text-align:center;
   box-shadow:0 0 6px rgba(0,0,0,.1);
 }
+.editInp{
+  width:95%;
+}
 </style>
 </head>
 
@@ -78,7 +86,7 @@ th{
 
 <div class="count" id="totalCount">Total Voters: Loading...</div>
 
-<!-- 📅 DATE FILTER -->
+<!-- DATE FILTER -->
 <div class="box controls">
   From <input type="date" id="fromDate">
   To <input type="date" id="toDate">
@@ -86,7 +94,7 @@ th{
   <button onclick="resetFilter()">Reset</button>
 </div>
 
-<!-- 📊 SUMMARY -->
+<!-- SUMMARY -->
 <div class="box">
   <h3>Summary</h3>
   <div class="controls">
@@ -98,7 +106,7 @@ th{
   <div class="summary" id="summaryCards"></div>
 </div>
 
-<!-- 🏆 TOP 3 RANK -->
+<!-- TOP 3 RANK -->
 <div class="box">
   <h3>Top 3 Ranking</h3>
   <table>
@@ -114,12 +122,9 @@ th{
   </table>
 </div>
 
-<!-- 📋 ALL VOTING REPORT -->
+<!-- ALL VOTING REPORT -->
 <div class="box">
   <h3>All Voting Report (High → Low)</h3>
-  <div class="controls">
-    <button onclick="exportExcel()">Export to Excel</button>
-  </div>
   <table>
     <thead>
       <tr>
@@ -127,7 +132,7 @@ th{
         <th>Phone</th>
         <th>Points</th>
         <th>Date</th>
-        <th>Delete</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody id="reportBody"></tbody>
@@ -141,7 +146,8 @@ import {
   collection,
   getDocs,
   deleteDoc,
-  doc
+  doc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔴 FIREBASE CONFIG */
@@ -157,7 +163,7 @@ const db = getFirestore(app);
 let allVotes = [];
 let filteredVotes = [];
 
-/* LOAD ALL VOTES */
+/* LOAD VOTES */
 async function loadVotes(){
   allVotes = [];
   const snap = await getDocs(collection(db,"votes"));
@@ -175,8 +181,8 @@ loadVotes();
 
 /* DATE FILTER */
 window.applyFilter = ()=>{
-  const from = document.getElementById("fromDate").value;
-  const to   = document.getElementById("toDate").value;
+  const from = fromDate.value;
+  const to = toDate.value;
 
   filteredVotes = allVotes.filter(v=>{
     if(from && v.date < from) return false;
@@ -187,21 +193,20 @@ window.applyFilter = ()=>{
   renderAll(filteredVotes);
 };
 window.resetFilter = ()=>{
-  document.getElementById("fromDate").value="";
-  document.getElementById("toDate").value="";
+  fromDate.value="";
+  toDate.value="";
   filteredVotes = [...allVotes];
   renderAll(filteredVotes);
 };
 
-/* RENDER ALL SECTIONS */
+/* RENDER ALL */
 function renderAll(votes){
-  document.getElementById("rankBody").innerHTML="";
-  document.getElementById("reportBody").innerHTML="";
-  document.getElementById("summaryCards").innerHTML="";
+  rankBody.innerHTML="";
+  reportBody.innerHTML="";
+  summaryCards.innerHTML="";
 
   if(votes.length===0){
-    document.getElementById("summaryCards").innerHTML =
-      "<p style='text-align:center'>No votes in selected period</p>";
+    summaryCards.innerHTML="<p>No votes</p>";
     return;
   }
 
@@ -211,109 +216,95 @@ function renderAll(votes){
   renderSummary();
 }
 
-/* 🏆 TOP 3 RANK (same points → same rank) */
+/* TOP 3 RANK */
 function renderRank(votes){
-  const tbody = document.getElementById("rankBody");
-  let rank=0, last=null;
-
-  for(const v of votes){
-    if(v.totalPoints !== last){
+  let rank=0,last=null;
+  votes.forEach(v=>{
+    if(v.totalPoints!==last){
       rank++;
-      last = v.totalPoints;
+      last=v.totalPoints;
     }
-    if(rank>3) break;
+    if(rank>3) return;
 
-    const cls = rank===1?"rank1":rank===2?"rank2":"rank3";
-    tbody.innerHTML += `
+    const cls=rank===1?"rank1":rank===2?"rank2":"rank3";
+    rankBody.innerHTML+=`
       <tr class="${cls}">
         <td>${rank}</td>
-        <td>${v.name || "-"}</td>
-        <td>${v.phone || "-"}</td>
+        <td>${v.name||"-"}</td>
+        <td>${v.phone||"-"}</td>
         <td>${v.totalPoints}</td>
       </tr>`;
-  }
+  });
 }
 
-/* 📋 FULL REPORT */
+/* FULL REPORT WITH EDIT */
 function renderReport(votes){
-  const tbody = document.getElementById("reportBody");
   votes.forEach(v=>{
-    tbody.innerHTML += `
+    reportBody.innerHTML+=`
       <tr>
-        <td>${v.name || "-"}</td>
-        <td>${v.phone || "-"}</td>
+        <td><input class="editInp" id="name_${v.id}" value="${v.name||""}"></td>
+        <td><input class="editInp" id="phone_${v.id}" value="${v.phone||""}"></td>
         <td>${v.totalPoints}</td>
         <td>${v.date}</td>
         <td>
-          <button class="delBtn" onclick="deleteVote('${v.id}')">
-            Delete
-          </button>
+          <button class="saveBtn" onclick="updateUser('${v.id}')">Save</button>
+          <button class="delBtn" onclick="deleteVote('${v.id}')">Delete</button>
         </td>
       </tr>`;
   });
 }
 
-/* DELETE SINGLE VOTE */
+/* UPDATE NAME & PHONE ONLY */
+window.updateUser = async (id)=>{
+  const name = document.getElementById("name_"+id).value.trim();
+  const phone = document.getElementById("phone_"+id).value.trim();
+
+  if(!name || !phone){
+    alert("Name & Phone required");
+    return;
+  }
+
+  await updateDoc(doc(db,"votes",id),{
+    name:name,
+    phone:phone
+  });
+
+  alert("User details updated ✅");
+};
+
+/* DELETE VOTE */
 window.deleteVote = async (id)=>{
   if(!confirm("Delete this vote?")) return;
   await deleteDoc(doc(db,"votes",id));
   loadVotes();
 };
 
-/* 📊 SUMMARY (FIXED: skip zero-vote dates) */
+/* SUMMARY (NO EMPTY DATES) */
 window.renderSummary = ()=>{
-  const type = document.getElementById("summaryType").value;
-  const cards = document.getElementById("summaryCards");
-  cards.innerHTML="";
+  const type = summaryType.value;
+  summaryCards.innerHTML="";
+  const map={};
 
-  const map = {};
   filteredVotes.forEach(v=>{
-    const key = (type==="daily")
-      ? v.date
-      : v.date.slice(0,7); // YYYY-MM
-
-    if(!map[key]) map[key] = { voters:0, points:0 };
-    map[key].voters += 1;
-    map[key].points += (v.totalPoints || 0);
+    const key = type==="daily" ? v.date : v.date.slice(0,7);
+    if(!map[key]) map[key]={voters:0,points:0};
+    map[key].voters++;
+    map[key].points+=v.totalPoints||0;
   });
 
   Object.keys(map).sort().forEach(k=>{
-    if(map[k].voters === 0) return; // 🔥 FIX HERE
-
-    cards.innerHTML += `
+    if(map[k].voters===0) return;
+    summaryCards.innerHTML+=`
       <div class="card">
-        <div><b>${k}</b></div>
-        <div>Voters: ${map[k].voters}</div>
-        <div>Points: ${map[k].points}</div>
+        <b>${k}</b><br>
+        Voters: ${map[k].voters}<br>
+        Points: ${map[k].points}
       </div>`;
   });
 
-  if(cards.innerHTML===""){
-    cards.innerHTML =
-      "<p style='text-align:center'>No votes in selected period</p>";
+  if(summaryCards.innerHTML===""){
+    summaryCards.innerHTML="<p>No data</p>";
   }
-};
-
-/* 📥 EXPORT TO EXCEL (CSV) */
-window.exportExcel = ()=>{
-  if(filteredVotes.length===0){
-    alert("No data to export");
-    return;
-  }
-
-  const rows = [
-    ["Name","Phone","Points","Date"],
-    ...filteredVotes.map(v=>[
-      v.name||"", v.phone||"", v.totalPoints||0, v.date||""
-    ])
-  ];
-
-  const csv = rows.map(r=>r.join(",")).join("\n");
-  const blob = new Blob([csv],{type:"text/csv"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "voting_report.csv";
-  a.click();
 };
 </script>
 
