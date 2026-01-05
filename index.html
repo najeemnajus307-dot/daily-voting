@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Faith & Fitness - Login</title>
-
 <style>
 body{
   font-family:Arial;
@@ -35,7 +34,6 @@ button{
   text-align:center;
   color:blue;
   cursor:pointer;
-  margin-top:6px;
 }
 </style>
 </head>
@@ -46,22 +44,18 @@ button{
   <h3 id="title">Login</h3>
 
   <input id="name" placeholder="Name" style="display:none">
-  <input id="phone" placeholder="Phone">
+  <input id="phone" type="tel" maxlength="10" placeholder="Phone">
   <input id="pass" type="password" placeholder="Password">
 
-  <button onclick="submit()">Login</button>
-
+  <button id="btn" onclick="submit()">Login</button>
   <div class="link" onclick="toggle()">Create account</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, collection, addDoc,
-  getDocs, query, where
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc } 
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -74,59 +68,40 @@ const db = getFirestore(app);
 let signup = false;
 
 window.toggle = ()=>{
-  signup = !signup;
-  title.innerText = signup ? "Signup" : "Login";
-  name.style.display = signup ? "block" : "none";
+  signup=!signup;
+  title.innerText = signup?"Signup":"Login";
+  btn.innerText = signup?"Signup":"Login";
+  name.style.display = signup?"block":"none";
 };
 
 window.submit = async ()=>{
-  const n = name.value.trim();
-  const p = phone.value.trim();
-  const pw = pass.value.trim();
+  const n=name.value.trim();
+  const p=phone.value.trim();
+  const pw=pass.value.trim();
 
-  if(!p || !pw || (signup && !n)){
-    alert("Fill all fields");
-    return;
+  if(!p||!pw||(signup&&!n)){
+    alert("Fill all fields"); return;
   }
 
-  const q = query(collection(db,"users"), where("phone","==",p));
-  const snap = await getDocs(q);
+  const ref=doc(db,"users",p);
+  const snap=await getDoc(ref);
 
   if(signup){
-    if(!snap.empty){
-      alert("Account already exists");
-      return;
+    if(snap.exists()){
+      alert("Account already exists"); return;
     }
-    await addDoc(collection(db,"users"),{
-      name:n,
-      phone:p,
-      password:pw,
-      createdAt:new Date().toISOString()
-    });
+    await setDoc(ref,{name:n,phone:p,password:pw});
     alert("Signup success. Login now");
     toggle();
   }else{
-    if(snap.empty){
-      alert("Account not found");
-      return;
+    if(!snap.exists() || snap.data().password!==pw){
+      alert("Invalid login"); return;
     }
-    let ok=false;
-    snap.forEach(d=>{
-      if(d.data().password === pw){
-        ok=true;
-        sessionStorage.setItem("uid", d.id);
-        sessionStorage.setItem("name", d.data().name);
-        sessionStorage.setItem("phone", d.data().phone);
-      }
-    });
-    if(!ok){
-      alert("Wrong password");
-      return;
-    }
+    sessionStorage.setItem("phone",p);
+    sessionStorage.setItem("name",snap.data().name);
     location.href="vote.html";
   }
 };
 </script>
-
 </body>
 </html>
