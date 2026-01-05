@@ -1,149 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness - Login</title>
-
+<title>Login</title>
 <style>
-body{
-  font-family: Arial;
-  background:#f1f5f9;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-.box{
-  background:#fff;
-  padding:25px;
-  width:320px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
-}
-input,button{
-  width:100%;
-  padding:10px;
-  margin:6px 0;
-}
-button{
-  background:#16a34a;
-  color:white;
-  border:none;
-  cursor:pointer;
-}
-.link{
-  text-align:center;
-  color:blue;
-  cursor:pointer;
-}
+body{font-family:Arial;background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh}
+.box{background:#fff;padding:25px;width:300px;border-radius:10px}
+input,button{width:100%;padding:10px;margin:6px 0}
+button{background:#16a34a;color:#fff;border:none}
 </style>
 </head>
-
 <body>
 
 <div class="box">
-  <h3 id="title">Login</h3>
-
-  <input id="name" placeholder="Name" style="display:none">
-  <input id="phone" type="tel" maxlength="10" placeholder="Phone">
+  <h3>Login</h3>
+  <input id="phone" placeholder="Phone">
   <input id="pass" type="password" placeholder="Password">
-
-  <button id="btn">Login</button>
-  <div class="link" id="toggleLink">Create account</div>
+  <button onclick="login()">Login</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc }
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG (REAL API KEY ഇടണം) */
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-
-const app = initializeApp(firebaseConfig);
+const app = initializeApp({
+  apiKey:"YOUR_API_KEY",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
 const db = getFirestore(app);
 
-/* 🔐 ADMIN PHONE NUMBER */
-const ADMIN_PHONE = "7994302567";   // ← admin number here
+const ADMIN_PHONE = "7994302567";
 
-let signup = false;
+window.login = async ()=>{
+  const phone = document.getElementById("phone").value.trim();
+  const pass  = document.getElementById("pass").value.trim();
 
-/* ELEMENTS */
-const title = document.getElementById("title");
-const nameEl = document.getElementById("name");
-const phoneEl = document.getElementById("phone");
-const passEl = document.getElementById("pass");
-const btn = document.getElementById("btn");
-const toggleLink = document.getElementById("toggleLink");
+  const ref = doc(db,"users",phone);
+  const snap = await getDoc(ref);
 
-/* 🔁 TOGGLE LOGIN / SIGNUP */
-toggleLink.onclick = () => {
-  signup = !signup;
-  title.innerText = signup ? "Signup" : "Login";
-  btn.innerText = signup ? "Signup" : "Login";
-  nameEl.style.display = signup ? "block" : "none";
-};
+  if(!snap.exists() || snap.data().password !== pass){
+    alert("Invalid login");
+    return;
+  }
 
-/* 🔐 LOGIN / SIGNUP SUBMIT */
-btn.onclick = async () => {
-  try {
-    const name  = signup ? nameEl.value.trim() : "";
-    const phone = phoneEl.value.trim();
-    const pass  = passEl.value.trim();
+  sessionStorage.setItem("phone",phone);
+  sessionStorage.setItem("name",snap.data().name);
 
-    if (!phone || !pass || (signup && !name)) {
-      alert("Fill all fields");
-      return;
-    }
-
-    const ref = doc(db, "users", phone);
-    const snap = await getDoc(ref);
-
-    /* 📝 SIGNUP */
-    if (signup) {
-      if (snap.exists()) {
-        alert("Account already exists");
-        return;
-      }
-      await setDoc(ref, {
-        name: name,
-        phone: phone,
-        password: pass
-      });
-      alert("Signup success. Login now");
-      toggleLink.click();
-      return;
-    }
-
-    /* 🔑 LOGIN */
-    if (!snap.exists()) {
-      alert("Account not found");
-      return;
-    }
-    if (snap.data().password !== pass) {
-      alert("Wrong password");
-      return;
-    }
-
-    sessionStorage.setItem("phone", phone);
-    sessionStorage.setItem("name", snap.data().name);
-
-    /* 🚦 ROLE BASED REDIRECT */
-    if (phone === ADMIN_PHONE) {
-      location.href = "task-editor.html";   // admin
-    } else {
-      location.href = "vote.html";          // user
-    }
-
-  } catch (e) {
-    alert("Error: " + e.message);
+  if(phone === ADMIN_PHONE){
+    location.href="task-editor.html"; // admin
+  }else{
+    location.href="vote.html";        // user
   }
 };
 </script>
-
 </body>
 </html>
