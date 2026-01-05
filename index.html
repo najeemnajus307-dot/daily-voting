@@ -6,7 +6,7 @@
 
 <style>
 body{
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
@@ -48,8 +48,8 @@ button{
   <input id="phone" type="tel" maxlength="10" placeholder="Phone">
   <input id="pass" type="password" placeholder="Password">
 
-  <button id="btn" onclick="submit()">Login</button>
-  <div class="link" onclick="toggle()">Create account</div>
+  <button id="btn">Login</button>
+  <div class="link" id="toggleLink">Create account</div>
 </div>
 
 <script type="module">
@@ -57,7 +57,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebas
 import { getFirestore, doc, getDoc, setDoc }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG (REAL API KEY ഇടണം) */
+/* 🔥 FIREBASE CONFIG – REAL API KEY ഇടണം */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -67,48 +67,65 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let signup=false;
+let signup = false;
 
-window.toggle=()=>{
-  signup=!signup;
+const title = document.getElementById("title");
+const nameEl = document.getElementById("name");
+const phoneEl = document.getElementById("phone");
+const passEl = document.getElementById("pass");
+const btn = document.getElementById("btn");
+const toggleLink = document.getElementById("toggleLink");
+
+/* 🔁 TOGGLE LOGIN / SIGNUP */
+toggleLink.onclick = () => {
+  signup = !signup;
   title.innerText = signup ? "Signup" : "Login";
   btn.innerText = signup ? "Signup" : "Login";
-  name.style.display = signup ? "block" : "none";
+  nameEl.style.display = signup ? "block" : "none";
 };
 
-window.submit=async ()=>{
-  try{
-    const n=name.value.trim();
-    const p=phone.value.trim();
-    const pw=pass.value.trim();
+/* 🔐 SUBMIT */
+btn.onclick = async () => {
+  try {
+    const name = signup ? nameEl.value.trim() : "";
+    const phone = phoneEl.value.trim();
+    const pass = passEl.value.trim();
 
-    if(!p||!pw||(signup&&!n)){
-      alert("Fill all fields"); return;
+    if (!phone || !pass || (signup && !name)) {
+      alert("Fill all fields");
+      return;
     }
 
-    const ref = doc(db,"users",p);
+    const ref = doc(db, "users", phone);
     const snap = await getDoc(ref);
 
-    if(signup){
-      if(snap.exists()){
-        alert("Account already exists"); return;
+    if (signup) {
+      if (snap.exists()) {
+        alert("Account already exists");
+        return;
       }
-      await setDoc(ref,{name:n,phone:p,password:pw});
+      await setDoc(ref, {
+        name: name,
+        phone: phone,
+        password: pass
+      });
       alert("Signup success. Login now");
-      toggle();
-    }else{
-      if(!snap.exists()){
-        alert("Account not found"); return;
+      toggleLink.click();
+    } else {
+      if (!snap.exists()) {
+        alert("Account not found");
+        return;
       }
-      if(snap.data().password!==pw){
-        alert("Wrong password"); return;
+      if (snap.data().password !== pass) {
+        alert("Wrong password");
+        return;
       }
-      sessionStorage.setItem("phone",p);
-      sessionStorage.setItem("name",snap.data().name);
-      location.href="vote.html";
+      sessionStorage.setItem("phone", phone);
+      sessionStorage.setItem("name", snap.data().name);
+      location.href = "vote.html";
     }
-  }catch(e){
-    alert("Error : "+e.message);
+  } catch (e) {
+    alert("Error: " + e.message);
   }
 };
 </script>
