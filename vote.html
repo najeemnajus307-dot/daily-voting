@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness - Voting</title>
+<title>Faith & Fitness - Vote</title>
 
 <style>
 body{
@@ -14,40 +14,54 @@ body{
   height:100vh;
 }
 
+/* MAIN BOX */
 .box{
   background:white;
   padding:25px;
-  width:320px;
+  width:340px;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,0.2);
 }
 
-h3{
+/* TITLE */
+h2{
   text-align:center;
-  margin-bottom:10px;
+  margin:0;
+}
+.sub{
+  text-align:center;
+  font-size:13px;
+  color:#555;
+  margin-bottom:15px;
 }
 
-.info{
+/* USER INFO */
+.user{
   text-align:center;
+  margin-bottom:15px;
   font-size:14px;
-  margin-bottom:10px;
 }
 
+/* TASKS */
 .task{
   margin:6px 0;
+  font-size:15px;
 }
 
+/* BUTTONS */
 button{
   width:100%;
   padding:10px;
   margin-top:12px;
-  background:#16a34a;
-  color:white;
   border:none;
   cursor:pointer;
+  font-size:15px;
   border-radius:6px;
 }
-
+.submit{
+  background:#16a34a;
+  color:white;
+}
 .logout{
   background:#e5e7eb;
   color:black;
@@ -59,9 +73,10 @@ button{
 
 <div class="box">
 
-  <h3>Faith & Fitness</h3>
+  <h2>Faith & Fitness</h2>
+  <div class="sub">Daily Task Voting</div>
 
-  <div class="info">
+  <div class="user">
     Hi <b id="uname"></b><br>
     <span id="today"></span>
   </div>
@@ -69,7 +84,7 @@ button{
   <!-- TASK LIST -->
   <div id="tasks"></div>
 
-  <button onclick="submitVote()">Submit Today Task</button>
+  <button class="submit" onclick="submitVote()">Submit</button>
   <button class="logout" onclick="logout()">Logout</button>
 
 </div>
@@ -77,10 +92,8 @@ button{
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, setDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc }
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* FIREBASE CONFIG */
 const app = initializeApp({
@@ -99,11 +112,11 @@ if(!phone) location.href="index.html";
 uname.innerText = name;
 today.innerText = new Date().toDateString();
 
-/* LOAD TASKS (FROM TASK EDITOR) */
-const taskSnap = await getDoc(doc(db,"settings","tasks"));
-const taskList = taskSnap.exists() ? taskSnap.data().list : [];
+/* LOAD TASKS */
+const snap = await getDoc(doc(db,"settings","tasks"));
+const list = snap.exists() ? snap.data().list : [];
 
-taskList.forEach(t=>{
+list.forEach(t=>{
   tasks.innerHTML += `
     <div class="task">
       <label>
@@ -113,7 +126,7 @@ taskList.forEach(t=>{
   `;
 });
 
-/* SUBMIT VOTE */
+/* SUBMIT */
 window.submitVote = async ()=>{
   const selected = [...document.querySelectorAll(
     'input[type="checkbox"]:checked'
