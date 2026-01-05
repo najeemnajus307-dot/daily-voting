@@ -38,9 +38,6 @@ button{
   font-size:16px;
   cursor:pointer;
 }
-button:disabled{
-  background:#9ca3af;
-}
 .logout{
   background:#dc2626;
   margin-bottom:10px;
@@ -55,128 +52,49 @@ button:disabled{
 
 <body>
 
+<script>
+/* 🔐 LOGIN CHECK (PERMANENT FIX) */
+const phone = localStorage.getItem("userPhone");
+const name  = localStorage.getItem("userName");
+
+if(!phone || !name){
+  window.location.replace("index.html");
+}
+</script>
+
 <div class="box">
 
 <button class="logout" onclick="logout()">Logout</button>
 
 <h2>Daily Tasks</h2>
 
-<div class="info" id="user"></div>
+<div class="info">Welcome <span id="user"></span></div>
 <div class="info" id="date"></div>
 
-<div id="tasksArea">Loading tasks...</div>
+<div class="task">
+  <label><input type="checkbox"> Drink Water</label>
+</div>
+<div class="task">
+  <label><input type="checkbox"> Workout</label>
+</div>
 
-<button id="submitBtn" onclick="submitVote()">Submit Vote</button>
+<button onclick="submitVote()">Submit Vote</button>
 
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  doc,
-  getDoc,
-  setDoc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+<script>
+document.getElementById("user").innerText = name;
+document.getElementById("date").innerText =
+  "Date : " + new Date().toISOString().split("T")[0];
 
-/* 🔴 FIREBASE CONFIG (your project values) */
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
+function submitVote(){
+  alert("Vote submitted 👍");
+}
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-/* 🔐 LOGIN CHECK (FIXED) */
-const phone = sessionStorage.getItem("userPhone");
-const name  = sessionStorage.getItem("userName");
-
-if(!phone || !name){
+function logout(){
+  localStorage.clear();
   window.location.replace("index.html");
 }
-
-/* DATE */
-const today = new Date().toISOString().split("T")[0];
-document.getElementById("user").innerText = "Welcome " + name;
-document.getElementById("date").innerText = "Date : " + today;
-
-/* VOTE DOC ID */
-const voteId  = phone + "_" + today;
-const voteRef = doc(db,"votes",voteId);
-
-const submitBtn = document.getElementById("submitBtn");
-
-/* CHECK ALREADY VOTED */
-const existing = await getDoc(voteRef);
-if(existing.exists()){
-  submitBtn.disabled = true;
-  submitBtn.innerText = "Already submitted today";
-}
-
-/* LOAD TASKS */
-const tasksArea = document.getElementById("tasksArea");
-tasksArea.innerHTML = "";
-
-const taskSnap = await getDocs(collection(db,"tasks"));
-let tasks = [];
-
-taskSnap.forEach(d=>{
-  const t = d.data();
-  if(t.active){
-    tasks.push({ id:d.id, ...t });
-  }
-});
-
-if(tasks.length === 0){
-  tasksArea.innerHTML =
-    "<p style='color:red;text-align:center'>No tasks added</p>";
-}
-
-/* SHOW TASKS */
-tasks.forEach((t,i)=>{
-  tasksArea.innerHTML += `
-    <div class="task">
-      <label>
-        <input type="checkbox" id="task_${i}">
-        ${t.title} ( ${t.points} pts )
-      </label>
-    </div>
-  `;
-});
-
-/* SUBMIT VOTE */
-window.submitVote = async ()=>{
-  let selected = {};
-  let total = 0;
-
-  tasks.forEach((t,i)=>{
-    const checked = document.getElementById("task_"+i).checked;
-    selected[t.id] = checked;
-    if(checked) total += t.points;
-  });
-
-  await setDoc(voteRef,{
-    name,
-    phone,
-    date: today,
-    tasks: selected,
-    totalPoints: total,
-    submittedAt: new Date().toISOString()
-  });
-
-  alert("Vote submitted successfully 👍");
-  location.reload();
-};
-
-/* LOGOUT */
-window.logout = ()=>{
-  sessionStorage.clear();
-  window.location.replace("index.html");
-};
 </script>
 
 </body>
