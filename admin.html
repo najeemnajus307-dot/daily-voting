@@ -1,49 +1,164 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Admin Voting Report</title>
+
 <style>
-body{font-family:Arial;background:#f1f5f9;padding:20px}
-table{width:100%;border-collapse:collapse;background:#fff}
-th,td{border:1px solid #ccc;padding:8px;text-align:center}
-th{background:#eee}
+body{
+  font-family:Arial;
+  background:#f1f5f9;
+  padding:20px;
+}
+h2{text-align:center;}
+.box{
+  background:#fff;
+  padding:15px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
+  margin-bottom:20px;
+}
+input,button{
+  padding:8px;
+  margin:5px;
+}
+button{
+  cursor:pointer;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:#fff;
+}
+th,td{
+  border:1px solid #ccc;
+  padding:8px;
+  text-align:center;
+}
+th{
+  background:#2563eb;
+  color:#fff;
+}
+.rank1{background:#fde047;}
+.rank2{background:#e5e7eb;}
+.rank3{background:#fcd34d;}
 </style>
 </head>
+
 <body>
 
-<h2>Admin Voting Report</h2>
-<table>
-<thead>
-<tr><th>Name</th><th>Phone</th><th>Points</th><th>Date</th></tr>
-</thead>
-<tbody id="rows"></tbody>
-</table>
+<h2>Admin Dashboard</h2>
+
+<!-- 🔥 DELETE BY DATE -->
+<div class="box">
+  <h3>Delete Votes by Date</h3>
+  <input type="date" id="delDate">
+  <button onclick="deleteByDate()">Delete Votes</button>
+</div>
+
+<!-- 🏆 RANK TABLE -->
+<div class="box">
+  <h3>Ranking (Same points → Same rank)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Total Points</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody id="rankBody"></tbody>
+  </table>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  query,
+  where,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-const app = initializeApp({
- apiKey:"YOUR_KEY",
- authDomain:"daily-voting-793ee.firebaseapp.com",
- projectId:"daily-voting-793ee"
-});
+/* 🔴 FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+
+const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let rows = document.getElementById("rows");
-let snap = await getDocs(collection(db,"votes"));
-
+/* LOAD VOTES */
+let votes = [];
+const snap = await getDocs(collection(db,"votes"));
 snap.forEach(d=>{
- let v=d.data();
- rows.innerHTML+=`
- <tr>
-  <td>${v.name}</td>
-  <td>${v.phone}</td>
-  <td>${v.totalPoints}</td>
-  <td>${v.date}</td>
- </tr>`;
+  votes.push({ id:d.id, ...d.data() });
 });
+
+/* SORT BY POINTS DESC */
+votes.sort((a,b)=> b.totalPoints - a.totalPoints);
+
+/* CALCULATE RANK (SAME POINT = SAME RANK) */
+let rank = 0;
+let lastPoints = null;
+let displayRank = 0;
+
+const tbody = document.getElementById("rankBody");
+
+votes.forEach(v=>{
+  if(lastPoints !== v.totalPoints){
+    rank++;
+    displayRank = rank;
+    lastPoints = v.totalPoints;
+  }
+
+  let cls = "";
+  if(displayRank===1) cls="rank1";
+  if(displayRank===2) cls="rank2";
+  if(displayRank===3) cls="rank3";
+
+  tbody.innerHTML += `
+    <tr class="${cls}">
+      <td>${displayRank}</td>
+      <td>${v.name || "-"}</td>
+      <td>${v.phone || "-"}</td>
+      <td>${v.totalPoints}</td>
+      <td>${v.date}</td>
+    </tr>
+  `;
+});
+
+/* 🔥 DELETE VOTES BY DATE */
+window.deleteByDate = async ()=>{
+  const date = document.getElementById("delDate").value;
+  if(!date){
+    alert("Select date");
+    return;
+  }
+
+  if(!confirm("Delete all votes on "+date+" ?")) return;
+
+  const q = query(
+    collection(db,"votes"),
+    where("date","==",date)
+  );
+  const snap = await getDocs(q);
+
+  snap.forEach(async d=>{
+    await deleteDoc(doc(db,"votes",d.id));
+  });
+
+  alert("Votes deleted for "+date);
+  location.reload();
+};
 </script>
+
 </body>
 </html>
