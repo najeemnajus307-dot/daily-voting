@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Vote Page</title>
+<title>Faith & Fitness Voting</title>
 
 <style>
 body{
@@ -15,38 +15,137 @@ body{
 }
 .box{
   background:#fff;
-  padding:20px;
-  width:300px;
-  border-radius:10px;
+  padding:25px;
+  width:360px;
+  border-radius:12px;
+  box-shadow:0 0 12px rgba(0,0,0,.2);
   text-align:center;
 }
-button{padding:8px;width:100%;margin-top:10px}
+button{
+  width:100%;
+  padding:12px;
+  margin-top:12px;
+  border:none;
+  border-radius:8px;
+  font-size:16px;
+  cursor:pointer;
+}
+.submit{background:#16a34a;color:white;}
+.logout{background:#dc2626;color:white;}
+.task{margin:8px 0;text-align:left;}
 </style>
 </head>
 
 <body>
 
-<script>
-if(sessionStorage.getItem("logged")!=="yes"){
-  location.replace("index.html");
-}
-</script>
-
 <div class="box">
-  <h3>Welcome</h3>
-  <p id="u"></p>
-  <button onclick="logout()">Logout</button>
+
+<h2>WELCOME<br>FAITH & FITNESS</h2>
+
+<div id="userInfo"></div>
+<div id="taskArea">Loading tasks…</div>
+
+<button class="submit" onclick="submitVote()">Submit Vote</button>
+<button class="logout" onclick="logout()">Logout</button>
+
 </div>
 
-<script>
-u.innerText=sessionStorage.getItem("userName");
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  doc, getDoc, setDoc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-function logout(){
-  if(confirm("Logout?")){
-    sessionStorage.clear();
-    location.replace("index.html");
-  }
+/* 🔐 LOGIN CHECK (IMPORTANT FIX) */
+const phone = sessionStorage.getItem("userPhone");
+const name  = sessionStorage.getItem("userName");
+
+if(!phone || !name){
+  location.replace("index.html");
 }
+
+/* UI */
+document.getElementById("userInfo").innerHTML = `
+Hello <b>${name}</b><br>
+Date : ${new Date().toISOString().split("T")[0]}
+`;
+
+/* FIREBASE */
+const firebaseConfig = {
+  apiKey: "YOUR_REAL_API_KEY",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const today = new Date().toISOString().split("T")[0];
+const voteId = phone + "_" + today;
+const voteRef = doc(db,"votes",voteId);
+
+/* CHECK ALREADY VOTED */
+const voted = await getDoc(voteRef);
+if(voted.exists()){
+  document.querySelector(".submit").disabled = true;
+  document.querySelector(".submit").innerText = "Already voted today";
+}
+
+/* LOAD TASKS */
+const taskArea = document.getElementById("taskArea");
+taskArea.innerHTML="";
+
+const snap = await getDocs(collection(db,"tasks"));
+let tasks=[];
+
+snap.forEach(d=>{
+  const t=d.data();
+  if(t.active) tasks.push({...t,id:d.id});
+});
+
+if(tasks.length===0){
+  taskArea.innerHTML="<p style='color:red'>No tasks today</p>";
+}
+
+tasks.forEach((t,i)=>{
+  taskArea.innerHTML+=`
+    <div class="task">
+      <label>
+        <input type="checkbox" id="t${i}">
+        ${t.title} (${t.points} pts)
+      </label>
+    </div>
+  `;
+});
+
+/* SUBMIT */
+window.submitVote = async ()=>{
+  let total=0, sel={};
+
+  tasks.forEach((t,i)=>{
+    const c=document.getElementById("t"+i).checked;
+    sel[i]=c;
+    if(c) total+=t.points;
+  });
+
+  await setDoc(voteRef,{
+    name,
+    phone,
+    date: today,
+    totalPoints: total,
+    tasks: sel,
+    createdAt: new Date().toISOString()
+  });
+
+  alert("Vote submitted ✅");
+  location.reload();
+};
+
+/* LOGOUT */
+window.logout = ()=>{
+  sessionStorage.clear();
+  location.replace("index.html");
+};
 </script>
 
 </body>
