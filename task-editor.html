@@ -1,135 +1,145 @@
 <!DOCTYPE html>
-<html lang="ml">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Task Editor</title>
 
 <style>
 body{
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+  padding:20px;
 }
 .box{
+  max-width:420px;
+  margin:auto;
   background:#fff;
-  padding:25px;
-  width:400px;
+  padding:20px;
   border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
+  box-shadow:0 0 10px rgba(0,0,0,.15);
 }
-input,button{
-  width:100%;
-  padding:8px;
+h2{text-align:center;margin-bottom:10px}
+.row{
+  display:flex;
+  gap:6px;
   margin:6px 0;
 }
-button{
+.row input{
+  flex:1;
+  padding:8px;
+}
+.row button{
+  padding:8px 10px;
+}
+.addBtn{
+  width:100%;
+  margin-top:10px;
   background:#2563eb;
   color:#fff;
   border:none;
-  border-radius:6px;
 }
-ul{list-style:none;padding:0;}
-li{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin:6px 0;
-  background:#f8fafc;
-  padding:6px;
-  border-radius:6px;
+.saveBtn{
+  width:100%;
+  margin-top:10px;
+  background:#16a34a;
+  color:#fff;
+  border:none;
 }
-small{color:#555;}
-.del{
-  background:#dc2626;
-  width:auto;
-  padding:4px 8px;
+.delBtn{
+  background:#ef4444;
+  color:#fff;
+  border:none;
 }
-.save{background:#16a34a;}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h3>Task Editor (with Points)</h3>
+  <h2>Task Editor</h2>
 
-  <input id="taskText" placeholder="Task text">
-  <input id="taskPoints" type="number" placeholder="Points (eg: 5)">
+  <!-- ADD NEW TASK -->
+  <div class="row">
+    <input id="newTask" placeholder="New task name">
+    <button onclick="addTask()">Add</button>
+  </div>
 
-  <button onclick="addTask()">Add Task</button>
+  <!-- TASK LIST -->
+  <div id="taskList"></div>
 
-  <ul id="taskList"></ul>
-
-  <button class="save" onclick="saveTasks()">Save Tasks</button>
+  <button class="saveBtn" onclick="saveTasks()">Save Tasks</button>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc }
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* 🔐 ADMIN PROTECT */
+const ADMIN_PHONE = "7994302567";
+const phone = sessionStorage.getItem("phone");
+if (phone !== ADMIN_PHONE) {
+  alert("Access denied");
+  location.href = "vote.html";
+}
 
 /* 🔥 FIREBASE CONFIG */
-const firebaseConfig = {
-  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-
-const app = initializeApp(firebaseConfig);
+const app = initializeApp({
+  apiKey:"YOUR_API_KEY",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
 const db = getFirestore(app);
 
-const textInp = document.getElementById("taskText");
-const pointInp = document.getElementById("taskPoints");
-const list = document.getElementById("taskList");
+const listBox = document.getElementById("taskList");
+const ref = doc(db,"settings","tasks");
 
 let tasks = [];
 
 /* LOAD TASKS */
-const snap = await getDoc(doc(db,"tasks","daily"));
-if(snap.exists()){
-  tasks = snap.data().list || [];
-  render();
+const snap = await getDoc(ref);
+if (snap.exists()) {
+  tasks = snap.data().list;
 }
+render();
 
+/* RENDER */
 function render(){
-  list.innerHTML="";
+  listBox.innerHTML = "";
   tasks.forEach((t,i)=>{
-    list.innerHTML += `
-      <li>
-        <span>${t.text} <small>(${t.points} pts)</small></span>
-        <button class="del" onclick="delTask(${i})">❌</button>
-      </li>
+    listBox.innerHTML += `
+      <div class="row">
+        <input value="${t}" oninput="update(${i}, this.value)">
+        <button class="delBtn" onclick="del(${i})">✖</button>
+      </div>
     `;
   });
 }
 
-window.addTask = function(){
-  const text = textInp.value.trim();
-  const pts  = Number(pointInp.value);
+/* UPDATE */
+window.update = (i, val) => {
+  tasks[i] = val;
+};
 
-  if(!text || !pts){
-    alert("Task & points enter ചെയ്യൂ");
-    return;
-  }
-
-  tasks.push({ text:text, points:pts });
-  textInp.value="";
-  pointInp.value="";
+/* ADD */
+window.addTask = () => {
+  const v = document.getElementById("newTask").value.trim();
+  if(!v) return;
+  tasks.push(v);
+  document.getElementById("newTask").value = "";
   render();
 };
 
-window.delTask = function(i){
-  if(confirm("Delete task?")){
-    tasks.splice(i,1);
-    render();
-  }
+/* DELETE */
+window.del = (i) => {
+  tasks.splice(i,1);
+  render();
 };
 
-window.saveTasks = async function(){
-  await setDoc(doc(db,"tasks","daily"),{ list:tasks });
-  alert("Tasks saved with points ✅");
+/* SAVE */
+window.saveTasks = async () => {
+  await setDoc(ref, { list: tasks });
+  alert("Tasks saved successfully ✅");
 };
 </script>
 
