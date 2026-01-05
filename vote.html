@@ -1,60 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Faith & Fitness - Daily Tasks</title>
+<title>Daily Voting</title>
 <style>
-body{
-  font-family:Arial;
-  background:#f1f5f9;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-.box{
-  background:#fff;
-  padding:25px;
-  width:360px;
-  border-radius:10px;
-  position:relative;
-}
-h2{text-align:center;}
-.task{margin:8px 0;}
-.points{color:green;font-size:13px;}
-button{
-  width:100%;
-  padding:10px;
-  margin-top:15px;
-  background:#16a34a;
-  color:white;
-  border:none;
-}
-.logout{
-  position:absolute;
-  top:10px;
-  right:10px;
-  background:#dc2626;
-  width:auto;
-}
+body{font-family:Arial;background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh}
+.box{background:#fff;padding:20px;width:360px;border-radius:10px}
+.task{border:1px solid #ddd;padding:8px;border-radius:6px;margin-bottom:8px}
+button{width:100%;padding:10px;background:#16a34a;color:#fff;border:none}
 </style>
 </head>
-
 <body>
+
 <div class="box">
-<button class="logout" onclick="logout()">Logout</button>
-
-<h2>Welcome Faith & Fitness</h2>
-<p id="info"></p>
-
+<h3>Daily Tasks</h3>
 <div id="tasks"></div>
-
-<button onclick="submit()">Submit</button>
+<button id="btn" onclick="submitVote()">Submit Vote</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
@@ -65,62 +30,56 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let user = localStorage.getItem("currentUser");
-let phone = localStorage.getItem("currentPhone");
+const user = sessionStorage.getItem("userName");
+const phone = sessionStorage.getItem("userPhone");
+if(!user || !phone) location.replace("index.html");
 
-if(!user || !phone){
-  location.href="index.html";
+const today = new Date().toISOString().split("T")[0];
+const voteRef = doc(db,"votes",phone+"_"+today);
+
+// Load tasks
+const taskSnap = await getDoc(doc(db,"config","tasks"));
+if(!taskSnap.exists()){
+  tasks.innerHTML="No tasks today";
+  btn.disabled=true;
+}else{
+  taskSnap.data().list.forEach((t,i)=>{
+    tasks.innerHTML += `
+      <div class="task">
+        <label>
+          <input type="checkbox" id="t${i}"> ${t.name}
+        </label>
+        <small>Points: ${t.points}</small>
+      </div>`;
+  });
 }
 
-let today = new Date().toISOString().split("T")[0];
-document.getElementById("info").innerText =
-  `User : ${user} | Date : ${today}`;
+// Already voted?
+const voted = await getDoc(voteRef);
+if(voted.exists()){
+  btn.disabled=true;
+  btn.innerText="Already voted today";
+}
 
-const taskRef = doc(db,"tasks","daily");
-const voteRef = doc(db,"votes", phone+"_"+today);
-
-const taskSnap = await getDoc(taskRef);
-let taskList = taskSnap.data().list || [];
-
-let wrap = document.getElementById("tasks");
-wrap.innerHTML="";
-
-taskList.forEach((t,i)=>{
-  wrap.innerHTML += `
-  <div class="task">
-    <input type="checkbox" id="t${i}">
-    ${t.name}
-    <div class="points">${t.points} points</div>
-  </div>`;
-});
-
-window.submit = async function(){
-  let total = 0;
-  let tasks = {};
-
-  taskList.forEach((t,i)=>{
-    let v = document.getElementById("t"+i).checked;
-    tasks[i]=v;
-    if(v) total += t.points;
+window.submitVote = async ()=>{
+  let total=0, data={};
+  taskSnap.data().list.forEach((t,i)=>{
+    const ok=document.getElementById("t"+i).checked;
+    data[t.name]=ok;
+    if(ok) total+=t.points;
   });
 
   await setDoc(voteRef,{
     name:user,
     phone:phone,
     date:today,
-    tasks:tasks,
-    totalPoints:total,
-    submittedAt:new Date().toISOString()
+    tasks:data,
+    points:total
   });
 
-  alert("Vote saved ✅ Total points : "+total);
+  alert("Vote saved");
   location.reload();
-}
-
-window.logout = function(){
-  localStorage.clear();
-  location.href="index.html";
-}
+};
 </script>
 </body>
 </html>
