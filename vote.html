@@ -38,7 +38,6 @@ button{
 
 <div class="box">
   <h2>WELCOME<br>FAITH & FITNESS</h2>
-
   <div id="user"></div>
   <div id="date"></div>
 
@@ -63,8 +62,8 @@ if(!uid){
 
 /* UI */
 const today = new Date().toISOString().split("T")[0];
-user.innerText = "Hello " + name;
-date.innerText = "Date : " + today;
+document.getElementById("user").innerText = "Hello " + name;
+document.getElementById("date").innerText = "Date : " + today;
 
 /* FIREBASE */
 const firebaseConfig = {
@@ -78,11 +77,11 @@ const db = getFirestore(app);
 const voteId = phone + "_" + today;
 const ref = doc(db,"votes",voteId);
 
-/* CHECK ALREADY VOTED */
+/* CHECK */
 const snap = await getDoc(ref);
 if(snap.exists()){
-  document.querySelector(".submit").disabled=true;
-  document.querySelector(".submit").innerText="Already voted today";
+  document.querySelector(".submit").disabled = true;
+  document.querySelector(".submit").innerText = "Already voted today";
 }
 
 window.vote = async ()=>{
@@ -90,9 +89,9 @@ window.vote = async ()=>{
     uid,
     name,
     phone,
-    date:today,
-    points:5,
-    createdAt:new Date().toISOString()
+    date: today,
+    points: 5,
+    createdAt: new Date().toISOString()
   });
   alert("Vote submitted ✅");
   location.reload();
