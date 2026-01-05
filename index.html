@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Faith & Fitness - Login</title>
+
 <style>
 body{
   font-family:Arial;
@@ -53,9 +54,10 @@ button{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } 
+import { getFirestore, doc, getDoc, setDoc }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+/* 🔥 FIREBASE CONFIG (REAL API KEY ഇടണം) */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -65,43 +67,51 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let signup = false;
+let signup=false;
 
-window.toggle = ()=>{
+window.toggle=()=>{
   signup=!signup;
-  title.innerText = signup?"Signup":"Login";
-  btn.innerText = signup?"Signup":"Login";
-  name.style.display = signup?"block":"none";
+  title.innerText = signup ? "Signup" : "Login";
+  btn.innerText = signup ? "Signup" : "Login";
+  name.style.display = signup ? "block" : "none";
 };
 
-window.submit = async ()=>{
-  const n=name.value.trim();
-  const p=phone.value.trim();
-  const pw=pass.value.trim();
+window.submit=async ()=>{
+  try{
+    const n=name.value.trim();
+    const p=phone.value.trim();
+    const pw=pass.value.trim();
 
-  if(!p||!pw||(signup&&!n)){
-    alert("Fill all fields"); return;
-  }
-
-  const ref=doc(db,"users",p);
-  const snap=await getDoc(ref);
-
-  if(signup){
-    if(snap.exists()){
-      alert("Account already exists"); return;
+    if(!p||!pw||(signup&&!n)){
+      alert("Fill all fields"); return;
     }
-    await setDoc(ref,{name:n,phone:p,password:pw});
-    alert("Signup success. Login now");
-    toggle();
-  }else{
-    if(!snap.exists() || snap.data().password!==pw){
-      alert("Invalid login"); return;
+
+    const ref = doc(db,"users",p);
+    const snap = await getDoc(ref);
+
+    if(signup){
+      if(snap.exists()){
+        alert("Account already exists"); return;
+      }
+      await setDoc(ref,{name:n,phone:p,password:pw});
+      alert("Signup success. Login now");
+      toggle();
+    }else{
+      if(!snap.exists()){
+        alert("Account not found"); return;
+      }
+      if(snap.data().password!==pw){
+        alert("Wrong password"); return;
+      }
+      sessionStorage.setItem("phone",p);
+      sessionStorage.setItem("name",snap.data().name);
+      location.href="vote.html";
     }
-    sessionStorage.setItem("phone",p);
-    sessionStorage.setItem("name",snap.data().name);
-    location.href="vote.html";
+  }catch(e){
+    alert("Error : "+e.message);
   }
 };
 </script>
+
 </body>
 </html>
