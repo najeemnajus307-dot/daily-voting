@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin Voting Report</title>
+<title>Admin – Voting Dashboard</title>
 
 <style>
 body{
@@ -22,13 +22,10 @@ input,button{
   padding:8px;
   margin:5px;
 }
-button{
-  cursor:pointer;
-}
+button{cursor:pointer;}
 table{
   width:100%;
   border-collapse:collapse;
-  background:#fff;
 }
 th,td{
   border:1px solid #ccc;
@@ -37,36 +34,55 @@ th,td{
 }
 th{
   background:#2563eb;
-  color:#fff;
+  color:white;
 }
 .rank1{background:#fde047;}
 .rank2{background:#e5e7eb;}
 .rank3{background:#fcd34d;}
+.delBtn{
+  background:#dc2626;
+  color:white;
+  border:none;
+  padding:4px 8px;
+}
+.count{
+  font-weight:bold;
+  margin-bottom:10px;
+}
 </style>
 </head>
 
 <body>
 
-<h2>Admin Dashboard</h2>
+<h2>Admin Voting Dashboard</h2>
 
-<!-- 🔥 DELETE BY DATE -->
+<!-- 🔢 TOTAL VOTERS -->
 <div class="box">
-  <h3>Delete Votes by Date</h3>
-  <input type="date" id="delDate">
-  <button onclick="deleteByDate()">Delete Votes</button>
+  <div class="count" id="totalCount">Total Voters: Loading...</div>
 </div>
 
-<!-- 🏆 RANK TABLE -->
+<!-- 📅 DATE FILTER -->
 <div class="box">
-  <h3>Ranking (Same points → Same rank)</h3>
+  <h3>Date Filter</h3>
+  From:
+  <input type="date" id="fromDate">
+  To:
+  <input type="date" id="toDate">
+  <button onclick="applyFilter()">Apply</button>
+</div>
+
+<!-- 🏆 TOP 3 RANKING -->
+<div class="box">
+  <h3>Top 3 Ranking</h3>
   <table>
     <thead>
       <tr>
         <th>Rank</th>
         <th>Name</th>
         <th>Phone</th>
-        <th>Total Points</th>
+        <th>Points</th>
         <th>Date</th>
+        <th>Delete</th>
       </tr>
     </thead>
     <tbody id="rankBody"></tbody>
@@ -95,68 +111,87 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* LOAD VOTES */
-let votes = [];
-const snap = await getDocs(collection(db,"votes"));
-snap.forEach(d=>{
-  votes.push({ id:d.id, ...d.data() });
-});
+let allVotes = [];
 
-/* SORT BY POINTS DESC */
-votes.sort((a,b)=> b.totalPoints - a.totalPoints);
-
-/* CALCULATE RANK (SAME POINT = SAME RANK) */
-let rank = 0;
-let lastPoints = null;
-let displayRank = 0;
-
-const tbody = document.getElementById("rankBody");
-
-votes.forEach(v=>{
-  if(lastPoints !== v.totalPoints){
-    rank++;
-    displayRank = rank;
-    lastPoints = v.totalPoints;
-  }
-
-  let cls = "";
-  if(displayRank===1) cls="rank1";
-  if(displayRank===2) cls="rank2";
-  if(displayRank===3) cls="rank3";
-
-  tbody.innerHTML += `
-    <tr class="${cls}">
-      <td>${displayRank}</td>
-      <td>${v.name || "-"}</td>
-      <td>${v.phone || "-"}</td>
-      <td>${v.totalPoints}</td>
-      <td>${v.date}</td>
-    </tr>
-  `;
-});
-
-/* 🔥 DELETE VOTES BY DATE */
-window.deleteByDate = async ()=>{
-  const date = document.getElementById("delDate").value;
-  if(!date){
-    alert("Select date");
-    return;
-  }
-
-  if(!confirm("Delete all votes on "+date+" ?")) return;
-
-  const q = query(
-    collection(db,"votes"),
-    where("date","==",date)
-  );
-  const snap = await getDocs(q);
-
-  snap.forEach(async d=>{
-    await deleteDoc(doc(db,"votes",d.id));
+/* LOAD ALL VOTES */
+async function loadVotes(){
+  allVotes = [];
+  const snap = await getDocs(collection(db,"votes"));
+  snap.forEach(d=>{
+    allVotes.push({ id:d.id, ...d.data() });
   });
 
-  alert("Votes deleted for "+date);
-  location.reload();
+  document.getElementById("totalCount").innerText =
+    "Total Voters : " + allVotes.length;
+
+  renderRanking(allVotes);
+}
+
+loadVotes();
+
+/* APPLY DATE FILTER */
+window.applyFilter = ()=>{
+  const from = document.getElementById("fromDate").value;
+  const to   = document.getElementById("toDate").value;
+
+  let filtered = allVotes;
+
+  if(from){
+    filtered = filtered.filter(v=> v.date >= from);
+  }
+  if(to){
+    filtered = filtered.filter(v=> v.date <= to);
+  }
+
+  renderRanking(filtered);
+};
+
+/* RENDER TOP 3 ONLY */
+function renderRanking(votes){
+  const tbody = document.getElementById("rankBody");
+  tbody.innerHTML = "";
+
+  if(votes.length === 0) return;
+
+  votes.sort((a,b)=> b.totalPoints - a.totalPoints);
+
+  let rank = 0;
+  let lastPoints = null;
+  let shown = 0;
+
+  for(const v of votes){
+    if(v.totalPoints !== lastPoints){
+      rank++;
+      lastPoints = v.totalPoints;
+    }
+
+    if(rank > 3) break;
+
+    let cls = rank===1?"rank1":rank===2?"rank2":"rank3";
+
+    tbody.innerHTML += `
+      <tr class="${cls}">
+        <td>${rank}</td>
+        <td>${v.name || "-"}</td>
+        <td>${v.phone || "-"}</td>
+        <td>${v.totalPoints}</td>
+        <td>${v.date}</td>
+        <td>
+          <button class="delBtn"
+            onclick="deleteVote('${v.id}')">Delete</button>
+        </td>
+      </tr>
+    `;
+    shown++;
+  }
+}
+
+/* DELETE SINGLE USER VOTE */
+window.deleteVote = async (id)=>{
+  if(!confirm("Delete this vote?")) return;
+  await deleteDoc(doc(db,"votes",id));
+  alert("Vote deleted");
+  loadVotes();
 };
 </script>
 
