@@ -33,6 +33,7 @@ button{
     color:white;
     border:none;
     margin-top:10px;
+    cursor:pointer;
 }
 </style>
 </head>
@@ -55,19 +56,19 @@ if(sessionStorage.getItem("userPhone")){
 }
 
 function login(){
-    let phone = phone.value;
-    let pass  = pass.value;
+    const phoneVal = document.getElementById("phone").value.trim();
+    const passVal  = document.getElementById("pass").value.trim();
 
-    if(phone=="" || pass==""){
+    if(phoneVal === "" || passVal === ""){
         alert("Fill all fields");
         return;
     }
 
     /* 🔴 TEMP SIMPLE LOGIN
-       (later Firebase auth add cheyyam) */
+       (No Firebase – direct access) */
 
-    sessionStorage.setItem("userName", phone);
-    sessionStorage.setItem("userPhone", phone);
+    sessionStorage.setItem("userName", phoneVal);
+    sessionStorage.setItem("userPhone", phoneVal);
 
     window.location.replace("vote.html");
 }
