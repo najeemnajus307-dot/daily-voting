@@ -5,179 +5,81 @@
 <title>Admin Voting Dashboard</title>
 
 <style>
-body{font-family:Arial;background:#f1f5f9;padding:20px}
-h2,h3{text-align:center}
-.box{background:#fff;padding:15px;border-radius:10px;
-box-shadow:0 0 10px rgba(0,0,0,.2);margin-bottom:20px}
-input,button{padding:6px;margin:4px}
-button{cursor:pointer}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:8px;text-align:center}
-th{background:#2563eb;color:white}
-.rank1{background:#fde047}
-.rank2{background:#e5e7eb}
-.rank3{background:#fcd34d}
-.addBtn{background:#16a34a;color:#fff;border:none}
-.count{text-align:center;font-weight:bold;margin-bottom:10px}
+body{
+  font-family: Arial;
+  background:#f1f5f9;
+  padding:20px;
+}
+h2{text-align:center;}
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:#fff;
+}
+th,td{
+  border:1px solid #ccc;
+  padding:8px;
+  text-align:center;
+}
+th{
+  background:#16a34a;
+  color:white;
+}
 </style>
 </head>
 
 <body>
 
 <h2>Admin Voting Dashboard</h2>
-<div class="count" id="totalUsers">Total Users : 0</div>
 
-<!-- ADD USER -->
-<div class="box">
-  <h3>Add New User</h3>
-  <input id="uName" placeholder="Name">
-  <input id="uPhone" placeholder="Phone">
-  <button class="addBtn" onclick="addUser()">Add User</button>
-</div>
-
-<!-- TOP 3 -->
-<div class="box">
-  <h3>Top 3 Ranking (Lifetime)</h3>
-  <table>
-    <thead>
-      <tr><th>Rank</th><th>Name</th><th>Phone</th><th>Points</th></tr>
-    </thead>
-    <tbody id="rankBody"></tbody>
-  </table>
-</div>
-
-<!-- ALL USERS -->
-<div class="box">
-  <h3>All Users – Add Points</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Add Points</th>
-        <th>Current</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="userBody"></tbody>
-  </table>
-</div>
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Phone</th>
+      <th>Tasks</th>
+      <th>Date</th>
+      <th>Points</th>
+    </tr>
+  </thead>
+  <tbody id="data"></tbody>
+</table>
 
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, collection, getDocs,
-  doc, setDoc, updateDoc, increment
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, getDocs, collection }
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE CONFIG */
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
+/* 🔐 ADMIN ONLY */
+const ADMIN_PHONE = "7994302567";
+if(sessionStorage.getItem("phone") !== ADMIN_PHONE){
+  alert("Access denied");
+  location.href="vote.html";
+}
 
-const app = initializeApp(firebaseConfig);
+/* FIREBASE */
+const app = initializeApp({
+  apiKey:"YOUR_API_KEY",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
 const db = getFirestore(app);
 
-const ADMIN_PASSWORD = "1";
-let users = [];
-
-/* LOAD USERS */
-async function loadUsers(){
-  users = [];
-  const snap = await getDocs(collection(db,"users"));
-  snap.forEach(d=>{
-    const u = d.data();
-    users.push({
-      phone: d.id,
-      name: u.name,
-      totalPoints: Number(u.totalPoints) || 0
-    });
-  });
-
-  totalUsers.innerText = "Total Users : " + users.length;
-  render(users);
-}
-loadUsers();
-
-/* RENDER */
-function render(list){
-  rankBody.innerHTML="";
-  userBody.innerHTML="";
-
-  const sorted=[...list].sort((a,b)=>b.totalPoints-a.totalPoints);
-
-  /* TOP 3 */
-  let rank=0,last=null;
-  sorted.forEach(u=>{
-    if(u.totalPoints!==last){rank++;last=u.totalPoints}
-    if(rank>3) return;
-    const cls = rank===1?"rank1":rank===2?"rank2":"rank3";
-    rankBody.innerHTML+=`
-      <tr class="${cls}">
-        <td>${rank}</td>
-        <td>${u.name}</td>
-        <td>${u.phone}</td>
-        <td>${u.totalPoints}</td>
-      </tr>`;
-  });
-
-  /* ALL USERS */
-  sorted.forEach(u=>{
-    userBody.innerHTML+=`
-      <tr>
-        <td>${u.name}</td>
-        <td>${u.phone}</td>
-        <td><input type="number" id="pt_${u.phone}" placeholder="+ points"></td>
-        <td>${u.totalPoints}</td>
-        <td>
-          <button class="addBtn"
-            onclick="addPoints('${u.phone}')">Add</button>
-        </td>
-      </tr>`;
-  });
-}
-
-/* ADD USER (NO DUPLICATE) */
-window.addUser = async ()=>{
-  const name = uName.value.trim();
-  const phone = uPhone.value.trim();
-
-  if(!name || !phone){
-    alert("Name & Phone required");
-    return;
-  }
-
-  await setDoc(doc(db,"users",phone),{
-    name,
-    phone,
-    totalPoints: 0,
-    createdAt: new Date().toISOString()
-  });
-
-  uName.value=""; uPhone.value="";
-  loadUsers();
-};
-
-/* ADD POINTS */
-window.addPoints = async (phone)=>{
-  const add = Number(document.getElementById("pt_"+phone).value || 0);
-  if(add<=0) return alert("Enter points");
-
-  if(prompt("Admin password") !== ADMIN_PASSWORD){
-    alert("Wrong password");
-    return;
-  }
-
-  await updateDoc(doc(db,"users",phone),{
-    totalPoints: increment(add)
-  });
-
-  loadUsers();
-};
+/* LOAD VOTES */
+const snap = await getDocs(collection(db,"votes"));
+snap.forEach(docu=>{
+  const v = docu.data();
+  data.innerHTML += `
+    <tr>
+      <td>${v.name}</td>
+      <td>${v.phone}</td>
+      <td>${v.tasks.join(", ")}</td>
+      <td>${v.date}</td>
+      <td><b>${v.points}</b></td>
+    </tr>
+  `;
+});
 </script>
 
 </body>
