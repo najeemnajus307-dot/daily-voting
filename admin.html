@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin – Voting Report</title>
+<title>Admin – Voting Dashboard</title>
 
 <style>
 body{
@@ -18,6 +18,15 @@ h2,h3{text-align:center;}
   box-shadow:0 0 10px rgba(0,0,0,.2);
   margin-bottom:20px;
 }
+.controls{
+  text-align:center;
+  margin-bottom:10px;
+}
+input,select,button{
+  padding:8px;
+  margin:5px;
+}
+button{cursor:pointer;}
 table{
   width:100%;
   border-collapse:collapse;
@@ -40,12 +49,25 @@ th{
   color:white;
   border:none;
   padding:4px 8px;
-  cursor:pointer;
 }
 .count{
   font-weight:bold;
   text-align:center;
   margin-bottom:10px;
+}
+.summary{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+.summary .card{
+  background:#f8fafc;
+  padding:10px 14px;
+  border-radius:8px;
+  min-width:160px;
+  text-align:center;
+  box-shadow:0 0 6px rgba(0,0,0,.1);
 }
 </style>
 </head>
@@ -57,11 +79,23 @@ th{
 <div class="count" id="totalCount">Total Voters: Loading...</div>
 
 <!-- 📅 DATE FILTER -->
-<div class="box">
-  <h3>Date Filter</h3>
+<div class="box controls">
   From <input type="date" id="fromDate">
   To <input type="date" id="toDate">
   <button onclick="applyFilter()">Apply</button>
+  <button onclick="resetFilter()">Reset</button>
+</div>
+
+<!-- 📊 DAILY / MONTHLY SUMMARY -->
+<div class="box">
+  <h3>Summary</h3>
+  <div class="controls">
+    <select id="summaryType" onchange="renderSummary()">
+      <option value="daily">Daily</option>
+      <option value="monthly">Monthly</option>
+    </select>
+  </div>
+  <div class="summary" id="summaryCards"></div>
 </div>
 
 <!-- 🏆 TOP 3 RANK -->
@@ -82,7 +116,10 @@ th{
 
 <!-- 📋 ALL VOTING REPORT -->
 <div class="box">
-  <h3>All Voting Report (High → Low Points)</h3>
+  <h3>All Voting Report (High → Low)</h3>
+  <div class="controls">
+    <button onclick="exportExcel()">Export to Excel</button>
+  </div>
   <table>
     <thead>
       <tr>
@@ -103,8 +140,6 @@ import {
   getFirestore,
   collection,
   getDocs,
-  query,
-  where,
   deleteDoc,
   doc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
@@ -120,8 +155,9 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 let allVotes = [];
+let filteredVotes = [];
 
-/* LOAD VOTES */
+/* LOAD ALL VOTES */
 async function loadVotes(){
   allVotes = [];
   const snap = await getDocs(collection(db,"votes"));
@@ -132,70 +168,73 @@ async function loadVotes(){
   document.getElementById("totalCount").innerText =
     "Total Voters : " + allVotes.length;
 
-  renderAll(allVotes);
+  filteredVotes = [...allVotes];
+  renderAll(filteredVotes);
 }
-
 loadVotes();
 
-/* DATE FILTER */
+/* FILTER */
 window.applyFilter = ()=>{
   const from = document.getElementById("fromDate").value;
   const to   = document.getElementById("toDate").value;
 
-  let filtered = allVotes;
-  if(from) filtered = filtered.filter(v=>v.date >= from);
-  if(to)   filtered = filtered.filter(v=>v.date <= to);
+  filteredVotes = allVotes.filter(v=>{
+    if(from && v.date < from) return false;
+    if(to && v.date > to) return false;
+    return true;
+  });
 
-  renderAll(filtered);
+  renderAll(filteredVotes);
+};
+window.resetFilter = ()=>{
+  document.getElementById("fromDate").value="";
+  document.getElementById("toDate").value="";
+  filteredVotes = [...allVotes];
+  renderAll(filteredVotes);
 };
 
-/* RENDER BOTH SECTIONS */
+/* RENDER BOTH */
 function renderAll(votes){
-  if(votes.length === 0){
-    document.getElementById("rankBody").innerHTML="";
-    document.getElementById("reportBody").innerHTML="";
+  if(votes.length===0){
+    rankBody.innerHTML="";
+    reportBody.innerHTML="";
+    summaryCards.innerHTML="";
     return;
   }
-
-  // sort by points desc
-  votes = [...votes].sort((a,b)=>b.totalPoints - a.totalPoints);
-
-  renderRank(votes);
-  renderReport(votes);
+  const sorted = [...votes].sort((a,b)=>b.totalPoints - a.totalPoints);
+  renderRank(sorted);
+  renderReport(sorted);
+  renderSummary();
 }
 
-/* 🏆 TOP 3 RANK */
+/* TOP 3 RANK (same points → same rank) */
 function renderRank(votes){
   const tbody = document.getElementById("rankBody");
   tbody.innerHTML="";
-
-  let rank=0, lastPoints=null;
+  let rank=0, last=null;
 
   for(const v of votes){
-    if(v.totalPoints !== lastPoints){
+    if(v.totalPoints !== last){
       rank++;
-      lastPoints = v.totalPoints;
+      last = v.totalPoints;
     }
     if(rank>3) break;
 
-    let cls = rank===1?"rank1":rank===2?"rank2":"rank3";
-
+    const cls = rank===1?"rank1":rank===2?"rank2":"rank3";
     tbody.innerHTML += `
       <tr class="${cls}">
         <td>${rank}</td>
         <td>${v.name || "-"}</td>
         <td>${v.phone || "-"}</td>
         <td>${v.totalPoints}</td>
-      </tr>
-    `;
+      </tr>`;
   }
 }
 
-/* 📋 FULL REPORT (WITH DELETE) */
+/* FULL REPORT (WITH DELETE) */
 function renderReport(votes){
   const tbody = document.getElementById("reportBody");
   tbody.innerHTML="";
-
   votes.forEach(v=>{
     tbody.innerHTML += `
       <tr>
@@ -203,21 +242,59 @@ function renderReport(votes){
         <td>${v.phone || "-"}</td>
         <td>${v.totalPoints}</td>
         <td>${v.date}</td>
-        <td>
-          <button class="delBtn"
-            onclick="deleteVote('${v.id}')">Delete</button>
-        </td>
-      </tr>
-    `;
+        <td><button class="delBtn" onclick="deleteVote('${v.id}')">Delete</button></td>
+      </tr>`;
   });
 }
 
-/* DELETE USER VOTE */
+/* DELETE */
 window.deleteVote = async (id)=>{
-  if(!confirm("Delete this user vote?")) return;
+  if(!confirm("Delete this vote?")) return;
   await deleteDoc(doc(db,"votes",id));
-  alert("Vote deleted");
   loadVotes();
+};
+
+/* SUMMARY (DAILY / MONTHLY) */
+window.renderSummary = ()=>{
+  const type = document.getElementById("summaryType").value;
+  const cards = document.getElementById("summaryCards");
+  cards.innerHTML="";
+
+  const map = {};
+  filteredVotes.forEach(v=>{
+    const key = (type==="daily")
+      ? v.date
+      : v.date.slice(0,7); // YYYY-MM
+    if(!map[key]) map[key] = { voters:0, points:0 };
+    map[key].voters += 1;
+    map[key].points += (v.totalPoints||0);
+  });
+
+  Object.keys(map).sort().forEach(k=>{
+    cards.innerHTML += `
+      <div class="card">
+        <div><b>${k}</b></div>
+        <div>Voters: ${map[k].voters}</div>
+        <div>Points: ${map[k].points}</div>
+      </div>`;
+  });
+};
+
+/* EXPORT TO EXCEL (CSV) */
+window.exportExcel = ()=>{
+  if(filteredVotes.length===0){ alert("No data"); return; }
+  const rows = [
+    ["Name","Phone","Points","Date"],
+    ...filteredVotes.map(v=>[
+      v.name||"", v.phone||"", v.totalPoints||0, v.date||""
+    ])
+  ];
+  const csv = rows.map(r=>r.join(",")).join("\n");
+  const blob = new Blob([csv],{type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "voting_report.csv";
+  a.click();
 };
 </script>
 
