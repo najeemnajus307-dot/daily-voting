@@ -1,76 +1,122 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Login</title>
-
-<style>
-body{
-    font-family:Arial;
-    background:#f1f5f9;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-}
-.box{
-    background:#fff;
-    padding:25px;
-    width:300px;
-    border-radius:10px;
-    text-align:center;
-    box-shadow:0 0 10px rgba(0,0,0,.2);
-}
-input{
-    width:100%;
-    padding:8px;
-    margin:6px 0;
-}
-button{
-    width:100%;
-    padding:10px;
-    background:#2563eb;
-    color:white;
-    border:none;
-    margin-top:10px;
-    cursor:pointer;
-}
-</style>
+    <title>Login / Signup</title>
+    <style>
+        body{
+            font-family:Arial;
+            background:#f1f5f9;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+        .box{
+            background:white;
+            padding:25px;
+            width:300px;
+            border-radius:10px;
+            text-align:center;
+        }
+        input{
+            width:100%;
+            padding:8px;
+            margin:6px 0;
+        }
+        button{
+            width:100%;
+            padding:10px;
+            margin-top:10px;
+            background:#2563eb;
+            color:white;
+            border:none;
+            cursor:pointer;
+        }
+        .link{
+            margin-top:10px;
+            color:blue;
+            cursor:pointer;
+            font-size:14px;
+        }
+    </style>
 </head>
-
 <body>
 
 <div class="box">
-<h3>Login</h3>
 
-<input id="phone" placeholder="Phone">
-<input id="pass" type="password" placeholder="Password">
+    <!-- SIGNUP -->
+    <div id="signupBox">
+        <h3>Sign Up</h3>
+        <input id="su_name" placeholder="Name">
+        <input id="su_phone" placeholder="Phone">
+        <input id="su_pass" type="password" placeholder="Password">
+        <button onclick="signup()">Create Account</button>
+        <div class="link" onclick="showLogin()">Already have account? Login</div>
+    </div>
 
-<button onclick="login()">Login</button>
+    <!-- LOGIN -->
+    <div id="loginBox" style="display:none">
+        <h3>Login</h3>
+        <input id="li_phone" placeholder="Phone">
+        <input id="li_pass" type="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <div class="link" onclick="showSignup()">New user? Sign up</div>
+    </div>
+
 </div>
 
 <script>
-/* Already logged in */
-if(sessionStorage.getItem("userPhone")){
-    window.location.replace("vote.html");
+function showLogin(){
+    signupBox.style.display="none";
+    loginBox.style.display="block";
 }
 
-function login(){
-    const phoneVal = document.getElementById("phone").value.trim();
-    const passVal  = document.getElementById("pass").value.trim();
+function showSignup(){
+    signupBox.style.display="block";
+    loginBox.style.display="none";
+}
 
-    if(phoneVal === "" || passVal === ""){
-        alert("Fill all fields");
+function signup(){
+    let name = su_name.value;
+    let phone = su_phone.value;
+    let pass = su_pass.value;
+
+    if(name=="" || phone=="" || pass==""){
+        alert("All fields required");
         return;
     }
 
-    /* 🔴 TEMP SIMPLE LOGIN
-       (No Firebase – direct access) */
+    if(localStorage.getItem("user_"+phone)){
+        alert("Account already exists");
+        return;
+    }
 
-    sessionStorage.setItem("userName", phoneVal);
-    sessionStorage.setItem("userPhone", phoneVal);
+    let user = {name:name, phone:phone, pass:pass};
+    localStorage.setItem("user_"+phone, JSON.stringify(user));
 
-    window.location.replace("vote.html");
+    alert("Account created. Login now.");
+    showLogin();
+}
+
+function login(){
+    let phone = li_phone.value;
+    let pass = li_pass.value;
+
+    let data = localStorage.getItem("user_"+phone);
+    if(!data){
+        alert("Account not found");
+        return;
+    }
+
+    let user = JSON.parse(data);
+    if(user.pass !== pass){
+        alert("Wrong password");
+        return;
+    }
+
+    localStorage.setItem("currentUser", user.name);
+localStorage.setItem("currentPhone", user.phone);
+window.location.href = "vote.html";
 }
 </script>
 
