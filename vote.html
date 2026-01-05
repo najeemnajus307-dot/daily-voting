@@ -6,7 +6,7 @@
 
 <style>
 body{
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
@@ -14,70 +14,54 @@ body{
   height:100vh;
 }
 .box{
-  background:#fff;
+  background:white;
   padding:25px;
   width:360px;
-  border-radius:10px;
+  border-radius:12px;
+  box-shadow:0 0 15px rgba(0,0,0,.2);
   text-align:center;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-.task{
-  border:1px solid #ddd;
-  padding:8px;
-  margin:6px 0;
-  border-radius:6px;
-  text-align:left;
-}
+h2{margin-bottom:6px}
+.green{color:#16a34a}
+.task{text-align:left;margin:6px 0}
 button{
   width:100%;
-  padding:12px;
+  padding:10px;
   margin-top:10px;
   border:none;
-  color:white;
-  cursor:pointer;
   border-radius:6px;
+  font-size:16px;
+  cursor:pointer;
 }
-.submit{background:#16a34a}
-.logout{background:#dc2626}
+.submit{background:#16a34a;color:white}
+.logout{background:#dc2626;color:white}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>WELCOME<br>FAITH & FITNESS</h2>
+  <h2 class="green">WELCOME<br>FAITH & FITNESS</h2>
+  <div id="userInfo"></div>
+  <div id="dateBox"></div>
 
-  <div id="user"></div>
-  <div id="date"></div>
+  <div id="tasksBox" style="margin:12px 0">Loading tasks...</div>
 
-  <div id="tasksArea">Loading tasks...</div>
-
-  <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
+  <button class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs,
-  doc, getDoc, setDoc
+  getFirestore,
+  doc,
+  getDoc,
+  addDoc,
+  collection
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔐 LOGIN CHECK */
-const uid = sessionStorage.getItem("uid");
-const name = sessionStorage.getItem("name");
-const phone = sessionStorage.getItem("phone");
-
-if(!uid){
-  location.replace("index.html");
-}
-
-/* UI */
-const today = new Date().toISOString().split("T")[0];
-document.getElementById("user").innerText = "Hello " + name;
-document.getElementById("date").innerText = "Date : " + today;
-
-/* 🔥 FIREBASE */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -87,73 +71,78 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔁 LOAD TASKS */
-const tasksArea = document.getElementById("tasksArea");
-let tasks = [];
+/* 🔐 Logged user (NO localStorage – Firebase only) */
+const phone = sessionStorage.getItem("phone");
+const name  = sessionStorage.getItem("name");
 
-const snap = await getDocs(collection(db,"tasks"));
-tasksArea.innerHTML = "";
-snap.forEach(d=>{
-  const t = d.data();
-  if(t.active){
-    tasks.push({id:d.id, ...t});
+if(!phone){
+  window.location.href="index.html";
+}
+
+document.getElementById("userInfo").innerHTML =
+  `<b>Hello ${name}</b>`;
+const today = new Date().toISOString().slice(0,10);
+document.getElementById("dateBox").innerHTML =
+  `Date : ${today}`;
+
+/* 🔹 LOAD TASKS (FROM task-editor STRUCTURE) */
+async function loadTasks(){
+  const box = document.getElementById("tasksBox");
+  const ref = doc(db,"tasks","daily");
+  const snap = await getDoc(ref);
+
+  if(!snap.exists()){
+    box.innerHTML = "<span style='color:red'>No tasks today</span>";
+    return;
   }
-});
 
-if(tasks.length === 0){
-  tasksArea.innerHTML = "<p style='color:red'>No tasks today</p>";
-}
+  const list = snap.data().list || [];
+  if(list.length===0){
+    box.innerHTML = "<span style='color:red'>No tasks today</span>";
+    return;
+  }
 
-/* Render checkboxes */
-tasks.forEach((t,i)=>{
-  tasksArea.innerHTML += `
-    <div class="task">
-      <label>
-        <input type="checkbox" id="t_${i}">
-        ${t.title} (${t.points} pts)
-      </label>
-    </div>
-  `;
-});
-
-/* 🔒 CHECK ALREADY VOTED */
-const voteId = phone + "_" + today;
-const voteRef = doc(db,"votes",voteId);
-const voted = await getDoc(voteRef);
-if(voted.exists()){
-  document.getElementById("submitBtn").disabled = true;
-  document.getElementById("submitBtn").innerText = "Already voted today";
-}
-
-/* ✅ SUBMIT VOTE */
-window.submitVote = async ()=>{
-  let total = 0;
-  let selected = {};
-
-  tasks.forEach((t,i)=>{
-    const checked = document.getElementById("t_"+i).checked;
-    selected[t.id] = checked;
-    if(checked) total += t.points;
+  box.innerHTML="";
+  list.forEach((t,i)=>{
+    box.innerHTML+=`
+      <div class="task">
+        <label>
+          <input type="checkbox" value="${t.points}">
+          ${t.text} (${t.points} pts)
+        </label>
+      </div>
+    `;
   });
+}
+loadTasks();
 
-  await setDoc(voteRef,{
-    uid,
+/* 🟢 SUBMIT VOTE */
+window.submitVote = async ()=>{
+  const checks = document.querySelectorAll("#tasksBox input:checked");
+  if(checks.length===0){
+    alert("Select at least one task");
+    return;
+  }
+
+  let points=0;
+  checks.forEach(c=>points+=Number(c.value));
+
+  await addDoc(collection(db,"votes"),{
     name,
     phone,
+    points,
     date: today,
-    tasks: selected,
-    totalPoints: total,
     createdAt: new Date().toISOString()
   });
 
-  alert("Vote submitted ✅ Points: " + total);
-  location.reload();
+  alert("Vote submitted ✅");
+  window.location.reload();
 };
 
-/* LOGOUT */
+/* 🔴 LOGOUT */
 window.logout = ()=>{
   sessionStorage.clear();
-  location.replace("index.html");
+  window.location.href="index.html";
 };
 </script>
 
