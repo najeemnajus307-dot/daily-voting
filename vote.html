@@ -101,8 +101,6 @@ let taskState = {};
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore,
-  collection,
-  getDocs,
   doc,
   getDoc,
   setDoc
@@ -118,20 +116,100 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* LOAD TASKS */
-const snap = await getDocs(collection(db,"tasks"));
+/* LOAD TASKS FROM tasks/daily */
 tasksArea.innerHTML = "";
 tasks = [];
 taskState = {};
 
-snap.forEach(d=>{
-  const t = d.data();
-  if(t.active === true){
-    const i = tasks.length;
+const taskDoc = await getDoc(doc(db,"tasks","daily"));
+if(taskDoc.exists()){
+  const list = taskDoc.data().list || [];
+
+  list.forEach((t,i)=>{
     tasks.push(t);
     tasksArea.innerHTML += `
       <div class="task">
         <label>
           <input type="checkbox" id="task_${i}">
-          ${t.title} (${t.points} pts)
-        </
+          ${t.text} (${t.points} pts)
+        </label>
+      </div>
+    `;
+    document.getElementById("task_"+i).addEventListener("change",e=>{
+      taskState[i] = e.target.checked;
+    });
+  });
+}
+
+/* NO TASKS */
+if(tasks.length === 0){
+  tasksArea.innerHTML =
+    "<p style='text-align:center;color:red'>No tasks today</p>";
+  submitBtn.disabled = true;
+  submitBtn.innerText = "No tasks today";
+}
+
+/* CHECK ALREADY VOTED */
+const voteId = phone + "_" + today;
+const voteRef = doc(db,"votes",voteId);
+const existingVote = await getDoc(voteRef);
+
+if(existingVote.exists()){
+  submitBtn.disabled = true;
+  submitBtn.innerText = "Already voted today";
+}
+
+/* SUBMIT VOTE — AUTO ADD POINTS */
+submitBtn.onclick = async ()=>{
+  if(submitBtn.disabled) return;
+
+  if(tasks.length === 0){
+    alert("No tasks available today");
+    return;
+  }
+
+  let todayPoints = 0;
+  tasks.forEach((t,i)=>{
+    if(taskState[i]) todayPoints += t.points;
+  });
+
+  /* GET OLD TOTAL FROM USERS */
+  let prevTotal = 0;
+  const userRef = doc(db,"users",phone);
+  const userSnap = await getDoc(userRef);
+  if(userSnap.exists()){
+    prevTotal = userSnap.data().totalPoints || 0;
+  }
+
+  const newTotal = prevTotal + todayPoints;
+
+  /* SAVE VOTE */
+  await setDoc(voteRef,{
+    name,
+    phone,
+    date: today,
+    todayPoints: todayPoints,
+    totalPoints: newTotal,
+    submittedAt: new Date().toISOString()
+  });
+
+  /* UPDATE USER TOTAL */
+  await setDoc(userRef,{
+    name,
+    phone,
+    totalPoints: newTotal
+  },{ merge:true });
+
+  alert(`Vote submitted ✅ Points added: ${todayPoints}`);
+  location.reload();
+};
+
+/* LOGOUT */
+window.logout = ()=>{
+  localStorage.clear();
+  location.replace("index.html");
+};
+</script>
+
+</body>
+</html>
