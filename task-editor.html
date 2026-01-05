@@ -18,7 +18,7 @@ body{
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.15);
 }
-h2{text-align:center;margin-bottom:10px}
+h2{text-align:center;}
 .row{
   display:flex;
   gap:6px;
@@ -29,25 +29,27 @@ h2{text-align:center;margin-bottom:10px}
   padding:8px;
 }
 .row button{
-  padding:8px 10px;
+  padding:8px;
 }
 .addBtn{
   width:100%;
-  margin-top:10px;
   background:#2563eb;
-  color:#fff;
+  color:white;
   border:none;
+  padding:8px;
+  margin-top:10px;
 }
 .saveBtn{
   width:100%;
-  margin-top:10px;
   background:#16a34a;
-  color:#fff;
+  color:white;
   border:none;
+  padding:8px;
+  margin-top:10px;
 }
 .delBtn{
   background:#ef4444;
-  color:#fff;
+  color:white;
   border:none;
 }
 </style>
@@ -56,34 +58,33 @@ h2{text-align:center;margin-bottom:10px}
 <body>
 
 <div class="box">
-  <h2>Task Editor</h2>
+  <h2>Task Editor (Admin)</h2>
 
-  <!-- ADD NEW TASK -->
   <div class="row">
-    <input id="newTask" placeholder="New task name">
+    <input id="newTask" placeholder="New task text">
     <button onclick="addTask()">Add</button>
   </div>
 
-  <!-- TASK LIST -->
   <div id="taskList"></div>
 
   <button class="saveBtn" onclick="saveTasks()">Save Tasks</button>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔐 ADMIN PROTECT */
+/* 🔐 ADMIN ONLY */
 const ADMIN_PHONE = "7994302567";
 const phone = sessionStorage.getItem("phone");
-if (phone !== ADMIN_PHONE) {
+if(phone !== ADMIN_PHONE){
   alert("Access denied");
-  location.href = "vote.html";
+  location.href="vote.html";
 }
 
-/* 🔥 FIREBASE CONFIG */
+/* FIREBASE */
 const app = initializeApp({
   apiKey:"YOUR_API_KEY",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -91,54 +92,38 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-const listBox = document.getElementById("taskList");
 const ref = doc(db,"settings","tasks");
-
 let tasks = [];
 
-/* LOAD TASKS */
 const snap = await getDoc(ref);
-if (snap.exists()) {
-  tasks = snap.data().list;
-}
+if(snap.exists()) tasks = snap.data().list;
+
 render();
 
-/* RENDER */
 function render(){
-  listBox.innerHTML = "";
+  taskList.innerHTML="";
   tasks.forEach((t,i)=>{
-    listBox.innerHTML += `
+    taskList.innerHTML += `
       <div class="row">
-        <input value="${t}" oninput="update(${i}, this.value)">
+        <input value="${t}" oninput="edit(${i},this.value)">
         <button class="delBtn" onclick="del(${i})">✖</button>
-      </div>
-    `;
+      </div>`;
   });
 }
 
-/* UPDATE */
-window.update = (i, val) => {
-  tasks[i] = val;
-};
+window.edit = (i,val)=>{ tasks[i]=val; };
+window.del  = (i)=>{ tasks.splice(i,1); render(); };
 
-/* ADD */
-window.addTask = () => {
-  const v = document.getElementById("newTask").value.trim();
+window.addTask = ()=>{
+  const v = newTask.value.trim();
   if(!v) return;
   tasks.push(v);
-  document.getElementById("newTask").value = "";
+  newTask.value="";
   render();
 };
 
-/* DELETE */
-window.del = (i) => {
-  tasks.splice(i,1);
-  render();
-};
-
-/* SAVE */
-window.saveTasks = async () => {
-  await setDoc(ref, { list: tasks });
+window.saveTasks = async ()=>{
+  await setDoc(ref,{ list: tasks });
   alert("Tasks saved successfully ✅");
 };
 </script>
