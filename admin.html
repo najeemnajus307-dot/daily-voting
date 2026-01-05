@@ -20,6 +20,7 @@ th{background:#2563eb;color:#fff}
 button{padding:6px 10px;cursor:pointer}
 .save{background:#16a34a;color:#fff;border:none}
 .del{background:#dc2626;color:#fff;border:none}
+.fix{background:#7c3aed;color:#fff;border:none}
 .editInp{width:90%}
 .small{font-size:12px;color:#555}
 .count{text-align:center;font-weight:bold;margin-bottom:10px}
@@ -28,12 +29,18 @@ button{padding:6px 10px;cursor:pointer}
   background:#f8fafc;padding:10px;border-radius:8px;
   min-width:160px;text-align:center
 }
+.top-actions{text-align:center;margin-bottom:10px}
 </style>
 </head>
 
 <body>
 
 <h2>Admin Voting Dashboard</h2>
+
+<div class="top-actions">
+  <button class="fix" onclick="rebuildUserTotals()">Rebuild User Totals (One Time)</button>
+</div>
+
 <div class="count" id="totalCount">Loading...</div>
 
 <div class="box">
@@ -85,9 +92,9 @@ const db = getFirestore(app);
 const ADMIN_PASS = "1";
 
 let allVotes = [];
-let userMap = {}; // phone → lifetime points
+let userMap = {}; // phone → totalPoints
 
-/* LOAD USERS (LIFETIME TOTALS) */
+/* LOAD USERS */
 async function loadUsers(){
   userMap = {};
   const snap = await getDocs(collection(db,"users"));
@@ -100,24 +107,22 @@ async function loadUsers(){
 /* LOAD VOTES */
 async function loadVotes(){
   await loadUsers();
-
   allVotes = [];
   const snap = await getDocs(collection(db,"votes"));
   snap.forEach(d=>allVotes.push({id:d.id,...d.data()}));
-
   totalCount.innerText = "Total Voters : " + allVotes.length;
   renderAll();
 }
 loadVotes();
 
-/* RENDER ALL */
+/* RENDER */
 function renderAll(){
   renderSummary();
   renderRank();
   renderReport();
 }
 
-/* SUMMARY (DAILY) */
+/* SUMMARY */
 function renderSummary(){
   summaryCards.innerHTML="";
   const map={};
@@ -136,26 +141,21 @@ function renderSummary(){
   });
 }
 
-/* TOP 3 RANKING (USERS TOTAL POINTS) */
+/* TOP 3 RANKING */
 function renderRank(){
   rankBody.innerHTML="";
-  const uniqPhones = {};
-  allVotes.forEach(v=>{
-    uniqPhones[v.phone]=v.name;
-  });
-
-  const arr = Object.keys(uniqPhones).map(p=>({
+  const uniq={};
+  allVotes.forEach(v=>uniq[v.phone]=v.name);
+  const arr=Object.keys(uniq).map(p=>({
     phone:p,
-    name:uniqPhones[p],
+    name:uniq[p],
     points:userMap[p]||0
   }));
-
   arr.sort((a,b)=>b.points-a.points);
-
   let rank=0,last=null;
   arr.forEach(u=>{
     if(u.points!==last){rank++;last=u.points;}
-    if(rank>3) return;
+    if(rank>3)return;
     const cls=rank===1?"rank1":rank===2?"rank2":"rank3";
     rankBody.innerHTML+=`
       <tr class="${cls}">
@@ -167,7 +167,7 @@ function renderRank(){
   });
 }
 
-/* REPORT (ADD POINTS ONLY) */
+/* REPORT */
 function renderReport(){
   reportBody.innerHTML="";
   allVotes.forEach(v=>{
@@ -188,37 +188,24 @@ function renderReport(){
   });
 }
 
-/* SAVE (AUTO ADD POINTS) */
+/* SAVE (AUTO ADD) */
 window.saveEdit = async (id)=>{
   const name=document.getElementById("n_"+id).value.trim();
   const phone=document.getElementById("p_"+id).value.trim();
   const addPt=Number(document.getElementById("pt_"+id).value||0);
   const date=document.getElementById("d_"+id).value;
-
-  if(!name||!phone||!date){alert("Fill all");return;}
-  if(prompt("Admin password")!==ADMIN_PASS){alert("Wrong password");return;}
-
-  const old=userMap[phone]||0;
-  const newTotal=old+addPt;
-
-  await updateDoc(doc(db,"votes",id),{
-    name,phone,date
-  });
-
+  if(prompt("Admin password")!==ADMIN_PASS)return;
+  const newTotal=(userMap[phone]||0)+addPt;
+  await updateDoc(doc(db,"votes",id),{name,phone,date});
   const q=query(collection(db,"users"),where("phone","==",phone));
   const snap=await getDocs(q);
   if(snap.empty){
-    await addDoc(collection(db,"users"),{
-      name,phone,totalPoints:newTotal,password:"1"
-    });
+    await addDoc(collection(db,"users"),{name,phone,totalPoints:newTotal,password:"1"});
   }else{
     snap.forEach(async u=>{
-      await updateDoc(doc(db,"users",u.id),{
-        name,phone,totalPoints:newTotal
-      });
+      await updateDoc(doc(db,"users",u.id),{name,phone,totalPoints:newTotal});
     });
   }
-
   alert("Points added. New total: "+newTotal);
   loadVotes();
 };
@@ -227,6 +214,33 @@ window.saveEdit = async (id)=>{
 window.deleteVote = async (id)=>{
   if(!confirm("Delete vote?"))return;
   await deleteDoc(doc(db,"votes",id));
+  loadVotes();
+};
+
+/* 🔧 ONE-TIME FIX */
+window.rebuildUserTotals = async ()=>{
+  if(!confirm("Rebuild all user totals?"))return;
+  const snap=await getDocs(collection(db,"votes"));
+  const map={};
+  snap.forEach(d=>{
+    const v=d.data();
+    if(!map[v.phone])map[v.phone]=0;
+    map[v.phone]+=v.todayPoints||0;
+  });
+  for(const phone in map){
+    const q=query(collection(db,"users"),where("phone","==",phone));
+    const us=await getDocs(q);
+    if(us.empty){
+      await addDoc(collection(db,"users"),{
+        phone, name:phone, totalPoints:map[phone], password:"1"
+      });
+    }else{
+      us.forEach(async u=>{
+        await updateDoc(doc(db,"users",u.id),{totalPoints:map[phone]});
+      });
+    }
+  }
+  alert("User totals rebuilt successfully ✅");
   loadVotes();
 };
 </script>
