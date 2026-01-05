@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Signup / Login</title>
+<title>Faith & Fitness – Login</title>
 
 <style>
 body{
@@ -16,80 +16,58 @@ body{
 .box{
   background:#fff;
   padding:25px;
-  width:350px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
+  width:320px;
+  border-radius:12px;
+  box-shadow:0 0 12px rgba(0,0,0,.2);
+  text-align:center;
 }
-h2{text-align:center;}
 input,button{
   width:100%;
   padding:10px;
   margin:6px 0;
 }
 button{
-  background:#2563eb;
-  color:white;
+  background:#16a34a;
+  color:#fff;
   border:none;
-  border-radius:6px;
   cursor:pointer;
 }
 .link{
-  text-align:center;
+  margin-top:10px;
   color:#2563eb;
   cursor:pointer;
-  font-size:14px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="box">
-
-<h2 id="title">Signup</h2>
-
-<!-- SIGNUP -->
-<div id="signupBox">
-  <input id="sname" placeholder="Name">
-  <input id="sphone" placeholder="Phone Number">
-  <input id="spass" type="password" placeholder="Password">
-  <button onclick="signup()">Signup</button>
-  <div class="link" onclick="showLogin()">Already have account?</div>
-</div>
-
-<!-- LOGIN -->
-<div id="loginBox" style="display:none;">
-  <input id="lphone" placeholder="Phone Number">
-  <input id="lpass" type="password" placeholder="Password">
+<div class="box" id="loginBox">
+  <h3>Login</h3>
+  <input id="lPhone" placeholder="Phone">
+  <input id="lPass" type="password" placeholder="Password">
   <button onclick="login()">Login</button>
-  <div class="link" onclick="showForgot()">Forgot password?</div>
   <div class="link" onclick="showSignup()">New user? Signup</div>
 </div>
 
-<!-- FORGOT PASSWORD -->
-<div id="forgotBox" style="display:none;">
-  <input id="fphone" placeholder="Phone Number">
-  <input id="newpass" type="password" placeholder="New Password">
-  <button onclick="resetPassword()">Reset Password</button>
-  <div class="link" onclick="showLogin()">Back to Login</div>
-</div>
-
+<div class="box" id="signupBox" style="display:none">
+  <h3>Signup</h3>
+  <input id="sName" placeholder="Name">
+  <input id="sPhone" placeholder="Phone">
+  <input id="sPass" type="password" placeholder="Password">
+  <button onclick="signup()">Signup</button>
+  <div class="link" onclick="showLogin()">Already user? Login</div>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  doc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+  getFirestore, doc, getDoc, setDoc
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔴 YOUR FIREBASE CONFIG */
+/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -99,103 +77,82 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* UI SWITCH */
-window.showLogin = ()=>{
-  signupBox.style.display="none";
-  forgotBox.style.display="none";
-  loginBox.style.display="block";
-  title.innerText="Login";
-};
-window.showSignup = ()=>{
+/* AUTO REDIRECT IF LOGGED */
+if(sessionStorage.getItem("logged")==="yes"){
+  location.replace("vote.html");
+}
+
+/* UI TOGGLE */
+window.showSignup=()=>{
+  loginBox.style.display="none";
   signupBox.style.display="block";
-  loginBox.style.display="none";
-  forgotBox.style.display="none";
-  title.innerText="Signup";
 };
-window.showForgot = ()=>{
+window.showLogin=()=>{
   signupBox.style.display="none";
-  loginBox.style.display="none";
-  forgotBox.style.display="block";
-  title.innerText="Forgot Password";
+  loginBox.style.display="block";
 };
 
 /* SIGNUP */
 window.signup = async ()=>{
-  const name  = sname.value.trim();
-  const phone = sphone.value.trim();
-  const pass  = spass.value.trim();
+  const name = sName.value.trim();
+  const phone = sPhone.value.trim();
+  const pass = sPass.value.trim();
 
   if(!name || !phone || !pass){
-    alert("Fill all fields");
+    alert("All fields required");
     return;
   }
 
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",phone)
-  );
-  const snap = await getDocs(q);
-  if(!snap.empty){
-    alert("Phone already registered");
-    return;
+  const ref = doc(db,"users",phone);
+  const snap = await getDoc(ref);
+
+  if(!snap.exists()){
+    await setDoc(ref,{
+      name,
+      phone,
+      password: pass,
+      totalPoints: 0,
+      createdAt: new Date().toISOString()
+    });
   }
 
-  await addDoc(collection(db,"users"),{
-    name:name,
-    phone:phone,
-    password:pass
-  });
+  // AUTO LOGIN
+  sessionStorage.setItem("logged","yes");
+  sessionStorage.setItem("userName",name);
+  sessionStorage.setItem("userPhone",phone);
 
-  alert("Signup successful ✅");
-  showLogin();
+  location.replace("vote.html");
 };
 
 /* LOGIN */
 window.login = async ()=>{
-  const phone = lphone.value.trim();
-  const pass  = lpass.value.trim();
+  const phone = lPhone.value.trim();
+  const pass  = lPass.value.trim();
 
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",phone),
-    where("password","==",pass)
-  );
-  const snap = await getDocs(q);
-
-  if(snap.empty){
-    alert("Invalid login");
+  if(!phone || !pass){
+    alert("Enter phone & password");
     return;
   }
 
-  localStorage.setItem("userPhone",phone);
-  localStorage.setItem("userName",snap.docs[0].data().name);
+  const ref = doc(db,"users",phone);
+  const snap = await getDoc(ref);
 
-  window.location.href="vote.html";
-};
-
-/* FORGOT PASSWORD */
-window.resetPassword = async ()=>{
-  const phone = fphone.value.trim();
-  const newp  = newpass.value.trim();
-
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",phone)
-  );
-  const snap = await getDocs(q);
-
-  if(snap.empty){
-    alert("Phone not found");
+  if(!snap.exists()){
+    alert("User not found");
     return;
   }
 
-  await updateDoc(
-    doc(db,"users",snap.docs[0].id),
-    { password:newp }
-  );
+  const u = snap.data();
+  if(u.password !== pass){
+    alert("Wrong password");
+    return;
+  }
 
-  alert("Password updated ✅");
-  showLogin();
+  sessionStorage.setItem("logged","yes");
+  sessionStorage.setItem("userName",u.name);
+  sessionStorage.setItem("userPhone",phone);
+
+  location.replace("vote.html");
 };
 </script>
 
