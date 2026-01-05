@@ -1,116 +1,123 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Login</title>
-
-<style>
-body{
-  font-family:Arial;
-  background:#f1f5f9;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-.box{
-  background:#fff;
-  padding:20px;
-  width:300px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
-  text-align:center;
-}
-input,button{
-  width:100%;
-  padding:8px;
-  margin:6px 0;
-}
-button{background:#16a34a;color:#fff;border:none;}
-.link{color:#2563eb;cursor:pointer;margin-top:8px}
-</style>
+    <title>Login / Signup</title>
+    <style>
+        body{
+            font-family:Arial;
+            background:#f1f5f9;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+        .box{
+            background:white;
+            padding:25px;
+            width:300px;
+            border-radius:10px;
+            text-align:center;
+        }
+        input{
+            width:100%;
+            padding:8px;
+            margin:6px 0;
+        }
+        button{
+            width:100%;
+            padding:10px;
+            margin-top:10px;
+            background:#2563eb;
+            color:white;
+            border:none;
+            cursor:pointer;
+        }
+        .link{
+            margin-top:10px;
+            color:blue;
+            cursor:pointer;
+            font-size:14px;
+        }
+    </style>
 </head>
-
 <body>
 
-<div class="box" id="loginBox">
-  <h3>Login</h3>
-  <input id="lPhone" placeholder="Phone">
-  <input id="lPass" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <div class="link" onclick="showSignup()">Signup</div>
+<div class="box">
+
+    <!-- SIGNUP -->
+    <div id="signupBox">
+        <h3>Sign Up</h3>
+        <input id="su_name" placeholder="Name">
+        <input id="su_phone" placeholder="Phone">
+        <input id="su_pass" type="password" placeholder="Password">
+        <button onclick="signup()">Create Account</button>
+        <div class="link" onclick="showLogin()">Already have account? Login</div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginBox" style="display:none">
+        <h3>Login</h3>
+        <input id="li_phone" placeholder="Phone">
+        <input id="li_pass" type="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <div class="link" onclick="showSignup()">New user? Sign up</div>
+    </div>
+
 </div>
 
-<div class="box" id="signupBox" style="display:none">
-  <h3>Signup</h3>
-  <input id="sName" placeholder="Name">
-  <input id="sPhone" placeholder="Phone">
-  <input id="sPass" type="password" placeholder="Password">
-  <button onclick="signup()">Signup</button>
-  <div class="link" onclick="showLogin()">Login</div>
-</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-/* 🔥 Firebase config (REAL API KEY ഇടണം) */
-const firebaseConfig = {
-  apiKey: "YOUR_REAL_API_KEY",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-/* already logged */
-if(sessionStorage.getItem("logged")==="yes"){
-  location.replace("vote.html");
+<script>
+function showLogin(){
+    signupBox.style.display="none";
+    loginBox.style.display="block";
 }
 
-window.showSignup=()=>{
-  loginBox.style.display="none";
-  signupBox.style.display="block";
-};
-window.showLogin=()=>{
-  signupBox.style.display="none";
-  loginBox.style.display="block";
-};
+function showSignup(){
+    signupBox.style.display="block";
+    loginBox.style.display="none";
+}
 
-window.signup = async ()=>{
-  const name=sName.value.trim();
-  const phone=sPhone.value.trim();
-  const pass=sPass.value.trim();
-  if(!name||!phone||!pass){alert("Fill all");return;}
+function signup(){
+    let name = su_name.value;
+    let phone = su_phone.value;
+    let pass = su_pass.value;
 
-  const ref=doc(db,"users",phone);
-  const snap=await getDoc(ref);
-  if(!snap.exists()){
-    await setDoc(ref,{name,phone,password:pass});
-  }
+    if(name=="" || phone=="" || pass==""){
+        alert("All fields required");
+        return;
+    }
 
-  sessionStorage.setItem("logged","yes");
-  sessionStorage.setItem("userName",name);
-  sessionStorage.setItem("userPhone",phone);
-  location.replace("vote.html");
-};
+    if(localStorage.getItem("user_"+phone)){
+        alert("Account already exists");
+        return;
+    }
 
-window.login = async ()=>{
-  const phone=lPhone.value.trim();
-  const pass=lPass.value.trim();
-  if(!phone||!pass){alert("Fill all");return;}
+    let user = {name:name, phone:phone, pass:pass};
+    localStorage.setItem("user_"+phone, JSON.stringify(user));
 
-  const ref=doc(db,"users",phone);
-  const snap=await getDoc(ref);
-  if(!snap.exists()){alert("No user");return;}
-  if(snap.data().password!==pass){alert("Wrong password");return;}
+    alert("Account created. Login now.");
+    showLogin();
+}
 
-  sessionStorage.setItem("logged","yes");
-  sessionStorage.setItem("userName",snap.data().name);
-  sessionStorage.setItem("userPhone",phone);
-  location.replace("vote.html");
-};
+function login(){
+    let phone = li_phone.value;
+    let pass = li_pass.value;
+
+    let data = localStorage.getItem("user_"+phone);
+    if(!data){
+        alert("Account not found");
+        return;
+    }
+
+    let user = JSON.parse(data);
+    if(user.pass !== pass){
+        alert("Wrong password");
+        return;
+    }
+
+    localStorage.setItem("currentUser", user.name);
+localStorage.setItem("currentPhone", user.phone);
+window.location.href = "vote.html";
+}
 </script>
 
 </body>
