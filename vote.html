@@ -1,12 +1,11 @@
 <!DOCTYPE html>
-<html lang="ml">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Daily Voting</title>
-
+<title>Faith & Fitness - Daily Tasks</title>
 <style>
 body{
-  font-family: Arial;
+  font-family:Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
@@ -16,109 +15,47 @@ body{
 .box{
   background:#fff;
   padding:25px;
-  width:380px;
-  border-radius:12px;
-  box-shadow:0 0 12px rgba(0,0,0,0.15);
+  width:360px;
+  border-radius:10px;
   position:relative;
 }
-
-/* LOGO */
-.logo-box{
-  text-align:center;
-  margin-bottom:10px;
-}
-.logo-box img{
-  width:180px;
-  max-width:100%;
-}
-
-/* HEADERS */
-h2{
-  text-align:center;
-  margin:6px 0 2px;
-}
-h4{
-  text-align:center;
-  color:#16a34a;
-  margin:0 0 10px;
-}
-.info{
-  text-align:center;
-  font-size:14px;
-  margin-bottom:6px;
-}
-
-/* TASKS */
-label{
-  display:block;
-  margin:8px 0;
-}
-.points{
-  font-size:13px;
-  color:green;
-  margin-left:22px;
-}
-
-/* BUTTONS */
+h2{text-align:center;}
+.task{margin:8px 0;}
+.points{color:green;font-size:13px;}
 button{
   width:100%;
   padding:10px;
   margin-top:15px;
-  border:none;
-  border-radius:6px;
-  font-size:16px;
-  cursor:pointer;
-}
-.submit-btn{
   background:#16a34a;
-  color:#fff;
+  color:white;
+  border:none;
 }
-.submit-btn:disabled{
-  background:#9ca3af;
-  cursor:not-allowed;
-}
-.logout-btn{
+.logout{
+  position:absolute;
+  top:10px;
+  right:10px;
   background:#dc2626;
-  color:#fff;
-  margin-top:10px;
-}
-.logout-btn:hover{
-  background:#b91c1c;
+  width:auto;
 }
 </style>
 </head>
 
 <body>
-
 <div class="box">
+<button class="logout" onclick="logout()">Logout</button>
 
-  <!-- LOGO -->
-  <div class="logo-box">
-    <img src="faith-fitness.png" alt="Faith & Fitness">
-  </div>
+<h2>Welcome Faith & Fitness</h2>
+<p id="info"></p>
 
-  <h2>Welcome Faith & Fitness</h2>
-  <h4>Daily Tasks</h4>
+<div id="tasks"></div>
 
-  <div class="info" id="user"></div>
-  <div class="info" id="date"></div>
-
-  <!-- TASK LIST -->
-  <div id="taskList"></div>
-
-  <!-- SUBMIT -->
-  <button id="submitBtn" class="submit-btn">Submit</button>
-
-  <!-- LOGOUT -->
-  <button class="logout-btn" onclick="logout()">Logout</button>
-
+<button onclick="submit()">Submit</button>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -126,103 +63,64 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
+const db = getFirestore(app);
 
-async function init(){
+let user = localStorage.getItem("currentUser");
+let phone = localStorage.getItem("currentPhone");
 
-  const user  = localStorage.getItem("currentUser");
-  const phone = localStorage.getItem("currentPhone");
-  if(!user || !phone){
-    location.replace("index.html");
-    return;
-  }
-
-  const today = new Date().toISOString().split("T")[0];
-  const voteRef = doc(db,"votes", phone + "_" + today);
-
-  document.getElementById("user").innerText = "User : " + user;
-  document.getElementById("date").innerText = "Date : " + today;
-
-  const taskBox = document.getElementById("taskList");
-  const submitBtn = document.getElementById("submitBtn");
-
-  /* LOAD TASKS */
-  const taskSnap = await getDoc(doc(db,"tasks","daily"));
-  const tasks = taskSnap.exists() ? taskSnap.data().list : [];
-
-  if(tasks.length === 0){
-    taskBox.innerHTML = "<p>No tasks today</p>";
-    submitBtn.disabled = true;
-    return;
-  }
-
-  /* BUILD TASK HTML */
-  taskBox.innerHTML = tasks.map((t,i)=>`
-    <label>
-      <input type="checkbox" id="task_${i}">
-      ${t.text}
-      <div class="points">${t.points} points</div>
-    </label>
-  `).join("");
-
-  /* READ CHECKBOXES */
-  const inputs = tasks.map((t,i)=>({
-    el: document.getElementById("task_"+i),
-    pts: Number(t.points)
-  }));
-
-  /* CHECK ALREADY SUBMITTED */
-  const snap = await getDoc(voteRef);
-  if(snap.exists()){
-    const old = snap.data().tasks || {};
-    inputs.forEach((o,i)=>{
-      o.el.checked = !!old[i];
-      o.el.disabled = true;
-    });
-    submitBtn.disabled = true;
-    submitBtn.innerText = "Already submitted";
-    return;
-  }
-
-  /* SUBMIT */
-  submitBtn.onclick = async ()=>{
-    let result = {};
-    let total = 0;
-
-    inputs.forEach((o,i)=>{
-      result[i] = o.el.checked;
-      if(o.el.checked){
-        total += o.pts;
-      }
-    });
-
-    await setDoc(voteRef,{
-      name:user,
-      phone:phone,
-      date:today,
-      tasks:result,
-      totalPoints:total,
-      submittedAt:new Date().toISOString()
-    });
-
-    alert("Vote saved ✅ Total points : " + total);
-
-    inputs.forEach(o=>o.el.disabled=true);
-    submitBtn.disabled = true;
-    submitBtn.innerText = "Already submitted";
-  };
+if(!user || !phone){
+  location.href="index.html";
 }
 
-/* LOGOUT */
+let today = new Date().toISOString().split("T")[0];
+document.getElementById("info").innerText =
+  `User : ${user} | Date : ${today}`;
+
+const taskRef = doc(db,"tasks","daily");
+const voteRef = doc(db,"votes", phone+"_"+today);
+
+const taskSnap = await getDoc(taskRef);
+let taskList = taskSnap.data().list || [];
+
+let wrap = document.getElementById("tasks");
+wrap.innerHTML="";
+
+taskList.forEach((t,i)=>{
+  wrap.innerHTML += `
+  <div class="task">
+    <input type="checkbox" id="t${i}">
+    ${t.name}
+    <div class="points">${t.points} points</div>
+  </div>`;
+});
+
+window.submit = async function(){
+  let total = 0;
+  let tasks = {};
+
+  taskList.forEach((t,i)=>{
+    let v = document.getElementById("t"+i).checked;
+    tasks[i]=v;
+    if(v) total += t.points;
+  });
+
+  await setDoc(voteRef,{
+    name:user,
+    phone:phone,
+    date:today,
+    tasks:tasks,
+    totalPoints:total,
+    submittedAt:new Date().toISOString()
+  });
+
+  alert("Vote saved ✅ Total points : "+total);
+  location.reload();
+}
+
 window.logout = function(){
-  if(confirm("Logout cheyyano?")){
-    localStorage.clear();
-    location.replace("index.html");
-  }
-};
-
-init();
+  localStorage.clear();
+  location.href="index.html";
+}
 </script>
-
 </body>
 </html>
