@@ -13,6 +13,7 @@ body{
   align-items:center;
   height:100vh;
 }
+
 .box{
   background:white;
   padding:25px;
@@ -20,13 +21,29 @@ body{
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2{text-align:center;margin:0;}
-.info{
+
+h2{
+  text-align:center;
+  margin:0;
+}
+.sub{
+  text-align:center;
+  font-size:13px;
+  color:#555;
+  margin-bottom:15px;
+}
+
+.user{
   text-align:center;
   font-size:14px;
   margin-bottom:12px;
 }
-.task{margin:6px 0;}
+
+.task{
+  margin:6px 0;
+  font-size:15px;
+}
+
 button{
   width:100%;
   padding:10px;
@@ -34,35 +51,48 @@ button{
   border:none;
   cursor:pointer;
   border-radius:6px;
+  font-size:15px;
 }
-.submit{background:#16a34a;color:white;}
-.logout{background:#e5e7eb;}
+.submit{
+  background:#16a34a;
+  color:white;
+}
+.logout{
+  background:#e5e7eb;
+  color:black;
+}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>Faith & Fitness</h2>
 
-  <div class="info">
+  <h2>Faith & Fitness</h2>
+  <div class="sub">Daily Task Voting</div>
+
+  <div class="user">
     Hi <b id="uname"></b><br>
     <span id="today"></span>
   </div>
 
+  <!-- TASK LIST -->
   <div id="tasks"></div>
 
   <button class="submit" onclick="submitVote()">Submit Today Task</button>
   <button class="logout" onclick="logout()">Logout</button>
+
 </div>
 
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc }
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import {
+  getFirestore, doc, getDoc, setDoc
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE */
+/* 🔥 FIREBASE CONFIG */
 const app = initializeApp({
   apiKey:"YOUR_API_KEY",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -70,52 +100,63 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* SESSION */
+/* 🔐 SESSION CHECK */
 const phone = sessionStorage.getItem("phone");
 const name  = sessionStorage.getItem("name");
 if(!phone) location.href="index.html";
 
-uname.innerText = name;
-today.innerText = new Date().toDateString();
+/* USER INFO */
+document.getElementById("uname").innerText = name;
+document.getElementById("today").innerText =
+  new Date().toDateString();
 
-/* LOAD TASKS FROM ADMIN */
-const snap = await getDoc(doc(db,"settings","tasks"));
-const list = snap.exists() ? snap.data().list : [];
+/* 🔽 LOAD TASKS (ADMIN EDITED) */
+const taskSnap = await getDoc(doc(db,"settings","tasks"));
+const taskList = taskSnap.exists() ? taskSnap.data().list : [];
 
-list.forEach(t=>{
-  tasks.innerHTML += `
+taskList.forEach(t=>{
+  document.getElementById("tasks").innerHTML += `
     <div class="task">
-      <label><input type="checkbox" value="${t}"> ${t}</label>
-    </div>`;
+      <label>
+        <input type="checkbox" value="${t}"> ${t}
+      </label>
+    </div>
+  `;
 });
 
-/* SUBMIT */
+/* 🗳 SUBMIT VOTE */
 window.submitVote = async ()=>{
-  const sel = [...document.querySelectorAll("input:checked")]
-              .map(i=>i.value);
-  if(sel.length===0){
+  const selected = [...document.querySelectorAll(
+    'input[type="checkbox"]:checked'
+  )].map(i=>i.value);
+
+  if(selected.length === 0){
     alert("Select at least one task");
     return;
   }
 
-  const d = new Date().toISOString().slice(0,10);
-  const ref = doc(db,"votes", phone+"_"+d);
+  const dateKey = new Date().toISOString().slice(0,10);
+  const ref = doc(db,"votes", phone + "_" + dateKey);
 
   if((await getDoc(ref)).exists()){
     alert("Already submitted today");
     return;
   }
 
+  const points = selected.length * 5; // ⭐ 1 task = 5 points
+
   await setDoc(ref,{
-    phone:phone,
-    name:name,
-    tasks:sel,
-    date:d
+    phone: phone,
+    name: name,
+    tasks: selected,
+    points: points,
+    date: dateKey
   });
 
   alert("Task submitted successfully ✅");
 };
 
+/* 🚪 LOGOUT */
 window.logout = ()=>{
   sessionStorage.clear();
   location.href="index.html";
