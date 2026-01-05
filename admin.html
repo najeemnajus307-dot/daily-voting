@@ -112,7 +112,10 @@ import {
   getDocs,
   updateDoc,
   deleteDoc,
-  doc
+  doc,
+  query,
+  where,
+  addDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔴 FIREBASE CONFIG */
@@ -131,7 +134,7 @@ const ADMIN_PASSWORD = "1";
 let allVotes = [];
 let filteredVotes = [];
 
-/* LOAD */
+/* LOAD VOTES */
 async function loadVotes(){
   allVotes = [];
   const snap = await getDocs(collection(db,"votes"));
@@ -204,8 +207,9 @@ function renderRank(votes){
   });
 }
 
-/* FULL REPORT (POINTS EDITABLE) */
+/* REPORT */
 function renderReport(votes){
+  reportBody.innerHTML="";
   votes.forEach(v=>{
     reportBody.innerHTML+=`
       <tr>
@@ -221,7 +225,7 @@ function renderReport(votes){
   });
 }
 
-/* SAVE (ALL FIELDS WITH PASSWORD) */
+/* SAVE (VOTES + USERS AUTO ADD / UPDATE) */
 window.saveEdit = async (id)=>{
   const name  = document.getElementById("n_"+id).value.trim();
   const phone = document.getElementById("p_"+id).value.trim();
@@ -239,6 +243,7 @@ window.saveEdit = async (id)=>{
     return;
   }
 
+  /* UPDATE VOTE */
   await updateDoc(doc(db,"votes",id),{
     name,
     phone,
@@ -246,7 +251,33 @@ window.saveEdit = async (id)=>{
     date
   });
 
-  alert("Saved to Firebase ✅");
+  /* CHECK USER */
+  const q = query(
+    collection(db,"users"),
+    where("phone","==",phone)
+  );
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    /* CREATE USER IF NOT EXISTS */
+    await addDoc(collection(db,"users"),{
+      name: name,
+      phone: phone,
+      password: "1",
+      createdFrom: "admin",
+      createdAt: new Date().toISOString()
+    });
+  }else{
+    /* UPDATE EXISTING USER */
+    snap.forEach(async u=>{
+      await updateDoc(doc(db,"users",u.id),{
+        name: name,
+        phone: phone
+      });
+    });
+  }
+
+  alert("Saved ✔ Vote + User synced");
   loadVotes();
 };
 
