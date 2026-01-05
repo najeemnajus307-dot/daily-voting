@@ -57,7 +57,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebas
 import { getFirestore, doc, getDoc, setDoc }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG – REAL API KEY ഇടണം */
+/* 🔥 FIREBASE CONFIG (REAL API KEY ഇടണം) */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -67,8 +67,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+/* 🔐 ADMIN PHONE NUMBER */
+const ADMIN_PHONE = "7994302567";   // ← admin number here
+
 let signup = false;
 
+/* ELEMENTS */
 const title = document.getElementById("title");
 const nameEl = document.getElementById("name");
 const phoneEl = document.getElementById("phone");
@@ -84,12 +88,12 @@ toggleLink.onclick = () => {
   nameEl.style.display = signup ? "block" : "none";
 };
 
-/* 🔐 SUBMIT */
+/* 🔐 LOGIN / SIGNUP SUBMIT */
 btn.onclick = async () => {
   try {
-    const name = signup ? nameEl.value.trim() : "";
+    const name  = signup ? nameEl.value.trim() : "";
     const phone = phoneEl.value.trim();
-    const pass = passEl.value.trim();
+    const pass  = passEl.value.trim();
 
     if (!phone || !pass || (signup && !name)) {
       alert("Fill all fields");
@@ -99,6 +103,7 @@ btn.onclick = async () => {
     const ref = doc(db, "users", phone);
     const snap = await getDoc(ref);
 
+    /* 📝 SIGNUP */
     if (signup) {
       if (snap.exists()) {
         alert("Account already exists");
@@ -111,19 +116,29 @@ btn.onclick = async () => {
       });
       alert("Signup success. Login now");
       toggleLink.click();
-    } else {
-      if (!snap.exists()) {
-        alert("Account not found");
-        return;
-      }
-      if (snap.data().password !== pass) {
-        alert("Wrong password");
-        return;
-      }
-      sessionStorage.setItem("phone", phone);
-      sessionStorage.setItem("name", snap.data().name);
-      location.href = "vote.html";
+      return;
     }
+
+    /* 🔑 LOGIN */
+    if (!snap.exists()) {
+      alert("Account not found");
+      return;
+    }
+    if (snap.data().password !== pass) {
+      alert("Wrong password");
+      return;
+    }
+
+    sessionStorage.setItem("phone", phone);
+    sessionStorage.setItem("name", snap.data().name);
+
+    /* 🚦 ROLE BASED REDIRECT */
+    if (phone === ADMIN_PHONE) {
+      location.href = "task-editor.html";   // admin
+    } else {
+      location.href = "vote.html";          // user
+    }
+
   } catch (e) {
     alert("Error: " + e.message);
   }
