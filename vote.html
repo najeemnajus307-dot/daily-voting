@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness Voting</title>
+<title>Voting</title>
 
 <style>
 body{
   font-family:Arial;
-  background:#f1f5f9;
+  background:#eef2f7;
   display:flex;
   justify-content:center;
   align-items:center;
@@ -16,91 +16,66 @@ body{
 .box{
   background:#fff;
   padding:25px;
-  width:360px;
+  width:320px;
   border-radius:10px;
-  text-align:center;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
 }
 button{
   width:100%;
-  padding:12px;
+  padding:10px;
   margin-top:10px;
-  border:none;
-  color:white;
-  cursor:pointer;
 }
-.submit{background:#16a34a}
-.logout{background:#dc2626}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>WELCOME<br>FAITH & FITNESS</h2>
+  <h3 id="user"></h3>
 
-  <div id="user"></div>
-  <div id="date"></div>
+  <label><input type="radio" name="v" value="Water"> Water</label><br>
+  <label><input type="radio" name="v" value="Warmup"> Warmup</label><br>
+  <label><input type="radio" name="v" value="Workout"> Workout</label>
 
-  <button class="submit" onclick="vote()">Submit Vote</button>
-  <button class="logout" onclick="logout()">Logout</button>
+  <button onclick="vote()">Submit Vote</button>
+  <button onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, setDoc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc }
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* LOGIN CHECK */
-const uid = sessionStorage.getItem("uid");
-const name = sessionStorage.getItem("name");
-const phone = sessionStorage.getItem("phone");
+const app = initializeApp({
+  apiKey:"YOUR_API_KEY",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
+const db=getFirestore(app);
 
-if(!uid){
-  location.replace("index.html");
-}
+const phone=sessionStorage.getItem("phone");
+const name=sessionStorage.getItem("name");
 
-/* UI */
-const today = new Date().toISOString().split("T")[0];
-user.innerText = "Hello " + name;
-date.innerText = "Date : " + today;
+if(!phone) location.href="index.html";
+user.innerText="Hi "+name;
 
-/* FIREBASE */
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+window.vote=async ()=>{
+  const v=document.querySelector('input[name="v"]:checked');
+  if(!v){ alert("Select one"); return; }
 
-const voteId = phone + "_" + today;
-const ref = doc(db,"votes",voteId);
+  const today=new Date().toISOString().slice(0,10);
+  const ref=doc(db,"votes",phone+"_"+today);
 
-/* CHECK ALREADY VOTED */
-const snap = await getDoc(ref);
-if(snap.exists()){
-  document.querySelector(".submit").disabled=true;
-  document.querySelector(".submit").innerText="Already voted today";
-}
+  if((await getDoc(ref)).exists()){
+    alert("Already voted today"); return;
+  }
 
-window.vote = async ()=>{
-  await setDoc(ref,{
-    uid,
-    name,
-    phone,
-    date:today,
-    points:5,
-    createdAt:new Date().toISOString()
-  });
-  alert("Vote submitted ✅");
-  location.reload();
+  await setDoc(ref,{phone,name,vote:v.value,date:today});
+  alert("Vote submitted");
 };
 
-window.logout = ()=>{
+window.logout=()=>{
   sessionStorage.clear();
-  location.replace("index.html");
+  location.href="index.html";
 };
 </script>
 
