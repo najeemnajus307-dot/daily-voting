@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Faith & Fitness Login</title>
+
 <style>
 body{
   font-family:Arial;
@@ -14,55 +15,56 @@ body{
 }
 .box{
   background:#fff;
-  padding:25px;
   width:320px;
+  padding:25px;
   border-radius:12px;
-  box-shadow:0 0 12px rgba(0,0,0,.2);
-  text-align:center;
+  box-shadow:0 0 15px rgba(0,0,0,.2);
 }
-input,button{
+h2{text-align:center;margin-bottom:15px}
+input{
   width:100%;
   padding:10px;
   margin:6px 0;
 }
 button{
-  background:#16a34a;
-  color:white;
+  width:100%;
+  padding:10px;
+  margin-top:10px;
   border:none;
-}
-.link{
-  color:#2563eb;
+  border-radius:6px;
   cursor:pointer;
+  font-size:16px;
 }
+.login{background:#16a34a;color:white}
+.signup{background:#2563eb;color:white}
+.small{text-align:center;font-size:14px;margin-top:10px;cursor:pointer;color:#2563eb}
 </style>
 </head>
 
 <body>
 
-<div class="box" id="loginBox">
-  <h3>Login</h3>
-  <input id="lPhone" placeholder="Phone">
-  <input id="lPass" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <div class="link" onclick="showSignup()">New user? Signup</div>
-</div>
+<div class="box">
+  <h2 id="title">Login</h2>
 
-<div class="box" id="signupBox" style="display:none">
-  <h3>Signup</h3>
-  <input id="sName" placeholder="Name">
-  <input id="sPhone" placeholder="Phone">
-  <input id="sPass" type="password" placeholder="Password">
-  <button onclick="signup()">Signup</button>
-  <div class="link" onclick="showLogin()">Already user? Login</div>
+  <input id="name" placeholder="Name" style="display:none">
+  <input id="phone" placeholder="Phone number">
+  <input id="pass" type="password" placeholder="Password">
+
+  <button class="login" onclick="login()">Login</button>
+  <button class="signup" onclick="signup()" style="display:none">Sign Up</button>
+
+  <div class="small" onclick="toggle()">Create new account</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import {
+  getFirestore, doc, getDoc, setDoc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG (REAL KEY വേണം) */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
-  apiKey: "YOUR_REAL_API_KEY",
+  apiKey: "YOUR_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
@@ -70,53 +72,77 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* UI */
-window.showSignup = ()=>{ loginBox.style.display="none"; signupBox.style.display="block"; }
-window.showLogin  = ()=>{ signupBox.style.display="none"; loginBox.style.display="block"; }
+let isLogin = true;
 
-/* LOGIN */
-window.login = async ()=>{
-  const phone = lPhone.value.trim();
-  const pass  = lPass.value.trim();
-  if(!phone || !pass) return alert("Enter phone & password");
+/* TOGGLE */
+window.toggle = ()=>{
+  isLogin = !isLogin;
+  document.getElementById("name").style.display = isLogin ? "none" : "block";
+  document.querySelector(".login").style.display = isLogin ? "block" : "none";
+  document.querySelector(".signup").style.display = isLogin ? "none" : "block";
+  document.getElementById("title").innerText = isLogin ? "Login" : "Sign Up";
+  document.querySelector(".small").innerText =
+    isLogin ? "Create new account" : "Already have account?";
+};
+
+/* SIGN UP */
+window.signup = async ()=>{
+  const name  = name.value.trim();
+  const phone = phone.value.trim();
+  const pass  = pass.value.trim();
+
+  if(!name || !phone || !pass){
+    alert("Fill all fields");
+    return;
+  }
 
   const ref = doc(db,"users",phone);
   const snap = await getDoc(ref);
 
-  if(!snap.exists()) return alert("User not found");
-  if(snap.data().password !== pass) return alert("Wrong password");
+  if(snap.exists()){
+    alert("Account already exists");
+    return;
+  }
 
-  sessionStorage.setItem("userPhone",phone);
-  sessionStorage.setItem("userName",snap.data().name);
+  await setDoc(ref,{
+    name,
+    phone,
+    password: pass,
+    createdAt: new Date().toISOString()
+  });
 
-  location.href="vote.html";
+  alert("Account created. Login now.");
+  toggle();
 };
 
-/* SIGNUP */
-window.signup = async ()=>{
-  const name  = sName.value.trim();
-  const phone = sPhone.value.trim();
-  const pass  = sPass.value.trim();
+/* LOGIN */
+window.login = async ()=>{
+  const phone = phone.value.trim();
+  const pass  = pass.value.trim();
 
-  if(!name || !phone || !pass) return alert("Fill all fields");
+  if(!phone || !pass){
+    alert("Fill all fields");
+    return;
+  }
 
   const ref = doc(db,"users",phone);
   const snap = await getDoc(ref);
 
   if(!snap.exists()){
-    await setDoc(ref,{
-      name,
-      phone,
-      password: pass,
-      totalPoints: 0,
-      createdAt: new Date().toISOString()
-    });
+    alert("Account not found");
+    return;
   }
 
-  sessionStorage.setItem("userPhone",phone);
-  sessionStorage.setItem("userName",name);
+  const user = snap.data();
+  if(user.password !== pass){
+    alert("Wrong password");
+    return;
+  }
 
-  location.href="vote.html";
+  sessionStorage.setItem("uid", phone);
+  sessionStorage.setItem("name", user.name);
+
+  window.location.replace("vote.html");
 };
 </script>
 
