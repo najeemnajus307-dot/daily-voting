@@ -37,14 +37,13 @@ button{padding:6px 10px;background:#16a34a;color:white;border:none;cursor:pointe
 
 <script type="module">
 /* 🔐 ADMIN PASSWORD */
-const ADMIN_PASS = "1";
-const p = prompt("Enter admin password");
-if(p !== ADMIN_PASS){
+const ADMIN_PASS="1";
+if(prompt("Enter admin password")!==ADMIN_PASS){
   alert("Access denied");
   location.href="index.html";
 }
 
-/* 🔥 FIREBASE */
+/* FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -58,7 +57,6 @@ const firebaseConfig = {
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -66,7 +64,7 @@ const db = getFirestore(app);
 async function load(){
   const snap = await getDocs(collection(db,"users"));
   let users=[];
-  snap.forEach(d=>users.push(d.data()));
+  snap.forEach(d=>users.push({id:d.id,...d.data()}));
 
   users.sort((a,b)=>b.totalPoints-a.totalPoints);
 
@@ -74,9 +72,9 @@ async function load(){
   tbody.innerHTML="";
 
   users.forEach(u=>{
-    if(u.totalPoints !== last){
+    if(u.totalPoints!==last){
       rank++;
-      last = u.totalPoints;
+      last=u.totalPoints;
     }
     if(rank>3) return;
 
@@ -90,35 +88,29 @@ async function load(){
         <td>${u.totalPoints}</td>
         <td>
           <input type="number" id="pt_${u.phone}" placeholder="+">
-          <button onclick="addPoint('${u.phone}')">Add</button>
+          <button onclick="addPoint('${u.phone}',${u.totalPoints})">Add</button>
         </td>
       </tr>`;
   });
 }
 load();
 
-/* ADD POINTS */
-window.addPoint = async(phone)=>{
+/* ADD POINTS (OLD + NEW) */
+window.addPoint = async(phone,oldTotal)=>{
   const val = Number(document.getElementById("pt_"+phone).value);
   if(val<=0) return alert("Enter points");
 
-  if(prompt("Admin password") !== ADMIN_PASS){
+  if(prompt("Admin password")!==ADMIN_PASS){
     alert("Wrong password");
     return;
   }
 
-  const ref = doc(db,"users",phone);
-  const snap = await getDocs(collection(db,"users"));
-  let user;
-
-  snap.forEach(d=>{
-    if(d.id === phone) user = d.data();
+  const newTotal = oldTotal + val;
+  await updateDoc(doc(db,"users",phone),{
+    totalPoints:newTotal
   });
 
-  const newTotal = user.totalPoints + val;
-  await updateDoc(ref,{ totalPoints:newTotal });
-
-  alert("Points added");
+  alert("Points added ✅");
   load();
 };
 </script>
