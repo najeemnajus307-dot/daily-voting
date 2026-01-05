@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness – Voting</title>
+<title>Voting</title>
 
 <style>
 body{
@@ -15,132 +15,45 @@ body{
 }
 .box{
   background:#fff;
-  width:380px;
   padding:25px;
-  border-radius:12px;
-  box-shadow:0 0 15px rgba(0,0,0,.2);
+  width:350px;
+  border-radius:10px;
   text-align:center;
-}
-h1{
-  color:#16a34a;
-  margin-bottom:10px;
-}
-.task{
-  border:1px solid #ddd;
-  padding:10px;
-  margin:8px 0;
-  border-radius:6px;
-  text-align:left;
 }
 button{
   width:100%;
-  padding:12px;
-  margin-top:12px;
+  padding:10px;
+  margin-top:10px;
   border:none;
-  border-radius:8px;
-  font-size:16px;
+  border-radius:6px;
   cursor:pointer;
 }
-.submit{background:#16a34a;color:white}
 .logout{background:#dc2626;color:white}
-.disabled{background:#9ca3af;color:white}
-.red{color:red}
 </style>
 </head>
 
 <body>
 
 <script>
-/* 🔐 LOGIN CHECK */
-const name  = sessionStorage.getItem("userName");
 const phone = sessionStorage.getItem("userPhone");
-if(!name || !phone){
-  location.replace("index.html");
+if(!phone){
+  location.href="index.html";
 }
 </script>
 
 <div class="box">
+  <h2>WELCOME<br>FAITH & FITNESS</h2>
+  <p>Logged in as: <b id="u"></b></p>
 
-<h1>WELCOME<br>FAITH & FITNESS</h1>
-
-<p>Hello <b id="uName"></b></p>
-<p>Date : <span id="date"></span></p>
-
-<div id="tasks"></div>
-
-<button id="voteBtn" class="submit" onclick="submitVote()">Submit Vote</button>
-<button class="logout" onclick="logout()">Logout</button>
-
+  <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script>
-document.getElementById("uName").innerText = name;
-
-const today = new Date().toISOString().split("T")[0];
-document.getElementById("date").innerText = today;
-
-/* ✅ DAILY TASKS (STATIC – later Firebase aakam) */
-const taskList = [
-  { text:"Morning Workout", points:5 },
-  { text:"Drink 3L Water", points:5 },
-  { text:"Healthy Food", points:5 }
-];
-
-const tasksDiv = document.getElementById("tasks");
-taskList.forEach((t,i)=>{
-  tasksDiv.innerHTML += `
-    <div class="task">
-      <label>
-        <input type="checkbox" id="t_${i}">
-        ${t.text} (${t.points} pts)
-      </label>
-    </div>
-  `;
-});
-
-/* 🔁 CHECK ALREADY VOTED */
-const voteKey = "voted_"+phone+"_"+today;
-if(localStorage.getItem(voteKey)){
-  lockVote();
-}
-
-/* SUBMIT */
-function submitVote(){
-  let total = 0;
-  taskList.forEach((t,i)=>{
-    if(document.getElementById("t_"+i).checked){
-      total += t.points;
-    }
-  });
-
-  if(total===0){
-    alert("Select at least one task");
-    return;
-  }
-
-  /* SAVE VOTE */
-  localStorage.setItem(voteKey, total);
-
-  alert("Vote submitted ✅ Points : "+total);
-  lockVote();
-}
-
-/* LOCK UI */
-function lockVote(){
-  const btn = document.getElementById("voteBtn");
-  btn.innerText = "Already voted today";
-  btn.className = "disabled";
-  btn.disabled = true;
-
-  /* disable checkboxes */
-  taskList.forEach((_,i)=>{
-    document.getElementById("t_"+i).disabled = true;
-  });
-}
+document.getElementById("u").innerText = phone;
 
 function logout(){
   sessionStorage.clear();
-  location.replace("index.html");
+  location.href="index.html";
 }
 </script>
 
