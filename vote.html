@@ -2,27 +2,47 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Voting</title>
+<title>Task Editor – Faith & Fitness</title>
 
 <style>
 body{
-  font-family:Arial;
-  background:#eef2f7;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+  font-family: Arial;
+  background:#f1f5f9;
+  padding:20px;
 }
 .box{
-  background:#fff;
-  padding:25px;
-  width:320px;
+  max-width:400px;
+  background:white;
+  padding:20px;
   border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.15);
+  margin:auto;
+}
+h2{
+  text-align:center;
+}
+.task{
+  display:flex;
+  align-items:center;
+  margin:8px 0;
+}
+.task input[type="text"]{
+  flex:1;
+  padding:6px;
+  margin-left:6px;
 }
 button{
-  width:100%;
-  padding:10px;
+  padding:8px;
   margin-top:10px;
+  width:100%;
+  background:#16a34a;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
+.small{
+  background:#ef4444;
+  margin-top:6px;
 }
 </style>
 </head>
@@ -30,14 +50,13 @@ button{
 <body>
 
 <div class="box">
-  <h3 id="user"></h3>
+  <h2>Task Editor</h2>
 
-  <label><input type="radio" name="v" value="Water"> Water</label><br>
-  <label><input type="radio" name="v" value="Warmup"> Warmup</label><br>
-  <label><input type="radio" name="v" value="Workout"> Workout</label>
+  <!-- TASK LIST -->
+  <div id="tasks"></div>
 
-  <button onclick="vote()">Submit Vote</button>
-  <button onclick="logout()">Logout</button>
+  <button onclick="addTask()">➕ Add Task</button>
+  <button class="small" onclick="saveTasks()">💾 Save Tasks</button>
 </div>
 
 <script type="module">
@@ -45,37 +64,53 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebas
 import { getFirestore, doc, getDoc, setDoc }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+/* FIREBASE CONFIG */
 const app = initializeApp({
   apiKey:"YOUR_API_KEY",
   authDomain:"daily-voting-793ee.firebaseapp.com",
   projectId:"daily-voting-793ee"
 });
-const db=getFirestore(app);
+const db = getFirestore(app);
 
-const phone=sessionStorage.getItem("phone");
-const name=sessionStorage.getItem("name");
+const box = document.getElementById("tasks");
 
-if(!phone) location.href="index.html";
-user.innerText="Hi "+name;
+/* LOAD TASKS */
+const ref = doc(db,"settings","tasks");
+const snap = await getDoc(ref);
 
-window.vote=async ()=>{
-  const v=document.querySelector('input[name="v"]:checked');
-  if(!v){ alert("Select one"); return; }
+let taskList = snap.exists()
+  ? snap.data().list
+  : ["Water","Warmup","Workout"];
 
-  const today=new Date().toISOString().slice(0,10);
-  const ref=doc(db,"votes",phone+"_"+today);
+render();
 
-  if((await getDoc(ref)).exists()){
-    alert("Already voted today"); return;
-  }
+/* RENDER TASKS */
+function render(){
+  box.innerHTML="";
+  taskList.forEach((t,i)=>{
+    box.innerHTML += `
+      <div class="task">
+        <input type="checkbox" checked disabled>
+        <input type="text" value="${t}" onchange="update(${i},this.value)">
+      </div>`;
+  });
+}
 
-  await setDoc(ref,{phone,name,vote:v.value,date:today});
-  alert("Vote submitted");
+/* UPDATE */
+window.update = (i,val)=>{
+  taskList[i]=val;
 };
 
-window.logout=()=>{
-  sessionStorage.clear();
-  location.href="index.html";
+/* ADD TASK */
+window.addTask = ()=>{
+  taskList.push("New Task");
+  render();
+};
+
+/* SAVE TO FIRESTORE */
+window.saveTasks = async ()=>{
+  await setDoc(ref,{ list: taskList });
+  alert("Tasks saved successfully ✅");
 };
 </script>
 
