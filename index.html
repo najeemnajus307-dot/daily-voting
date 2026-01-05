@@ -1,78 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Faith & Fitness - Login</title>
+<title>Login</title>
 <style>
-body{
-  font-family:Arial;
-  background:#f1f5f9;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-.box{
-  background:#fff;
-  padding:25px;
-  width:320px;
-  border-radius:10px;
-}
-input,button{
-  width:100%;
-  padding:10px;
-  margin:8px 0;
-}
-button{
-  background:#2563eb;
-  color:#fff;
-  border:none;
-}
+body{font-family:Arial;background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh}
+.box{background:#fff;padding:20px;width:300px;border-radius:10px}
+input,button{width:100%;padding:8px;margin:6px 0}
+button{background:#2563eb;color:#fff;border:none}
 </style>
 </head>
-
 <body>
+
 <div class="box">
 <h3>Login</h3>
-
-<input id="phone" placeholder="Phone number">
+<input id="name" placeholder="Name">
+<input id="phone" placeholder="Phone">
 <button onclick="login()">Login</button>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-window.login = async function(){
-  let phone = document.getElementById("phone").value.trim();
-
-  if(!phone){
-    alert("Enter phone number");
-    return;
-  }
-
-  const ref = doc(db,"users",phone);
-  const snap = await getDoc(ref);
-
-  if(!snap.exists()){
-    alert("Account not found");
-    return;
-  }
-
-  localStorage.setItem("currentUser", snap.data().name);
-  localStorage.setItem("currentPhone", phone);
-
-  window.location.href = "vote.html";
+<script>
+function login(){
+  if(!name.value || !phone.value){ alert("Fill all"); return;}
+  sessionStorage.setItem("userName",name.value);
+  sessionStorage.setItem("userPhone",phone.value);
+  location.replace("vote.html");
 }
 </script>
+
 </body>
 </html>
