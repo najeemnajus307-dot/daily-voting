@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness – Login</title>
+<title>Login</title>
 
 <style>
 body{
@@ -15,31 +15,19 @@ body{
 }
 .box{
   background:#fff;
-  padding:25px;
-  width:320px;
-  border-radius:12px;
-  box-shadow:0 0 12px rgba(0,0,0,.2);
+  padding:20px;
+  width:300px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
   text-align:center;
 }
 input,button{
   width:100%;
-  padding:10px;
+  padding:8px;
   margin:6px 0;
 }
-button{
-  background:#16a34a;
-  color:#fff;
-  border:none;
-  cursor:pointer;
-}
-button:disabled{
-  background:#9ca3af;
-}
-.link{
-  margin-top:10px;
-  color:#2563eb;
-  cursor:pointer;
-}
+button{background:#16a34a;color:#fff;border:none;}
+.link{color:#2563eb;cursor:pointer;margin-top:8px}
 </style>
 </head>
 
@@ -49,8 +37,8 @@ button:disabled{
   <h3>Login</h3>
   <input id="lPhone" placeholder="Phone">
   <input id="lPass" type="password" placeholder="Password">
-  <button id="loginBtn" type="button">Login</button>
-  <div class="link" id="toSignup">New user? Signup</div>
+  <button onclick="login()">Login</button>
+  <div class="link" onclick="showSignup()">Signup</div>
 </div>
 
 <div class="box" id="signupBox" style="display:none">
@@ -58,17 +46,17 @@ button:disabled{
   <input id="sName" placeholder="Name">
   <input id="sPhone" placeholder="Phone">
   <input id="sPass" type="password" placeholder="Password">
-  <button id="signupBtn" type="button">Signup</button>
-  <div class="link" id="toLogin">Already user? Login</div>
+  <button onclick="signup()">Signup</button>
+  <div class="link" onclick="showLogin()">Login</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG – MUST REPLACE */
+/* 🔥 Firebase config (REAL API KEY ഇടണം) */
 const firebaseConfig = {
-  apiKey: "PASTE_YOUR_REAL_API_KEY_HERE",
+  apiKey: "YOUR_REAL_API_KEY",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
@@ -76,129 +64,53 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* AUTO REDIRECT IF LOGGED */
-if(sessionStorage.getItem("logged") === "yes"){
+/* already logged */
+if(sessionStorage.getItem("logged")==="yes"){
   location.replace("vote.html");
 }
 
-/* UI SWITCH */
-const loginBox = document.getElementById("loginBox");
-const signupBox = document.getElementById("signupBox");
-document.getElementById("toSignup").onclick = ()=>{
+window.showSignup=()=>{
   loginBox.style.display="none";
   signupBox.style.display="block";
 };
-document.getElementById("toLogin").onclick = ()=>{
+window.showLogin=()=>{
   signupBox.style.display="none";
   loginBox.style.display="block";
 };
 
-/* LOCKS (BLINK FIX) */
-let loggingIn = false;
-let signingUp = false;
+window.signup = async ()=>{
+  const name=sName.value.trim();
+  const phone=sPhone.value.trim();
+  const pass=sPass.value.trim();
+  if(!name||!phone||!pass){alert("Fill all");return;}
 
-/* LOGIN */
-document.getElementById("loginBtn").onclick = async ()=>{
-  if(loggingIn) return;
-  loggingIn = true;
-
-  const btn = loginBtn;
-  btn.disabled = true;
-  btn.innerText = "Logging in...";
-
-  const phone = lPhone.value.trim();
-  const pass  = lPass.value.trim();
-
-  if(!phone || !pass){
-    alert("Phone & Password required");
-    resetLogin();
-    return;
+  const ref=doc(db,"users",phone);
+  const snap=await getDoc(ref);
+  if(!snap.exists()){
+    await setDoc(ref,{name,phone,password:pass});
   }
 
-  try{
-    const ref = doc(db,"users",phone);
-    const snap = await getDoc(ref);
-
-    if(!snap.exists()){
-      alert("User not found");
-      resetLogin();
-      return;
-    }
-
-    if(snap.data().password !== pass){
-      alert("Wrong password");
-      resetLogin();
-      return;
-    }
-
-    sessionStorage.setItem("logged","yes");
-    sessionStorage.setItem("userName",snap.data().name);
-    sessionStorage.setItem("userPhone",phone);
-
-    location.replace("vote.html");
-
-  }catch(err){
-    alert("Login error");
-    resetLogin();
-  }
+  sessionStorage.setItem("logged","yes");
+  sessionStorage.setItem("userName",name);
+  sessionStorage.setItem("userPhone",phone);
+  location.replace("vote.html");
 };
 
-function resetLogin(){
-  loggingIn = false;
-  loginBtn.disabled = false;
-  loginBtn.innerText = "Login";
-}
+window.login = async ()=>{
+  const phone=lPhone.value.trim();
+  const pass=lPass.value.trim();
+  if(!phone||!pass){alert("Fill all");return;}
 
-/* SIGNUP */
-document.getElementById("signupBtn").onclick = async ()=>{
-  if(signingUp) return;
-  signingUp = true;
+  const ref=doc(db,"users",phone);
+  const snap=await getDoc(ref);
+  if(!snap.exists()){alert("No user");return;}
+  if(snap.data().password!==pass){alert("Wrong password");return;}
 
-  const btn = signupBtn;
-  btn.disabled = true;
-  btn.innerText = "Signing up...";
-
-  const name  = sName.value.trim();
-  const phone = sPhone.value.trim();
-  const pass  = sPass.value.trim();
-
-  if(!name || !phone || !pass){
-    alert("All fields required");
-    resetSignup();
-    return;
-  }
-
-  try{
-    const ref = doc(db,"users",phone);
-    const snap = await getDoc(ref);
-
-    if(!snap.exists()){
-      await setDoc(ref,{
-        name,
-        phone,
-        password: pass,
-        totalPoints: 0,
-        createdAt: new Date().toISOString()
-      });
-    }
-
-    sessionStorage.setItem("logged","yes");
-    sessionStorage.setItem("userName",name);
-    sessionStorage.setItem("userPhone",phone);
-
-    location.replace("vote.html");
-
-  }catch(err){
-    alert("Signup error");
-    resetSignup();
-  }
+  sessionStorage.setItem("logged","yes");
+  sessionStorage.setItem("userName",snap.data().name);
+  sessionStorage.setItem("userPhone",phone);
+  location.replace("vote.html");
 };
-
-function resetSignup(){
-  signingUp = false;
-  signupBtn.disabled = false;
-  signupBtn.innerText = "Signup";
-}
 </script>
 
 </body>
