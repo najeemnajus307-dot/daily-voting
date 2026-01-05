@@ -6,125 +6,111 @@
 
 <style>
 body{
-  font-family: Arial;
+  font-family:Arial;
   background:#f1f5f9;
   padding:20px;
 }
 .box{
-  max-width:420px;
+  background:white;
+  max-width:500px;
   margin:auto;
-  background:#fff;
   padding:20px;
   border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.15);
+  box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2{text-align:center;}
-.row{
-  display:flex;
-  gap:6px;
-  margin:6px 0;
-}
-.row input{
-  flex:1;
+h2{text-align:center}
+input,button{
   padding:8px;
+  margin:4px;
 }
-.row button{
-  padding:8px;
+button{cursor:pointer}
+.task{
+  border-bottom:1px solid #ddd;
+  padding:6px 0;
 }
-.addBtn{
-  width:100%;
-  background:#2563eb;
-  color:white;
-  border:none;
-  padding:8px;
-  margin-top:10px;
-}
-.saveBtn{
-  width:100%;
-  background:#16a34a;
-  color:white;
-  border:none;
-  padding:8px;
-  margin-top:10px;
-}
-.delBtn{
-  background:#ef4444;
-  color:white;
-  border:none;
-}
+.del{background:#dc2626;color:white;border:none}
+.save{background:#16a34a;color:white;border:none}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>Task Editor (Admin)</h2>
+  <h2>Daily Task Editor</h2>
 
-  <div class="row">
-    <input id="newTask" placeholder="New task text">
-    <button onclick="addTask()">Add</button>
-  </div>
+  <input id="taskText" placeholder="Task name">
+  <input id="taskPoints" type="number" placeholder="Points">
+  <button onclick="addTask()">Add Task</button>
 
   <div id="taskList"></div>
-
-  <button class="saveBtn" onclick="saveTasks()">Save Tasks</button>
 </div>
 
 <script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc }
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔐 ADMIN ONLY */
-const ADMIN_PHONE = "7994302567";
-const phone = sessionStorage.getItem("phone");
-if(phone !== ADMIN_PHONE){
-  alert("Access denied");
-  location.href="vote.html";
-}
+/* FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
 
-/* FIREBASE */
-const app = initializeApp({
-  apiKey:"YOUR_API_KEY",
-  authDomain:"daily-voting-793ee.firebaseapp.com",
-  projectId:"daily-voting-793ee"
-});
+const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const ref = doc(db,"tasks","daily");
 
-const ref = doc(db,"settings","tasks");
-let tasks = [];
+let tasks=[];
 
-const snap = await getDoc(ref);
-if(snap.exists()) tasks = snap.data().list;
+/* LOAD */
+async function load(){
+  const snap = await getDoc(ref);
+  tasks = snap.exists() ? snap.data().list || [] : [];
+  render();
+}
+load();
 
-render();
-
+/* RENDER */
 function render(){
   taskList.innerHTML="";
   tasks.forEach((t,i)=>{
-    taskList.innerHTML += `
-      <div class="row">
-        <input value="${t}" oninput="edit(${i},this.value)">
-        <button class="delBtn" onclick="del(${i})">✖</button>
+    taskList.innerHTML+=`
+      <div class="task">
+        <input value="${t.text}" id="t_${i}">
+        <input type="number" value="${t.points}" id="p_${i}">
+        <button class="save" onclick="save(${i})">Save</button>
+        <button class="del" onclick="remove(${i})">Delete</button>
       </div>`;
   });
 }
 
-window.edit = (i,val)=>{ tasks[i]=val; };
-window.del  = (i)=>{ tasks.splice(i,1); render(); };
-
-window.addTask = ()=>{
-  const v = newTask.value.trim();
-  if(!v) return;
-  tasks.push(v);
-  newTask.value="";
-  render();
+/* ADD */
+window.addTask = async ()=>{
+  if(!taskText.value || !taskPoints.value) return alert("Fill all");
+  tasks.push({text:taskText.value,points:Number(taskPoints.value)});
+  await updateDoc(ref,{list:tasks});
+  taskText.value=""; taskPoints.value="";
+  load();
 };
 
-window.saveTasks = async ()=>{
-  await setDoc(ref,{ list: tasks });
-  alert("Tasks saved successfully ✅");
+/* SAVE */
+window.save = async (i)=>{
+  tasks[i].text = document.getElementById("t_"+i).value;
+  tasks[i].points = Number(document.getElementById("p_"+i).value);
+  await updateDoc(ref,{list:tasks});
+  alert("Task updated ✅");
+};
+
+/* DELETE */
+window.remove = async (i)=>{
+  tasks.splice(i,1);
+  await updateDoc(ref,{list:tasks});
+  load();
 };
 </script>
 
