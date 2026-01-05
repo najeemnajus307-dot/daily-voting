@@ -2,122 +2,140 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness Login</title>
+<title>Faith & Fitness – Login</title>
+
 <style>
 body{
-  font-family:Arial;
-  background:#f1f5f9;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+  font-family: Arial, sans-serif;
+  background: #f1f5f9;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
 }
 .box{
-  background:#fff;
-  padding:25px;
-  width:320px;
-  border-radius:12px;
-  box-shadow:0 0 12px rgba(0,0,0,.2);
-  text-align:center;
+  background: #fff;
+  padding: 25px;
+  width: 360px;
+  border-radius: 12px;
+  box-shadow: 0 0 12px rgba(0,0,0,.2);
 }
-input,button{
-  width:100%;
-  padding:10px;
-  margin:6px 0;
+h2{text-align: center; margin-bottom: 10px;}
+input{
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
 }
 button{
-  background:#16a34a;
-  color:white;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
+  width: 100%;
+  padding: 12px;
+  background: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
 }
-button:hover{opacity:0.9;}
-.link{color:#2563eb;cursor:pointer;font-size:14px;}
+button:hover{background:#15803d;}
+.link{
+  text-align: center;
+  margin-top: 10px;
+  color: #2563eb;
+  cursor: pointer;
+}
+.link:hover{text-decoration: underline;}
 </style>
 </head>
 
 <body>
 
-<div class="box" id="loginBox">
-  <h3>Login</h3>
-  <input id="lPhone" placeholder="Phone">
-  <input id="lPass" type="password" placeholder="Password">
-  <button id="loginBtn">Login</button>
-  <div class="link" onclick="showSignup()">New user? Signup</div>
+<div class="box">
+
+<h2 id="title">Login</h2>
+
+<input id="name" placeholder="Name" style="display:none">
+<input id="phone" placeholder="Phone Number">
+<input id="pass" type="password" placeholder="Password">
+
+<button onclick="submitForm()">Submit</button>
+
+<div class="link" onclick="toggleMode()" id="toggleText">
+New user? Sign up
 </div>
 
-<div class="box" id="signupBox" style="display:none">
-  <h3>Signup</h3>
-  <input id="sName" placeholder="Name">
-  <input id="sPhone" placeholder="Phone">
-  <input id="sPass" type="password" placeholder="Password">
-  <button id="signupBtn">Signup</button>
-  <div class="link" onclick="showLogin()">Already user? Login</div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+<script>
+let mode = "login"; // current mode: login or signup
 
-/* 🔥 YOUR FIREBASE CONFIG */
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-/* If already logged in → Go to vote.html */
-if(sessionStorage.getItem("userPhone")){
-  location.replace("vote.html");
+function toggleMode(){
+  if(mode === "login"){
+    mode = "signup";
+    title.innerText = "Sign Up";
+    name.style.display = "block";
+    toggleText.innerText = "Already have account? Login";
+  } else {
+    mode = "login";
+    title.innerText = "Login";
+    name.style.display = "none";
+    toggleText.innerText = "New user? Sign up";
+  }
 }
 
-/* Switch between login/signup */
-window.showSignup = ()=>{ loginBox.style.display="none"; signupBox.style.display="block"; };
-window.showLogin  = ()=>{ signupBox.style.display="none"; loginBox.style.display="block"; };
+function submitForm(){
+  const phone = document.getElementById("phone").value.trim();
+  const pass = document.getElementById("pass").value.trim();
+  const nm = document.getElementById("name").value.trim();
 
-/* LOGIN */
-document.getElementById("loginBtn").onclick = async ()=>{
-  const phone = lPhone.value.trim();
-  const pass  = lPass.value.trim();
-  if(!phone || !pass) return alert("Enter phone & password");
+  if(!phone || !pass){
+    alert("Phone & Password required");
+    return;
+  }
 
-  const ref = doc(db,"users",phone);
-  const snap = await getDoc(ref);
+  if(mode === "signup"){
+    if(!nm){
+      alert("Name required");
+      return;
+    }
 
-  if(!snap.exists()) return alert("User not found!");
-  const data = snap.data();
-  if(data.password !== pass) return alert("Wrong password!");
+    // check if user already exists
+    if(localStorage.getItem("ff_user_" + phone)){
+      alert("User already exists, please login.");
+      toggleMode();
+      return;
+    }
 
-  sessionStorage.setItem("userPhone", phone);
-  sessionStorage.setItem("userName", data.name);
+    const user = { name: nm, phone: phone, pass: pass, points: 0 };
+    localStorage.setItem("ff_user_" + phone, JSON.stringify(user));
+
+    alert("Account created ✅ Login now");
+    toggleMode();
+    return;
+  }
+
+  // LOGIN section
+  const data = localStorage.getItem("ff_user_" + phone);
+  if(!data){
+    alert("Account not found. Please sign up.");
+    return;
+  }
+
+  const user = JSON.parse(data);
+  if(user.pass !== pass){
+    alert("Wrong password ❌");
+    return;
+  }
+
+  // save current session
+  sessionStorage.setItem("userName", user.name);
+  sessionStorage.setItem("userPhone", user.phone);
+
   alert("Login successful ✅");
-  location.href="vote.html";
-};
-
-/* SIGNUP */
-document.getElementById("signupBtn").onclick = async ()=>{
-  const name  = sName.value.trim();
-  const phone = sPhone.value.trim();
-  const pass  = sPass.value.trim();
-  if(!name || !phone || !pass) return alert("All fields required");
-
-  const ref = doc(db,"users",phone);
-  const snap = await getDoc(ref);
-  if(snap.exists()) return alert("User already exists!");
-
-  await setDoc(ref,{
-    name, phone, password:pass, totalPoints:0, createdAt:new Date().toISOString()
-  });
-
-  sessionStorage.setItem("userPhone",phone);
-  sessionStorage.setItem("userName",name);
-  alert("Account created ✅");
-  location.href="vote.html";
-};
+  window.location.replace("vote.html");
+}
 </script>
 
 </body>
