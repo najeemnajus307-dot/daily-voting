@@ -38,7 +38,7 @@ button{padding:6px 10px;cursor:pointer}
 <h2>Admin Voting Dashboard</h2>
 
 <div class="top-actions">
-  <button class="fix" onclick="rebuildUserTotals()">Rebuild User Totals (One Time)</button>
+  <button class="fix" onclick="rebuildUserTotals()">Rebuild Old Points (One Time)</button>
 </div>
 
 <div class="count" id="totalCount">Loading...</div>
@@ -49,7 +49,7 @@ button{padding:6px 10px;cursor:pointer}
 </div>
 
 <div class="box">
-  <h3>Top 3 Ranking (Life-time Points)</h3>
+  <h3>Top 3 Ranking (Old + New Total Points)</h3>
   <table>
     <thead>
       <tr><th>Rank</th><th>Name</th><th>Phone</th><th>Total Points</th></tr>
@@ -91,8 +91,14 @@ const db = getFirestore(app);
 
 const ADMIN_PASS = "1";
 
+/* 📞 PHONE NORMALIZE (IMPORTANT) */
+function normalizePhone(p){
+  if(!p) return "";
+  return p.replace(/\D/g,"").slice(-10);
+}
+
 let allVotes = [];
-let userMap = {}; // phone → totalPoints
+let userMap = {}; // phone(10digit) → totalPoints
 
 /* LOAD USERS */
 async function loadUsers(){
@@ -100,7 +106,8 @@ async function loadUsers(){
   const snap = await getDocs(collection(db,"users"));
   snap.forEach(d=>{
     const u = d.data();
-    userMap[u.phone] = u.totalPoints || 0;
+    const ph = normalizePhone(u.phone);
+    userMap[ph] = u.totalPoints || 0;
   });
 }
 
@@ -141,21 +148,26 @@ function renderSummary(){
   });
 }
 
-/* TOP 3 RANKING */
+/* TOP 3 RANKING (OLD + NEW) */
 function renderRank(){
   rankBody.innerHTML="";
   const uniq={};
-  allVotes.forEach(v=>uniq[v.phone]=v.name);
-  const arr=Object.keys(uniq).map(p=>({
+  allVotes.forEach(v=>{
+    uniq[normalizePhone(v.phone)] = v.name;
+  });
+
+  const arr = Object.keys(uniq).map(p=>({
     phone:p,
     name:uniq[p],
-    points:userMap[p]||0
+    points:userMap[p] || 0
   }));
+
   arr.sort((a,b)=>b.points-a.points);
+
   let rank=0,last=null;
   arr.forEach(u=>{
     if(u.points!==last){rank++;last=u.points;}
-    if(rank>3)return;
+    if(rank>3) return;
     const cls=rank===1?"rank1":rank===2?"rank2":"rank3";
     rankBody.innerHTML+=`
       <tr class="${cls}">
@@ -171,13 +183,14 @@ function renderRank(){
 function renderReport(){
   reportBody.innerHTML="";
   allVotes.forEach(v=>{
+    const ph = normalizePhone(v.phone);
     reportBody.innerHTML+=`
       <tr>
         <td><input class="editInp" id="n_${v.id}" value="${v.name}"></td>
         <td><input class="editInp" id="p_${v.id}" value="${v.phone}"></td>
         <td>
           <input class="editInp" id="pt_${v.id}" type="number" placeholder="+ points">
-          <div class="small">Current: ${userMap[v.phone]||0}</div>
+          <div class="small">Current: ${userMap[ph]||0}</div>
         </td>
         <td><input class="editInp" id="d_${v.id}" type="date" value="${v.date}"></td>
         <td>
@@ -194,53 +207,66 @@ window.saveEdit = async (id)=>{
   const phone=document.getElementById("p_"+id).value.trim();
   const addPt=Number(document.getElementById("pt_"+id).value||0);
   const date=document.getElementById("d_"+id).value;
-  if(prompt("Admin password")!==ADMIN_PASS)return;
-  const newTotal=(userMap[phone]||0)+addPt;
+
+  if(prompt("Admin password")!==ADMIN_PASS) return;
+
+  const ph = normalizePhone(phone);
+  const newTotal = (userMap[ph]||0) + addPt;
+
   await updateDoc(doc(db,"votes",id),{name,phone,date});
+
   const q=query(collection(db,"users"),where("phone","==",phone));
   const snap=await getDocs(q);
+
   if(snap.empty){
-    await addDoc(collection(db,"users"),{name,phone,totalPoints:newTotal,password:"1"});
+    await addDoc(collection(db,"users"),{
+      name,phone,totalPoints:newTotal,password:"1"
+    });
   }else{
     snap.forEach(async u=>{
-      await updateDoc(doc(db,"users",u.id),{name,phone,totalPoints:newTotal});
+      await updateDoc(doc(db,"users",u.id),{
+        name,phone,totalPoints:newTotal
+      });
     });
   }
-  alert("Points added. New total: "+newTotal);
+
+  alert("Points updated. New total: "+newTotal);
   loadVotes();
 };
 
 /* DELETE */
 window.deleteVote = async (id)=>{
-  if(!confirm("Delete vote?"))return;
+  if(!confirm("Delete vote?")) return;
   await deleteDoc(doc(db,"votes",id));
   loadVotes();
 };
 
-/* 🔧 ONE-TIME FIX */
+/* 🔧 ONE-TIME REBUILD (OLD DATA SAFE) */
 window.rebuildUserTotals = async ()=>{
-  if(!confirm("Rebuild all user totals?"))return;
-  const snap=await getDocs(collection(db,"votes"));
-  const map={};
+  if(!confirm("Rebuild totals from old votes?")) return;
+
+  const snap = await getDocs(collection(db,"votes"));
+  const map = {};
+
   snap.forEach(d=>{
     const v=d.data();
-    if(!map[v.phone])map[v.phone]=0;
-    map[v.phone]+=v.todayPoints||0;
+    const ph=normalizePhone(v.phone);
+    if(!map[ph]) map[ph]=0;
+    map[ph]+=v.todayPoints||0;
   });
-  for(const phone in map){
-    const q=query(collection(db,"users"),where("phone","==",phone));
-    const us=await getDocs(q);
-    if(us.empty){
-      await addDoc(collection(db,"users"),{
-        phone, name:phone, totalPoints:map[phone], password:"1"
-      });
-    }else{
-      us.forEach(async u=>{
-        await updateDoc(doc(db,"users",u.id),{totalPoints:map[phone]});
+
+  const users = await getDocs(collection(db,"users"));
+  users.forEach(async u=>{
+    const data=u.data();
+    const ph=normalizePhone(data.phone);
+    if(map[ph]!==undefined){
+      await updateDoc(doc(db,"users",u.id),{
+        totalPoints: map[ph]
       });
     }
-  }
-  alert("User totals rebuilt successfully ✅");
+  });
+
+  alert("Old points restored correctly ✅");
   loadVotes();
 };
 </script>
