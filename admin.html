@@ -22,6 +22,7 @@ th{background:#2563eb;color:white}
 .rank3{background:#fcd34d}
 .saveBtn{background:#16a34a;color:white;border:none;padding:4px 8px}
 .delBtn{background:#dc2626;color:white;border:none;padding:4px 8px}
+.fixBtn{background:#7c3aed;color:white;border:none;padding:6px 10px}
 .editInp{width:90%}
 .small{font-size:12px;color:#555}
 .count{text-align:center;font-weight:bold;margin-bottom:10px}
@@ -30,23 +31,20 @@ th{background:#2563eb;color:white}
   background:#f8fafc;padding:10px;border-radius:8px;
   min-width:160px;text-align:center
 }
-.bonusBtn{background:#7c3aed;color:#fff;border:none}
-.exportBtn{background:#0ea5e9;color:#fff;border:none}
 </style>
 </head>
 
 <body>
 
 <h2>Admin Voting Dashboard</h2>
-<div class="count" id="totalCount">Loading...</div>
 
-<!-- DATE FILTER -->
 <div class="box controls">
-  From <input type="date" id="fromDate">
-  To <input type="date" id="toDate">
-  <button onclick="applyFilter()">Apply</button>
-  <button onclick="resetFilter()">Reset</button>
+  <button class="fixBtn" onclick="rebuildUserTotals()">
+    🔧 Rebuild User Totals (One Time)
+  </button>
 </div>
+
+<div class="count" id="totalCount">Loading...</div>
 
 <!-- SEARCH -->
 <div class="box controls">
@@ -54,16 +52,6 @@ th{background:#2563eb;color:white}
          placeholder="🔍 Search name or phone"
          oninput="applySearch()"
          style="width:260px">
-  <button class="exportBtn" onclick="exportExcel()">📤 Export Excel</button>
-</div>
-
-<!-- BONUS -->
-<div class="box controls">
-  Bonus Points:
-  <input type="number" id="bonusPoint" placeholder="eg: 5" style="width:80px">
-  <button class="bonusBtn" onclick="addBonusToRank1All()">
-    🏆 Add Bonus to ALL Rank 1
-  </button>
 </div>
 
 <!-- SUMMARY -->
@@ -85,12 +73,12 @@ th{background:#2563eb;color:white}
 
 <!-- REPORT -->
 <div class="box">
-  <h3>All Voting Report (ADD Points Only)</h3>
+  <h3>All Voting Report</h3>
   <table>
     <thead>
       <tr>
         <th>Name</th><th>Phone</th>
-        <th>Add Points</th><th>Date</th><th>Action</th>
+        <th>Date</th><th>Today Points</th>
       </tr>
     </thead>
     <tbody id="reportBody"></tbody>
@@ -101,7 +89,7 @@ th{background:#2563eb;color:white}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs,
-  updateDoc, deleteDoc, doc,
+  updateDoc, doc,
   addDoc, query, where
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
@@ -114,70 +102,49 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const ADMIN_PASS = "1";
-
 /* HELPERS */
 function normalizePhone(p){
   return (p||"").replace(/\D/g,"").slice(-10);
 }
 
-let allVotes = [];
-let filteredVotes = [];
-let userPoints = {}; // phone -> totalPoints
+let allVotes=[];
+let filteredVotes=[];
+let userPoints={};
 
 /* LOAD DATA */
-async function loadVotes(){
-  allVotes = [];
-  userPoints = {};
+async function loadData(){
+  allVotes=[];
+  userPoints={};
 
-  // users = source of points
-  const uSnap = await getDocs(collection(db,"users"));
+  // USERS = POINT SOURCE
+  const uSnap=await getDocs(collection(db,"users"));
   uSnap.forEach(d=>{
-    const u = d.data();
+    const u=d.data();
     userPoints[ normalizePhone(u.phone) ] = u.totalPoints || 0;
   });
 
-  // votes = history
-  const vSnap = await getDocs(collection(db,"votes"));
+  // VOTES = HISTORY
+  const vSnap=await getDocs(collection(db,"votes"));
   vSnap.forEach(d=>{
-    const v = d.data();
+    const v=d.data();
     allVotes.push({
-      id:d.id,
       ...v,
       phoneNorm: normalizePhone(v.phone)
     });
   });
 
-  totalCount.innerText = "Total Voters : " + allVotes.length;
-  filteredVotes = [...allVotes];
-  renderAll(filteredVotes);
-}
-loadVotes();
-
-/* FILTERS */
-window.applyFilter = ()=>{
-  const f = fromDate.value;
-  const t = toDate.value;
-  filteredVotes = allVotes.filter(v=>{
-    if(f && v.date < f) return false;
-    if(t && v.date > t) return false;
-    return true;
-  });
-  renderAll(filteredVotes);
-};
-
-window.resetFilter = ()=>{
-  fromDate.value=""; toDate.value="";
-  searchBox.value="";
+  totalCount.innerText="Total Voters : "+allVotes.length;
   filteredVotes=[...allVotes];
   renderAll(filteredVotes);
-};
+}
+loadData();
 
-window.applySearch = ()=>{
-  const q = searchBox.value.toLowerCase().trim();
-  filteredVotes = q===""
+/* SEARCH */
+window.applySearch=()=>{
+  const q=searchBox.value.toLowerCase().trim();
+  filteredVotes=q===""
     ? [...allVotes]
-    : allVotes.filter(v =>
+    : allVotes.filter(v=>
         (v.name && v.name.toLowerCase().includes(q)) ||
         (v.phone && v.phone.includes(q))
       );
@@ -195,7 +162,6 @@ function renderAll(votes){
   renderReport(votes);
 }
 
-/* SUMMARY */
 function renderSummary(votes){
   const map={};
   votes.forEach(v=>{
@@ -203,17 +169,16 @@ function renderSummary(votes){
     map[v.date].v++;
     map[v.date].p+=v.todayPoints||0;
   });
-  Object.keys(map).sort().forEach(d=>{
+  Object.keys(map).forEach(d=>{
     summaryCards.innerHTML+=`
       <div class="card">
         <b>${d}</b><br>
-        Voters: ${map[d].v}<br>
-        Points: ${map[d].p}
+        Voters:${map[d].v}<br>
+        Points:${map[d].p}
       </div>`;
   });
 }
 
-/* RANKING */
 function renderRank(votes){
   const uniq={};
   votes.forEach(v=>uniq[v.phoneNorm]=v.name);
@@ -223,7 +188,6 @@ function renderRank(votes){
     points:userPoints[p]||0
   }));
   arr.sort((a,b)=>b.points-a.points);
-
   let rank=0,last=null;
   arr.forEach(u=>{
     if(u.points!==last){rank++;last=u.points;}
@@ -239,103 +203,52 @@ function renderRank(votes){
   });
 }
 
-/* REPORT */
 function renderReport(votes){
   votes.forEach(v=>{
     reportBody.innerHTML+=`
       <tr>
-        <td><input class="editInp" id="n_${v.id}" value="${v.name}"></td>
-        <td><input class="editInp" id="p_${v.id}" value="${v.phoneNorm}"></td>
-        <td>
-          <input class="editInp" id="pt_${v.id}" type="number" placeholder="+ points">
-          <div class="small">Current: ${userPoints[v.phoneNorm]||0}</div>
-        </td>
-        <td><input class="editInp" id="d_${v.id}" type="date" value="${v.date}"></td>
-        <td>
-          <button class="saveBtn" onclick="saveEdit('${v.id}')">Save</button>
-          <button class="delBtn" onclick="deleteVote('${v.id}')">Delete</button>
-        </td>
+        <td>${v.name}</td>
+        <td>${v.phoneNorm}</td>
+        <td>${v.date}</td>
+        <td>${v.todayPoints||0}</td>
       </tr>`;
   });
 }
 
-/* SAVE (ADD POINTS MANUAL) */
-window.saveEdit = async (id)=>{
-  const name=document.getElementById("n_"+id).value.trim();
-  const phone=normalizePhone(document.getElementById("p_"+id).value);
-  const addPt=Number(document.getElementById("pt_"+id).value||0);
-  const date=document.getElementById("d_"+id).value;
+/* 🔧 ONE-TIME REBUILD (ZERO FIX) */
+window.rebuildUserTotals = async ()=>{
+  if(!confirm("Rebuild user totals from all votes?")) return;
 
-  if(prompt("Admin password")!==ADMIN_PASS)return;
+  const voteSnap=await getDocs(collection(db,"votes"));
+  const map={};
 
-  const newTotal=(userPoints[phone]||0)+addPt;
-
-  await updateDoc(doc(db,"votes",id),{name,phone,date});
-
-  const q=query(collection(db,"users"),where("phone","==",phone));
-  const snap=await getDocs(q);
-  if(snap.empty){
-    await addDoc(collection(db,"users"),{
-      name,phone,totalPoints:newTotal,password:"1"
-    });
-  }else{
-    snap.forEach(async u=>{
-      await updateDoc(doc(db,"users",u.id),{
-        name,phone,totalPoints:newTotal
-      });
-    });
-  }
-  alert("Points added. New total: "+newTotal);
-  loadVotes();
-};
-
-/* DELETE */
-window.deleteVote = async (id)=>{
-  if(!confirm("Delete vote?"))return;
-  await deleteDoc(doc(db,"votes",id));
-  loadVotes();
-};
-
-/* EXCEL EXPORT */
-window.exportExcel = ()=>{
-  if(filteredVotes.length===0){alert("No data");return;}
-  let csv="Name,Phone,Date,Today Points,Total Points\n";
-  filteredVotes.forEach(v=>{
-    csv+=`${v.name},${v.phoneNorm},${v.date},${v.todayPoints||0},${userPoints[v.phoneNorm]||0}\n`;
+  voteSnap.forEach(d=>{
+    const v=d.data();
+    const ph=normalizePhone(v.phone);
+    if(!map[ph]) map[ph]=0;
+    map[ph]+=v.todayPoints||0;
   });
-  const blob=new Blob([csv],{type:"text/csv"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="voting_report.csv";
-  a.click();
-};
 
-/* BONUS TO ALL RANK 1 (MANUAL) */
-window.addBonusToRank1All = async ()=>{
-  const bonus=Number(bonusPoint.value||0);
-  if(bonus<=0){alert("Enter bonus");return;}
-  if(prompt("Admin password")!==ADMIN_PASS)return;
-
-  const arr=Object.keys(userPoints).map(p=>({
-    phone:p,points:userPoints[p]
-  }));
-  if(arr.length===0)return;
-
-  arr.sort((a,b)=>b.points-a.points);
-  const topPoint=arr[0].points;
-  const rank1=arr.filter(u=>u.points===topPoint);
-
-  for(const u of rank1){
-    const q=query(collection(db,"users"),where("phone","==",u.phone));
-    const snap=await getDocs(q);
-    snap.forEach(async d=>{
-      await updateDoc(doc(db,"users",d.id),{
-        totalPoints:u.points+bonus
+  for(const ph in map){
+    const q=query(collection(db,"users"),where("phone","==",ph));
+    const us=await getDocs(q);
+    if(us.empty){
+      await addDoc(collection(db,"users"),{
+        phone:ph,
+        name:ph,
+        totalPoints:map[ph],
+        password:"1"
       });
-    });
+    }else{
+      us.forEach(async u=>{
+        await updateDoc(doc(db,"users",u.id),{
+          totalPoints:map[ph]
+        });
+      });
+    }
   }
-  alert(`Bonus ${bonus} added to ${rank1.length} rank-1 users`);
-  loadVotes();
+  alert("User totals rebuilt successfully ✅");
+  loadData();
 };
 </script>
 
