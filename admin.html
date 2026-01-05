@@ -7,79 +7,55 @@
 <style>
 body{font-family:Arial;background:#f1f5f9;padding:20px}
 h2,h3{text-align:center}
-.box{
-  background:#fff;padding:15px;border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);margin-bottom:20px
-}
-input,button{padding:6px;margin:4px}
-button{cursor:pointer}
+.box{background:#fff;padding:15px;border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,.2);margin-bottom:20px}
 table{width:100%;border-collapse:collapse}
 th,td{border:1px solid #ccc;padding:8px;text-align:center}
 th{background:#2563eb;color:white}
-.rank1{background:#fde047}
-.rank2{background:#e5e7eb}
-.rank3{background:#fcd34d}
-.saveBtn{background:#16a34a;color:white;border:none;padding:4px 8px}
-.fixBtn{background:#0ea5e9;color:white;border:none;padding:6px 12px}
+button{padding:6px 10px;cursor:pointer}
+.delBtn{background:#dc2626;color:white;border:none}
+.exBtn{background:#16a34a;color:white;border:none}
 .small{font-size:12px;color:#555}
 .count{text-align:center;font-weight:bold;margin-bottom:10px}
 </style>
-</head>
 
+</head>
 <body>
 
 <h2>Admin Voting Dashboard</h2>
 <div class="count" id="totalCount">Loading...</div>
 
-<!-- 🔄 REBUILD -->
+<!-- EXPORT -->
 <div class="box" style="text-align:center">
-  <button class="fixBtn" onclick="rebuildAllPoints()">
-    🔄 Rebuild All Points (ONE TIME)
-  </button>
+  <button class="exBtn" onclick="exportExcel()">⬇ Export Excel</button>
 </div>
 
-<!-- ADD USER -->
+<!-- USER VOTES -->
 <div class="box">
-  <h3>Add New User</h3>
-  <input id="uName" placeholder="Name">
-  <input id="uPhone" placeholder="Phone">
-  <input id="uPass" placeholder="Password" value="1">
-  <button class="saveBtn" onclick="addUser()">Add User</button>
+<h3>User Voting Report</h3>
+<table>
+<thead>
+<tr>
+  <th>Name</th>
+  <th>Phone</th>
+  <th>Total Votes</th>
+  <th>Date</th>
+  <th>Points</th>
+  <th>Action</th>
+</tr>
+</thead>
+<tbody id="reportBody"></tbody>
+</table>
 </div>
 
-<!-- TOP 3 -->
-<div class="box">
-  <h3>Top 3 Ranking (Lifetime)</h3>
-  <table>
-    <thead>
-      <tr><th>Rank</th><th>Name</th><th>Phone</th><th>Points</th></tr>
-    </thead>
-    <tbody id="rankBody"></tbody>
-  </table>
-</div>
-
-<!-- POINT ADD -->
-<div class="box">
-  <h3>Add Points to Users</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Add Points</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="userBody"></tbody>
-  </table>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs,
-  addDoc, updateDoc, doc
+  deleteDoc, doc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
@@ -93,165 +69,65 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const ADMIN_PASSWORD = "1";
-let users = [];
+let votes = [];
+let voteCount = {};
 
-/* LOAD USERS */
-async function loadUsers(){
-  users=[];
-  const snap = await getDocs(collection(db,"users"));
-  snap.forEach(d=>users.push({id:d.id,...d.data()}));
-  totalCount.innerText = "Total Users : " + users.length;
-  render(users);
+async function load(){
+  votes=[];
+  voteCount={};
+
+  const snap = await getDocs(collection(db,"votes"));
+  snap.forEach(d=>{
+    const v={id:d.id,...d.data()};
+    votes.push(v);
+    voteCount[v.phone]=(voteCount[v.phone]||0)+1;
+  });
+
+  totalCount.innerText = "Total Votes : " + votes.length;
+  render();
 }
-loadUsers();
+load();
 
 /* RENDER */
-function render(list){
-  rankBody.innerHTML="";
-  userBody.innerHTML="";
-
-  const sorted=[...list].sort(
-    (a,b)=>(Number(b.totalPoints)||0)-(Number(a.totalPoints)||0)
-  );
-
-  let rank=0,last=null;
-  sorted.forEach(u=>{
-    const pts = Number(u.totalPoints)||0;
-    if(pts!==last){rank++;last=pts}
-    if(rank<=3){
-      const cls=rank===1?"rank1":rank===2?"rank2":"rank3";
-      rankBody.innerHTML+=`
-        <tr class="${cls}">
-          <td>${rank}</td>
-          <td>${u.name}</td>
-          <td>${u.phone}</td>
-          <td>${pts}</td>
-        </tr>`;
-    }
-
-    userBody.innerHTML+=`
+function render(){
+  reportBody.innerHTML="";
+  votes.forEach(v=>{
+    reportBody.innerHTML+=`
       <tr>
-        <td>${u.name}</td>
-        <td>${u.phone}</td>
+        <td>${v.name}</td>
+        <td>${v.phone}</td>
+        <td>${voteCount[v.phone]}</td>
+        <td>${v.date}</td>
+        <td>${v.todayPoints||0}</td>
         <td>
-          <input type="number" id="pt_${u.id}" placeholder="+ points">
-          <div class="small">Current: ${pts}</div>
-        </td>
-        <td>
-          <button class="saveBtn"
-            onclick="addPoint('${u.id}')">Add</button>
+          <button class="delBtn"
+            onclick="deleteVote('${v.id}')">Delete</button>
         </td>
       </tr>`;
   });
 }
 
-/* ADD POINTS */
-window.addPoint = async (id)=>{
-  const addPt = Number(document.getElementById("pt_"+id).value||0);
-  if(addPt<=0) return alert("Enter points");
-
-  if(prompt("Admin password")!==ADMIN_PASSWORD){
-    alert("Wrong password");
-    return;
-  }
-
-  const u = users.find(x=>x.id===id);
-  const monthKey = new Date().toISOString().slice(0,7);
-
-  const total = (Number(u.totalPoints)||0) + addPt;
-  const monthly = u.monthlyPoints || {};
-  monthly[monthKey] = (Number(monthly[monthKey])||0) + addPt;
-
-  await updateDoc(doc(db,"users",id),{
-    totalPoints: total,
-    monthlyPoints: monthly
-  });
-
-  alert(`Points added ✅ (+${addPt})`);
-  loadUsers();
+/* DELETE VOTE */
+window.deleteVote = async (id)=>{
+  if(!confirm("Delete this vote?")) return;
+  await deleteDoc(doc(db,"votes",id));
+  load();
 };
 
-/* ADD USER */
-window.addUser = async ()=>{
-  const name=uName.value.trim();
-  const phone=uPhone.value.trim();
-  const pass=uPass.value.trim();
+/* EXPORT EXCEL */
+window.exportExcel = ()=>{
+  const data = votes.map(v=>({
+    Name:v.name,
+    Phone:v.phone,
+    Date:v.date,
+    Points:v.todayPoints||0
+  }));
 
-  if(!name||!phone||!pass){
-    alert("Fill all fields");
-    return;
-  }
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Votes");
 
-  if(prompt("Admin password")!==ADMIN_PASSWORD){
-    alert("Wrong password");
-    return;
-  }
-
-  await addDoc(collection(db,"users"),{
-    name,
-    phone,
-    password:pass,
-    totalPoints:0,
-    monthlyPoints:{},
-    createdFrom:"admin",
-    createdAt:new Date().toISOString()
-  });
-
-  alert("User added successfully ✅");
-  uName.value=""; uPhone.value=""; uPass.value="1";
-  loadUsers();
-};
-
-/* 🔄 REBUILD ALL POINTS FROM VOTES */
-window.rebuildAllPoints = async ()=>{
-  if(!confirm("Rebuild ALL user points from votes?")) return;
-
-  const voteSnap = await getDocs(collection(db,"votes"));
-  const map = {};
-
-  voteSnap.forEach(d=>{
-    const v=d.data();
-    const phone=v.phone;
-    const pts=Number(v.todayPoints||0);
-    const month=v.date?v.date.slice(0,7):null;
-
-    if(!map[phone]){
-      map[phone]={name:v.name||phone,total:0,monthly:{}};
-    }
-    map[phone].total+=pts;
-    if(month){
-      map[phone].monthly[month]=(map[phone].monthly[month]||0)+pts;
-    }
-  });
-
-  const userSnap=await getDocs(collection(db,"users"));
-  const exist={};
-  userSnap.forEach(d=>exist[d.data().phone]=d.id);
-
-  for(const phone in map){
-    const d=map[phone];
-    if(exist[phone]){
-      await updateDoc(doc(db,"users",exist[phone]),{
-        name:d.name,
-        totalPoints:d.total,
-        monthlyPoints:d.monthly
-      });
-    }else{
-      await addDoc(collection(db,"users"),{
-        name:d.name,
-        phone,
-        password:"1",
-        totalPoints:d.total,
-        monthlyPoints:d.monthly,
-        createdFrom:"rebuild",
-        createdAt:new Date().toISOString()
-      });
-    }
-  }
-
-  alert("✅ All points rebuilt successfully");
-  loadUsers();
+  XLSX.writeFile(wb, "Voting_Report.xlsx");
 };
 </script>
 
