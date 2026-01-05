@@ -1,1 +1,148 @@
-DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <title>Admin Voting Dashboard</title> <style> body{ font-family:Arial; background:#f1f5f9; padding:20px; } h2,h3{text-align:center;} .box{ background:#fff; padding:15px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,.2); margin-bottom:20px; } .controls{text-align:center;margin-bottom:10px;} input,select,button{padding:6px;margin:3px;} button{cursor:pointer;} table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ccc;padding:8px;text-align:center;} th{background:#2563eb;color:white;} .rank1{background:#fde047;} .rank2{background:#e5e7eb;} .rank3{background:#fcd34d;} .delBtn{background:#dc2626;color:white;border:none;padding:4px 8px;} .saveBtn{background:#16a34a;color:white;border:none;padding:4px 8px;} .editInp{width:90%;} .small{font-size:12px;color:#555;} .count{font-weight:bold;text-align:center;margin-bottom:10px;} .summary{ display:flex;gap:10px;justify-content:center;flex-wrap:wrap; } .summary .card{ background:#f8fafc; padding:10px 14px; border-radius:8px; min-width:160px; text-align:center; box-shadow:0 0 6px rgba(0,0,0,.1); } </style> </head> <body> <h2>Admin Voting Dashboard</h2> <div class="count" id="totalCount">Total Voters: Loading...</div> <!-- DATE FILTER --> <div class="box controls"> From <input type="date" id="fromDate"> To <input type="date" id="toDate"> <button onclick="applyFilter()">Apply</button> <button onclick="resetFilter()">Reset</button> </div> <!-- SUMMARY --> <div class="box"> <h3>Summary</h3> <div class="controls"> <select id="summaryType" onchange="renderSummary()"> <option value="daily">Daily</option> <option value="monthly">Monthly</option> </select> </div> <div class="summary" id="summaryCards"></div> </div> <!-- TOP 3 --> <div class="box"> <h3>Top 3 Ranking</h3> <table> <thead> <tr> <th>Rank</th> <th>Name</th> <th>Phone</th> <th>Points</th> </tr> </thead> <tbody id="rankBody"></tbody> </table> </div> <!-- FULL REPORT --> <div class="box"> <h3>All Voting Report (ADD Points Only)</h3> <table> <thead> <tr> <th>Name</th> <th>Phone</th> <th>Add Points</th> <th>Date</th> <th>Action</th> </tr> </thead> <tbody id="reportBody"></tbody> </table> </div> <script type="module"> import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js"; import { getFirestore, collection, getDocs, updateDoc, deleteDoc, doc, query, where, addDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js"; /* 🔴 FIREBASE CONFIG */ const firebaseConfig = { apiKey: "YOUR_API_KEY", authDomain: "daily-voting-793ee.firebaseapp.com", projectId: "daily-voting-793ee" }; const app = initializeApp(firebaseConfig); const db = getFirestore(app); /* 🔐 ADMIN PASSWORD */ const ADMIN_PASSWORD = "1"; let allVotes = []; let filteredVotes = []; /* LOAD VOTES */ async function loadVotes(){ allVotes = []; const snap = await getDocs(collection(db,"votes")); snap.forEach(d=>allVotes.push({ id:d.id, ...d.data() })); totalCount.innerText = "Total Voters : " + allVotes.length; filteredVotes = [...allVotes]; renderAll(filteredVotes); } loadVotes(); /* FILTER */ window.applyFilter = ()=>{ const f = fromDate.value; const t = toDate.value; filteredVotes = allVotes.filter(v=>{ if(f && v.date < f) return false; if(t && v.date > t) return false; return true; }); renderAll(filteredVotes); }; window.resetFilter = ()=>{ fromDate.value=""; toDate.value=""; filteredVotes=[...allVotes]; renderAll(filteredVotes); }; /* RENDER ALL */ function renderAll(votes){ rankBody.innerHTML=""; reportBody.innerHTML=""; summaryCards.innerHTML=""; if(votes.length===0){ summaryCards.innerHTML="<p>No votes</p>"; return; } const sorted=[...votes].sort((a,b)=>b.totalPoints-a.totalPoints); renderRank(sorted); renderReport(sorted); renderSummary(); } /* TOP 3 */ function renderRank(votes){ let rank=0,last=null; votes.forEach(v=>{ if(v.totalPoints!==last){rank++;last=v.totalPoints;} if(rank>3) return; const cls=rank===1?"rank1":rank===2?"rank2":"rank3"; rankBody.innerHTML+= <tr class="${cls}"> <td>${rank}</td> <td>${v.name}</td> <td>${v.phone}</td> <td>${v.totalPoints}</td> </tr>; }); } /* REPORT */ function renderReport(votes){ reportBody.innerHTML=""; votes.forEach(v=>{ reportBody.innerHTML+= <tr> <td><input class="editInp" id="n_${v.id}" value="${v.name}"></td> <td><input class="editInp" id="p_${v.id}" value="${v.phone}"></td> <td> <input class="editInp" type="number" id="pt_${v.id}" placeholder="+ points"> <div class="small">Current: ${v.totalPoints}</div> </td> <td><input class="editInp" type="date" id="d_${v.id}" value="${v.date}"></td> <td> <button class="saveBtn" onclick="saveEdit('${v.id}')">Save</button> <button class="delBtn" onclick="deleteVote('${v.id}')">Delete</button> </td> </tr>; }); } /* SAVE (ADD POINTS ONLY) */ window.saveEdit = async (id)=>{ const name = document.getElementById("n_"+id).value.trim(); const phone = document.getElementById("p_"+id).value.trim(); const addPt = Number(document.getElementById("pt_"+id).value || 0); const date = document.getElementById("d_"+id).value; if(!name || !phone || !date){ alert("Name, Phone, Date required"); return; } if(addPt < 0){ alert("Negative points not allowed"); return; } const pass = prompt("Enter admin password:"); if(pass !== ADMIN_PASSWORD){ alert("Wrong password ❌"); return; } const old = allVotes.find(v=>v.id===id); const newTotal = old.totalPoints + addPt; /* UPDATE VOTE */ await updateDoc(doc(db,"votes",id),{ name, phone, totalPoints: newTotal, date }); /* USER SYNC */ const q = query(collection(db,"users"), where("phone","==",phone)); const snap = await getDocs(q); if(snap.empty){ await addDoc(collection(db,"users"),{ name, phone, password:"1", createdFrom:"admin", createdAt:new Date().toISOString() }); }else{ snap.forEach(async u=>{ await updateDoc(doc(db,"users",u.id),{ name, phone }); }); } alert(Points added ✅ New total: ${newTotal}); loadVotes(); }; /* DELETE */ window.deleteVote = async (id)=>{ if(!confirm("Delete this vote?")) return; await deleteDoc(doc(db,"votes",id)); loadVotes(); }; /* SUMMARY */ window.renderSummary = ()=>{ const type = summaryType.value; summaryCards.innerHTML=""; const map={}; filteredVotes.forEach(v=>{ const k = type==="daily" ? v.date : v.date.slice(0,7); if(!map[k]) map[k]={voters:0,points:0}; map[k].voters++; map[k].points+=v.totalPoints; }); Object.keys(map).sort().forEach(k=>{ if(map[k].voters===0) return; summaryCards.innerHTML+= <div class="card"> <b>${k}</b><br> Voters: ${map[k].voters}<br> Points: ${map[k].points} </div>; }); }; </script> </body> </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin Voting Dashboard</title>
+
+<style>
+body{font-family:Arial;background:#f1f5f9;padding:20px}
+h2,h3{text-align:center}
+.box{background:#fff;padding:15px;border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,.2);margin-bottom:20px}
+.controls{text-align:center;margin-bottom:10px}
+input,select,button{padding:6px;margin:3px}
+button{cursor:pointer}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #ccc;padding:8px;text-align:center}
+th{background:#2563eb;color:white}
+.rank1{background:#fde047}
+.rank2{background:#e5e7eb}
+.rank3{background:#fcd34d}
+.saveBtn{background:#16a34a;color:white;border:none;padding:4px 8px}
+.delBtn{background:#dc2626;color:white;border:none;padding:4px 8px}
+.editInp{width:90%}
+.small{font-size:12px;color:#555}
+.count{text-align:center;font-weight:bold;margin-bottom:10px}
+.summary{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.card{background:#f8fafc;padding:10px;border-radius:8px;min-width:160px;text-align:center}
+</style>
+</head>
+
+<body>
+
+<h2>Admin Voting Dashboard</h2>
+<div class="count" id="totalCount">Loading...</div>
+
+<div class="box">
+  <h3>Top 3 Ranking</h3>
+  <table>
+    <thead>
+      <tr><th>Rank</th><th>Name</th><th>Phone</th><th>Points</th></tr>
+    </thead>
+    <tbody id="rankBody"></tbody>
+  </table>
+</div>
+
+<div class="box">
+  <h3>All Voting Report</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Phone</th>
+        <th>Add Points</th><th>Date</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="reportBody"></tbody>
+  </table>
+</div>
+
+<script type="module">
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  updateDoc, doc
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const ADMIN_PASSWORD="1";
+let votes=[];
+
+/* LOAD */
+async function load(){
+  votes=[];
+  const snap=await getDocs(collection(db,"votes"));
+  snap.forEach(d=>votes.push({id:d.id,...d.data()}));
+  totalCount.innerText="Total Voters : "+votes.length;
+  render(votes);
+}
+load();
+
+/* RENDER */
+function render(v){
+  rankBody.innerHTML="";
+  reportBody.innerHTML="";
+  v.sort((a,b)=>b.totalPoints-a.totalPoints);
+
+  let rank=0,last=null;
+  v.forEach(x=>{
+    if(x.totalPoints!==last){rank++;last=x.totalPoints}
+    if(rank<=3){
+      const cls=rank===1?"rank1":rank===2?"rank2":"rank3";
+      rankBody.innerHTML+=`
+        <tr class="${cls}">
+          <td>${rank}</td>
+          <td>${x.name}</td>
+          <td>${x.phone}</td>
+          <td>${x.totalPoints}</td>
+        </tr>`;
+    }
+
+    reportBody.innerHTML+=`
+      <tr>
+        <td>${x.name}</td>
+        <td>${x.phone}</td>
+        <td>
+          <input type="number" id="pt_${x.id}" placeholder="+ points">
+          <div class="small">Current: ${x.totalPoints}</div>
+        </td>
+        <td>${x.date}</td>
+        <td>
+          <button class="saveBtn"
+            onclick="addPoint('${x.id}')">Save</button>
+        </td>
+      </tr>`;
+  });
+}
+
+/* ADD POINT */
+window.addPoint=async(id)=>{
+  const addPt=Number(document.getElementById("pt_"+id).value||0);
+  if(addPt<=0)return alert("Enter points");
+
+  if(prompt("Admin password")!==ADMIN_PASSWORD)return;
+
+  const v=votes.find(x=>x.id===id);
+  const newTotal=v.totalPoints+addPt;
+
+  await updateDoc(doc(db,"votes",id),{
+    totalPoints:newTotal
+  });
+
+  alert(`Points added ✅ New total: ${newTotal}`);
+  load();
+};
+</script>
+
+</body>
+</html>
