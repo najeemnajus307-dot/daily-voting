@@ -1,29 +1,143 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Login</title>
+<meta charset="UTF-8">
+<title>Faith & Fitness - Login / Signup</title>
+
 <style>
-body{font-family:Arial;background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh}
-.box{background:#fff;padding:20px;width:300px;border-radius:10px}
-input,button{width:100%;padding:8px;margin:6px 0}
-button{background:#2563eb;color:#fff;border:none}
+body{
+  font-family:Arial;
+  background:#f1f5f9;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.box{
+  background:#fff;
+  padding:25px;
+  width:340px;
+  border-radius:10px;
+}
+h3{text-align:center;}
+input,button{
+  width:100%;
+  padding:10px;
+  margin:8px 0;
+}
+button{
+  background:#2563eb;
+  color:white;
+  border:none;
+}
+.toggle{
+  text-align:center;
+  font-size:14px;
+  color:#2563eb;
+  cursor:pointer;
+}
 </style>
 </head>
+
 <body>
 
 <div class="box">
-<h3>Login</h3>
-<input id="name" placeholder="Name">
-<input id="phone" placeholder="Phone">
-<button onclick="login()">Login</button>
+<h3 id="title">Login</h3>
+
+<div id="nameBox" style="display:none">
+  <input id="name" placeholder="Name">
 </div>
 
-<script>
-function login(){
-  if(!name.value || !phone.value){ alert("Fill all"); return;}
-  sessionStorage.setItem("userName",name.value);
-  sessionStorage.setItem("userPhone",phone.value);
-  location.replace("vote.html");
+<input id="phone" placeholder="Phone number">
+<input id="password" type="password" placeholder="Password">
+
+<button onclick="submit()">Continue</button>
+
+<div class="toggle" onclick="toggleMode()" id="toggleText">
+  New user? Sign up
+</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxcAE2EoLEdhG1VTrxGUc981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let isSignup = false;
+
+window.toggleMode = function(){
+  isSignup = !isSignup;
+  document.getElementById("nameBox").style.display = isSignup ? "block" : "none";
+  document.getElementById("title").innerText = isSignup ? "Sign Up" : "Login";
+  document.getElementById("toggleText").innerText =
+    isSignup ? "Already have account? Login" : "New user? Sign up";
+}
+
+window.submit = async function(){
+  let phone = phoneInput();
+  let pass  = passwordInput();
+
+  if(!phone || !pass){
+    alert("Fill all fields");
+    return;
+  }
+
+  const ref = doc(db,"users",phone);
+  const snap = await getDoc(ref);
+
+  // 🔐 SIGNUP
+  if(isSignup){
+    let name = document.getElementById("name").value.trim();
+    if(!name){
+      alert("Enter name");
+      return;
+    }
+    if(snap.exists()){
+      alert("Account already exists");
+      return;
+    }
+
+    await setDoc(ref,{
+      name:name,
+      phone:phone,
+      password:pass
+    });
+
+    alert("Signup success ✅ Login now");
+    toggleMode();
+    return;
+  }
+
+  // 🔓 LOGIN
+  if(!snap.exists()){
+    alert("Account not found");
+    return;
+  }
+
+  if(snap.data().password !== pass){
+    alert("Wrong password");
+    return;
+  }
+
+  localStorage.setItem("currentUser", snap.data().name);
+  localStorage.setItem("currentPhone", phone);
+
+  window.location.href="vote.html";
+}
+
+function phoneInput(){
+  return document.getElementById("phone").value.trim();
+}
+function passwordInput(){
+  return document.getElementById("password").value.trim();
 }
 </script>
 
