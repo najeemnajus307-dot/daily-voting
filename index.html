@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Login</title>
+<title>Signup / Login</title>
 
 <style>
 body{
@@ -16,24 +16,28 @@ body{
 .box{
   background:#fff;
   padding:25px;
-  width:300px;
+  width:350px;
   border-radius:10px;
-  text-align:center;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-input{
+h2{text-align:center;}
+input,button{
   width:100%;
-  padding:8px;
+  padding:10px;
   margin:6px 0;
 }
 button{
-  width:100%;
-  padding:10px;
   background:#2563eb;
   color:white;
   border:none;
-  margin-top:10px;
+  border-radius:6px;
   cursor:pointer;
+}
+.link{
+  text-align:center;
+  color:#2563eb;
+  cursor:pointer;
+  font-size:14px;
 }
 </style>
 </head>
@@ -41,35 +45,158 @@ button{
 <body>
 
 <div class="box">
-<h3>Login</h3>
 
-<input id="phone" placeholder="Phone">
-<input id="pass" type="password" placeholder="Password">
+<h2 id="title">Signup</h2>
 
-<button onclick="login()">Login</button>
+<!-- SIGNUP -->
+<div id="signupBox">
+  <input id="sname" placeholder="Name">
+  <input id="sphone" placeholder="Phone Number">
+  <input id="spass" type="password" placeholder="Password">
+  <button onclick="signup()">Signup</button>
+  <div class="link" onclick="showLogin()">Already have account?</div>
 </div>
 
-<script>
-/* ✅ Already logged in */
-if(localStorage.getItem("userPhone")){
-  window.location.replace("vote.html");
-}
+<!-- LOGIN -->
+<div id="loginBox" style="display:none;">
+  <input id="lphone" placeholder="Phone Number">
+  <input id="lpass" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <div class="link" onclick="showForgot()">Forgot password?</div>
+  <div class="link" onclick="showSignup()">New user? Signup</div>
+</div>
 
-function login(){
-  const phoneVal = document.getElementById("phone").value.trim();
-  const passVal  = document.getElementById("pass").value.trim();
+<!-- FORGOT PASSWORD -->
+<div id="forgotBox" style="display:none;">
+  <input id="fphone" placeholder="Phone Number">
+  <input id="newpass" type="password" placeholder="New Password">
+  <button onclick="resetPassword()">Reset Password</button>
+  <div class="link" onclick="showLogin()">Back to Login</div>
+</div>
 
-  if(phoneVal==="" || passVal===""){
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* 🔴 YOUR FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* UI SWITCH */
+window.showLogin = ()=>{
+  signupBox.style.display="none";
+  forgotBox.style.display="none";
+  loginBox.style.display="block";
+  title.innerText="Login";
+};
+window.showSignup = ()=>{
+  signupBox.style.display="block";
+  loginBox.style.display="none";
+  forgotBox.style.display="none";
+  title.innerText="Signup";
+};
+window.showForgot = ()=>{
+  signupBox.style.display="none";
+  loginBox.style.display="none";
+  forgotBox.style.display="block";
+  title.innerText="Forgot Password";
+};
+
+/* SIGNUP */
+window.signup = async ()=>{
+  const name  = sname.value.trim();
+  const phone = sphone.value.trim();
+  const pass  = spass.value.trim();
+
+  if(!name || !phone || !pass){
     alert("Fill all fields");
     return;
   }
 
-  /* TEMP SIMPLE LOGIN */
-  localStorage.setItem("userPhone", phoneVal);
-  localStorage.setItem("userName", phoneVal); // name illa, so phone
+  const q = query(
+    collection(db,"users"),
+    where("phone","==",phone)
+  );
+  const snap = await getDocs(q);
+  if(!snap.empty){
+    alert("Phone already registered");
+    return;
+  }
 
-  window.location.replace("vote.html");
-}
+  await addDoc(collection(db,"users"),{
+    name:name,
+    phone:phone,
+    password:pass
+  });
+
+  alert("Signup successful ✅");
+  showLogin();
+};
+
+/* LOGIN */
+window.login = async ()=>{
+  const phone = lphone.value.trim();
+  const pass  = lpass.value.trim();
+
+  const q = query(
+    collection(db,"users"),
+    where("phone","==",phone),
+    where("password","==",pass)
+  );
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    alert("Invalid login");
+    return;
+  }
+
+  localStorage.setItem("userPhone",phone);
+  localStorage.setItem("userName",snap.docs[0].data().name);
+
+  window.location.href="vote.html";
+};
+
+/* FORGOT PASSWORD */
+window.resetPassword = async ()=>{
+  const phone = fphone.value.trim();
+  const newp  = newpass.value.trim();
+
+  const q = query(
+    collection(db,"users"),
+    where("phone","==",phone)
+  );
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    alert("Phone not found");
+    return;
+  }
+
+  await updateDoc(
+    doc(db,"users",snap.docs[0].id),
+    { password:newp }
+  );
+
+  alert("Password updated ✅");
+  showLogin();
+};
 </script>
 
 </body>
