@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Task Editor – Faith & Fitness</title>
@@ -10,16 +10,19 @@ body{
   background:#f1f5f9;
   display:flex;
   justify-content:center;
-  align-items:center;
-  height:100vh;
+  min-height:100vh;
+  align-items:flex-start;
+  padding-top:30px;
 }
 .box{
   background:#fff;
   padding:20px;
-  width:400px;
+  width:420px;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
+h3{text-align:center;margin-bottom:10px}
+
 input,button{
   width:100%;
   padding:8px;
@@ -31,6 +34,20 @@ button{
   border:none;
   cursor:pointer;
 }
+.task{
+  border:1px solid #ddd;
+  border-radius:8px;
+  padding:10px;
+  margin-top:10px;
+  background:#fafafa;
+}
+.task small{
+  color:#555;
+}
+.del{
+  background:#dc2626;
+  margin-top:6px;
+}
 </style>
 </head>
 
@@ -39,6 +56,7 @@ button{
 <div class="box">
   <h3>Task Editor</h3>
 
+  <!-- ADD TASK -->
   <input id="text" placeholder="Task text (eg: Sugar cut)">
   <input id="points" type="number" placeholder="Points">
 
@@ -48,43 +66,85 @@ button{
   <label>Vote End</label>
   <input id="end" type="datetime-local">
 
-  <button onclick="save()">Save Task</button>
+  <button onclick="addTask()">Add / Update Task</button>
+
+  <hr>
+
+  <h4>Existing Tasks</h4>
+  <div id="taskList">Loading...</div>
 </div>
 
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, doc, setDoc
+  getFirestore, collection, getDocs,
+  doc, setDoc, deleteDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* ADMIN PASSWORD */
-if(prompt("Admin password")!=="1"){
-  location.href="index.html";
+/* 🔐 ADMIN PASSWORD */
+if(prompt("Admin password") !== "1"){
+  location.href = "index.html";
 }
 
-/* FIREBASE */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+  projectId: "daily-voting-793ee",
+  storageBucket: "daily-voting-793ee.appspot.com",
+  messagingSenderId: "106583008376",
+  appId: "1:106583008376:web:9d3858939d07056a5fa0ed"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-window.save = async ()=>{
-  const t = text.value.trim();
-  const p = Number(points.value);
-  const s = start.value;
-  const e = end.value;
+/* LOAD ALL TASKS */
+async function loadTasks(){
+  taskList.innerHTML = "";
+  const snap = await getDocs(collection(db,"tasks"));
+
+  if(snap.empty){
+    taskList.innerHTML = "No tasks added yet";
+    return;
+  }
+
+  snap.forEach(d=>{
+    const t = d.data();
+    const start = t.startTime ? new Date(t.startTime).toLocaleString() : "-";
+    const end   = t.endTime ? new Date(t.endTime).toLocaleString() : "-";
+
+    taskList.innerHTML += `
+      <div class="task">
+        <b>${t.text || "-"}</b><br>
+        <small>Points: ${t.points || 0}</small><br>
+        <small>From: ${start}</small><br>
+        <small>To: ${end}</small>
+        <button class="del" onclick="deleteTask('${d.id}')">Delete</button>
+      </div>
+    `;
+  });
+}
+loadTasks();
+
+/* ADD / UPDATE TASK */
+window.addTask = async ()=>{
+  const t = document.getElementById("text").value.trim();
+  const p = Number(document.getElementById("points").value);
+  const s = document.getElementById("start").value;
+  const e = document.getElementById("end").value;
 
   if(!t || !p || !s || !e){
     alert("Fill all fields");
     return;
   }
 
-  await setDoc(doc(db,"tasks","daily"),{
+  /* document id = date (YYYY-MM-DD) */
+  const docId = s.split("T")[0];
+
+  await setDoc(doc(db,"tasks",docId),{
     text: t,
     points: p,
     startTime: s,
@@ -92,6 +152,22 @@ window.save = async ()=>{
   });
 
   alert("Task saved ✅");
+
+  text.value = "";
+  points.value = "";
+  start.value = "";
+  end.value = "";
+
+  loadTasks();
+};
+
+/* DELETE TASK */
+window.deleteTask = async (id)=>{
+  if(!confirm("Delete this task?")) return;
+
+  await deleteDoc(doc(db,"tasks",id));
+  alert("Task deleted ❌");
+  loadTasks();
 };
 </script>
 
