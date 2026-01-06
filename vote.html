@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness Voting</title>
+<title>Faith & Fitness – Voting</title>
 
 <style>
 body{
@@ -10,17 +10,26 @@ body{
   background:#f1f5f9;
   display:flex;
   justify-content:center;
-  min-height:100vh;
-  align-items:flex-start;
-  padding-top:40px;
+  align-items:center;
+  height:100vh;
 }
 .box{
   background:#fff;
-  padding:25px;
-  width:360px;
+  padding:30px;
+  width:380px;
   border-radius:12px;
   text-align:center;
   box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+h2{margin-bottom:5px}
+.task{
+  margin:15px 0;
+  padding:12px;
+  border:1px solid #ddd;
+  border-radius:8px;
+}
+label{
+  font-size:16px;
 }
 button{
   width:100%;
@@ -33,16 +42,6 @@ button{
 }
 .submit{background:#16a34a;color:#fff}
 .logout{background:#dc2626;color:#fff}
-
-.task{color:#16a34a;font-weight:bold}
-
-.checkline{
-  margin:15px 0;
-  text-align:left;
-}
-.checkline input{
-  margin-right:6px;
-}
 </style>
 </head>
 
@@ -50,12 +49,12 @@ button{
 
 <div class="box">
   <h2>FAITH & FITNESS</h2>
-
   <p id="userInfo"></p>
-  <p>Date : <span id="today"></span></p>
+  <p>Date: <span id="today"></span></p>
 
-  <!-- TASK WITH CHECKBOX -->
-  <div id="taskArea">Loading task...</div>
+  <div id="taskBox" class="task">
+    Loading task...
+  </div>
 
   <button class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
@@ -66,61 +65,62 @@ import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, doc, getDoc,
-  collection, query, where, getDocs,
-  addDoc, updateDoc, increment
+  collection, query, where,
+  getDocs, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+  projectId: "daily-voting-793ee",
+  storageBucket: "daily-voting-793ee.appspot.com",
+  messagingSenderId: "106583008376",
+  appId: "1:106583008376:web:9d3858939d07056a5fa0ed"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* 🔐 LOGIN CHECK */
-const phone = sessionStorage.getItem("userPhone");
+const phone = localStorage.getItem("userPhone");
 if(!phone){
   location.replace("index.html");
 }
 
 document.getElementById("userInfo").innerText =
-  "Logged in : " + phone;
+  "Logged in: " + phone;
 
-const today = new Date().toISOString().slice(0,10);
+const today = new Date().toISOString().split("T")[0];
 document.getElementById("today").innerText = today;
 
 let todayTask = null;
 
 /* 🔹 LOAD TODAY TASK */
 async function loadTask(){
-  const ref = doc(db,"tasks",today);
+  const ref = doc(db,"tasks","daily");   // admin creates this
   const snap = await getDoc(ref);
 
   if(!snap.exists()){
-    taskArea.innerText = "No task today";
+    taskBox.innerHTML = "No task today ❌";
     return;
   }
 
-  const list = snap.data().list;
-  if(!list || list.length === 0){
-    taskArea.innerText = "No task today";
+  const data = snap.data();
+  if(data.date !== today){
+    taskBox.innerHTML = "No task today ❌";
     return;
   }
 
-  todayTask = list[0];
+  todayTask = data;
 
-  taskArea.innerHTML = `
-    <div class="checkline">
-      <label>
-        <input type="checkbox" id="taskCheck">
-        <span class="task">${todayTask.text}</span>
-      </label>
-      <div>Points : ${todayTask.points}</div>
-    </div>
+  taskBox.innerHTML = `
+    <label>
+      <input type="checkbox" id="checkTask">
+      ${data.text} <br>
+      <small>Points: ${data.points}</small>
+    </label>
   `;
 }
 loadTask();
@@ -128,17 +128,16 @@ loadTask();
 /* 🔹 SUBMIT VOTE */
 window.submitVote = async ()=>{
   if(!todayTask){
-    alert("No task today ❌");
+    alert("No task today");
     return;
   }
 
-  const chk = document.getElementById("taskCheck");
-  if(!chk || !chk.checked){
-    alert("Task complete cheythu checkbox tick cheyyu ✅");
+  if(!document.getElementById("checkTask").checked){
+    alert("Please complete the task");
     return;
   }
 
-  /* check already voted */
+  /* already voted check */
   const q = query(
     collection(db,"votes"),
     where("phone","==",phone),
@@ -150,32 +149,23 @@ window.submitVote = async ()=>{
     return;
   }
 
-  /* save vote */
   await addDoc(collection(db,"votes"),{
-    phone,
+    phone: phone,
     points: todayTask.points,
     date: today,
     createdAt: new Date().toISOString()
   });
 
-  /* update user points */
-  const uq = query(
-    collection(db,"users"),
-    where("phone","==",phone)
-  );
-  const us = await getDocs(uq);
-  if(!us.empty){
-    await updateDoc(doc(db,"users",us.docs[0].id),{
-      totalPoints: increment(todayTask.points)
-    });
-  }
-
-  alert("Vote submitted successfully ✅");
+  alert("Vote submitted ✅");
 };
 
-/* LOGOUT */
+/* 🔒 BLOCK BACK */
+history.pushState(null,null,location.href);
+window.onpopstate = ()=>history.go(1);
+
+/* 🚪 LOGOUT */
 window.logout = ()=>{
-  sessionStorage.clear();
+  localStorage.removeItem("userPhone");
   location.replace("index.html");
 };
 </script>
