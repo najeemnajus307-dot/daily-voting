@@ -2,78 +2,98 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Task Editor</title>
+<title>Task Editor – Faith & Fitness</title>
+
 <style>
 body{
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
-  min-height:100vh;
-  align-items:flex-start;
-  padding-top:40px;
+  align-items:center;
+  height:100vh;
 }
 .box{
-  background:white;
+  background:#fff;
   padding:20px;
-  width:360px;
+  width:400px;
   border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-input,button{width:100%;padding:8px;margin:6px 0}
-button{background:#16a34a;color:white;border:none}
-.task{border:1px solid #ccc;padding:6px;margin-top:6px}
+input,button{
+  width:100%;
+  padding:8px;
+  margin:6px 0;
+}
+button{
+  background:#16a34a;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
 </style>
 </head>
 
 <body>
+
 <div class="box">
   <h3>Task Editor</h3>
-  <input id="text" placeholder="Task text">
+
+  <input id="text" placeholder="Task text (eg: Sugar cut)">
   <input id="points" type="number" placeholder="Points">
-  <button onclick="addTask()">Add</button>
-  <div id="list"></div>
+
+  <label>Vote Start</label>
+  <input id="start" type="datetime-local">
+
+  <label>Vote End</label>
+  <input id="end" type="datetime-local">
+
+  <button onclick="save()">Save Task</button>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } 
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, doc, setDoc
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-if(prompt("Admin password")!=="1"){location.href="index.html";}
-
-const firebaseConfig={
-  apiKey:"YOUR_API_KEY",
-  authDomain:"daily-voting-793ee.firebaseapp.com",
-  projectId:"daily-voting-793ee"
-};
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-
-const today=new Date().toISOString().slice(0,10);
-const ref=doc(db,"tasks",today);
-
-async function load(){
-  list.innerHTML="";
-  const s=await getDoc(ref);
-  if(!s.exists()) return;
-  s.data().list.forEach(t=>{
-    list.innerHTML+=`<div class="task">${t.text} – ${t.points}</div>`;
-  });
+/* ADMIN PASSWORD */
+if(prompt("Admin password")!=="1"){
+  location.href="index.html";
 }
-load();
 
-window.addTask=async()=>{
-  const t=text.value.trim();
-  const p=Number(points.value);
-  if(!t||p<=0)return;
-  const s=await getDoc(ref);
-  let arr=[];
-  if(s.exists()) arr=s.data().list;
-  arr.push({text:t,points:p});
-  await setDoc(ref,{list:arr});
-  text.value="";points.value="";
-  load();
+/* FIREBASE */
+const firebaseConfig = {
+  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.save = async ()=>{
+  const t = text.value.trim();
+  const p = Number(points.value);
+  const s = start.value;
+  const e = end.value;
+
+  if(!t || !p || !s || !e){
+    alert("Fill all fields");
+    return;
+  }
+
+  await setDoc(doc(db,"tasks","daily"),{
+    text: t,
+    points: p,
+    startTime: s,
+    endTime: e
+  });
+
+  alert("Task saved ✅");
 };
 </script>
+
 </body>
 </html>
