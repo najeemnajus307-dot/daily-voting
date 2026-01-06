@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin Dashboard</title>
+<title>Admin Dashboard – Faith & Fitness</title>
 
 <style>
 body{
@@ -10,7 +10,24 @@ body{
   background:#f1f5f9;
   padding:20px;
 }
-h2{text-align:center}
+h2{text-align:center;margin-bottom:10px}
+.summary{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:15px;
+}
+.card{
+  background:#fff;
+  padding:10px 15px;
+  border-radius:8px;
+  box-shadow:0 0 5px rgba(0,0,0,.15);
+}
+.filters{
+  background:#fff;
+  padding:15px;
+  border-radius:8px;
+  margin-bottom:15px;
+}
 table{
   width:100%;
   border-collapse:collapse;
@@ -28,20 +45,42 @@ th{
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
 .rank3{background:#fcd34d}
-input{width:60px}
 button{
-  padding:4px 8px;
+  padding:6px 12px;
   background:#16a34a;
   color:white;
   border:none;
   cursor:pointer;
+  border-radius:4px;
 }
+.export{background:#0ea5e9}
 </style>
 </head>
 
 <body>
 
-<h2>Admin Ranking (Votes + Manual Points)</h2>
+<h2>Admin Dashboard – Faith & Fitness</h2>
+
+<div class="summary">
+  <div class="card">
+    <b>Total Users</b><br>
+    <span id="userCount">0</span>
+  </div>
+  <div class="card">
+    <b>Filtered Records</b><br>
+    <span id="recordCount">0</span>
+  </div>
+</div>
+
+<div class="filters">
+  <b>Date Filter</b><br><br>
+  From:
+  <input type="date" id="fromDate">
+  To:
+  <input type="date" id="toDate">
+  <button onclick="load()">Apply</button>
+  <button class="export" onclick="exportExcel()">Export Excel</button>
+</div>
 
 <table>
 <thead>
@@ -50,7 +89,6 @@ button{
   <th>Name</th>
   <th>Phone</th>
   <th>Total Points</th>
-  <th>Add Points</th>
 </tr>
 </thead>
 <tbody id="body"></tbody>
@@ -60,13 +98,13 @@ button{
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, addDoc
+  getFirestore, collection, getDocs
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔐 ADMIN PASSWORD */
 if(prompt("Admin password") !== "1"){
-  location.href = "index.html";
+  location.href="index.html";
 }
 
 /* 🔥 FIREBASE */
@@ -78,11 +116,17 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* LOAD DATA */
-async function load(){
-  body.innerHTML = "";
+let reportData = [];
 
-  // 1️⃣ USERS
+/* LOAD DATA */
+window.load = async ()=>{
+  body.innerHTML="";
+  reportData=[];
+
+  const from = fromDate.value || "0000-00-00";
+  const to   = toDate.value || "9999-12-31";
+
+  /* USERS */
   const usersSnap = await getDocs(collection(db,"users"));
   let users = {};
   usersSnap.forEach(d=>{
@@ -93,40 +137,50 @@ async function load(){
       points: 0
     };
   });
+  userCount.innerText = Object.keys(users).length;
 
-  // 2️⃣ VOTES → ADD POINTS
+  /* VOTES */
   const votesSnap = await getDocs(collection(db,"votes"));
   votesSnap.forEach(d=>{
     const v = d.data();
-    if(users[v.phone]){
-      users[v.phone].points += Number(v.points || 0);
+    if(v.date >= from && v.date <= to){
+      if(users[v.phone]){
+        users[v.phone].points += Number(v.points || 0);
+      }
     }
   });
 
-  // 3️⃣ BONUSES → ADD POINTS
+  /* BONUSES */
   const bonusSnap = await getDocs(collection(db,"bonuses"));
   bonusSnap.forEach(d=>{
     const b = d.data();
-    if(users[b.phone]){
-      users[b.phone].points += Number(b.points || 0);
+    const date = b.createdAt?.split("T")[0] || "0000-00-00";
+    if(date >= from && date <= to){
+      if(users[b.phone]){
+        users[b.phone].points += Number(b.points || 0);
+      }
     }
   });
 
-  // 4️⃣ SORT
+  /* SORT */
   const arr = Object.values(users)
     .sort((a,b)=>b.points - a.points);
 
+  /* RANK WITH TIES */
   let rank = 0;
-  let last = null;
+  let lastPoints = null;
 
   arr.forEach(u=>{
-    if(u.points !== last){
+    if(u.points !== lastPoints){
       rank++;
-      last = u.points;
+      lastPoints = u.points;
     }
     if(rank > 3) return;
 
-    const cls = rank===1?"rank1":rank===2?"rank2":"rank3";
+    const cls =
+      rank===1 ? "rank1" :
+      rank===2 ? "rank2" :
+      "rank3";
 
     body.innerHTML += `
       <tr class="${cls}">
@@ -134,39 +188,43 @@ async function load(){
         <td>${u.name}</td>
         <td>${u.phone}</td>
         <td>${u.points}</td>
-        <td>
-          <input id="pt_${u.phone}" type="number" value="0">
-          <button onclick="addBonus('${u.phone}')">Add</button>
-        </td>
       </tr>
     `;
-  });
-}
-load();
 
-/* ➕ ADD ADMIN POINTS */
-window.addBonus = async (phone)=>{
-  const v = Number(document.getElementById("pt_"+phone).value);
-  if(v <= 0){
-    alert("Enter points");
-    return;
-  }
-
-  if(prompt("Admin password") !== "1"){
-    alert("Wrong password");
-    return;
-  }
-
-  await addDoc(collection(db,"bonuses"),{
-    phone: phone,
-    points: v,
-    reason: "Admin added",
-    createdAt: new Date().toISOString()
+    reportData.push({
+      Rank: rank,
+      Name: u.name,
+      Phone: u.phone,
+      Points: u.points
+    });
   });
 
-  alert("Points added ✅");
-  load();
+  recordCount.innerText = reportData.length;
 };
+
+/* EXPORT CSV (EXCEL) */
+window.exportExcel = ()=>{
+  if(reportData.length === 0){
+    alert("No data to export");
+    return;
+  }
+
+  let csv = "Rank,Name,Phone,Points\n";
+  reportData.forEach(r=>{
+    csv += `${r.Rank},${r.Name},${r.Phone},${r.Points}\n`;
+  });
+
+  const blob = new Blob([csv],{type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "faith_fitness_report.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+/* INITIAL LOAD */
+load();
 </script>
 
 </body>
