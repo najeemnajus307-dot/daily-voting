@@ -6,7 +6,7 @@
 
 <style>
 body{
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
@@ -29,15 +29,15 @@ input,button{
 }
 button{
   background:#16a34a;
-  color:#fff;
+  color:white;
   border:none;
   cursor:pointer;
 }
 .link{
   text-align:center;
   font-size:14px;
-  cursor:pointer;
   color:#2563eb;
+  cursor:pointer;
 }
 .hide{display:none}
 </style>
@@ -77,9 +77,9 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* 🔥 FIREBASE CONFIG – 반드시 REAL apiKey paste ചെയ്യുക */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "PASTE_YOUR_REAL_API_KEY_HERE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
@@ -104,59 +104,72 @@ window.showLogin = ()=>{
 
 /* SIGNUP */
 window.signup = async ()=>{
-  const n = name.value.trim();
-  const p = phone.value.trim();
-  const pw = pass.value.trim();
+  try{
+    const n = name.value.trim();
+    const p = phone.value.trim();
+    const pw = pass.value.trim();
 
-  if(!n||!p||!pw){
-    alert("Fill all fields");
-    return;
+    if(!n || !p || !pw){
+      alert("All fields required");
+      return;
+    }
+
+    /* CHECK EXISTING USER */
+    const q = query(collection(db,"users"), where("phone","==",p));
+    const snap = await getDocs(q);
+    if(!snap.empty){
+      alert("User already exists");
+      return;
+    }
+
+    /* CREATE USER */
+    await addDoc(collection(db,"users"),{
+      name: n,
+      phone: p,
+      password: pw,
+      totalPoints: 0,
+      createdAt: new Date().toISOString()
+    });
+
+    alert("Account created successfully ✅");
+    showLogin();
+
+  }catch(err){
+    console.error(err);
+    alert("Signup failed ❌ (Check Firebase rules & apiKey)");
   }
-
-  /* check existing user */
-  const q = query(collection(db,"users"),where("phone","==",p));
-  const snap = await getDocs(q);
-  if(!snap.empty){
-    alert("User already exists");
-    return;
-  }
-
-  await addDoc(collection(db,"users"),{
-    name:n,
-    phone:p,
-    password:pw,
-    totalPoints:0,
-    createdAt:new Date().toISOString()
-  });
-
-  alert("Signup successful ✅");
-  showLogin();
 };
 
 /* LOGIN */
 window.login = async ()=>{
-  const p = loginPhone.value.trim();
-  const pw = loginPass.value.trim();
+  try{
+    const p = loginPhone.value.trim();
+    const pw = loginPass.value.trim();
 
-  if(!p||!pw){
-    alert("Enter phone & password");
-    return;
+    if(!p || !pw){
+      alert("Enter phone & password");
+      return;
+    }
+
+    const q = query(
+      collection(db,"users"),
+      where("phone","==",p),
+      where("password","==",pw)
+    );
+    const snap = await getDocs(q);
+
+    if(snap.empty){
+      alert("Invalid login ❌");
+      return;
+    }
+
+    sessionStorage.setItem("userPhone", p);
+    location.replace("vote.html");
+
+  }catch(err){
+    console.error(err);
+    alert("Login error ❌");
   }
-
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",p),
-    where("password","==",pw)
-  );
-  const snap = await getDocs(q);
-
-  if(snap.empty){
-    alert("Invalid login ❌");
-    return;
-  }
-
-  sessionStorage.setItem("userPhone",p);
-  location.replace("vote.html");
 };
 </script>
 
