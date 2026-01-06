@@ -2,78 +2,79 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness – Login</title>
-
-<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
+<title>Faith & Fitness – Login / Signup</title>
 <style>
-body{
-  display:none;
-  font-family:Arial;
-  background:#f1f5f9;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-.box{
-  background:#fff;
-  padding:25px;
-  width:320px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
-}
-input,button{
-  width:100%;
-  padding:10px;
-  margin:8px 0;
-}
-button{
-  background:#16a34a;
-  color:#fff;
-  border:none;
-}
+body{font-family:Arial;background:#f1f5f9;display:flex;justify-content:center;min-height:100vh;align-items:flex-start;padding-top:40px}
+.box{background:#fff;padding:25px;width:340px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,.2)}
+h3{text-align:center}
+input,button{width:100%;padding:10px;margin:8px 0}
+button{background:#16a34a;color:#fff;border:none;cursor:pointer}
+.link{text-align:center;font-size:14px;color:#2563eb;cursor:pointer}
+.hide{display:none}
 </style>
 </head>
-
 <body>
 
 <div class="box">
-  <h3 style="text-align:center">Login</h3>
-  <input id="phone" placeholder="Phone number">
-  <input id="password" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
+  <div id="loginBox">
+    <h3>Login</h3>
+    <input id="loginPhone" placeholder="Phone number">
+    <input id="loginPass" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <div class="link" onclick="showSignup()">New user? Signup</div>
+  </div>
+
+  <div id="signupBox" class="hide">
+    <h3>Signup</h3>
+    <input id="name" placeholder="Full name">
+    <input id="phone" placeholder="Phone number">
+    <input id="pass" type="password" placeholder="Password">
+    <button onclick="signup()">Create Account</button>
+    <div class="link" onclick="showLogin()">Already user? Login</div>
+  </div>
 </div>
 
-<script>
-/* 🚫 KILL CACHE */
-window.addEventListener("pageshow", e=>{
-  if(e.persisted) location.reload();
-});
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, collection, addDoc, query, where, getDocs } 
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* SESSION CHECK */
-if(sessionStorage.getItem("userPhone")){
+const firebaseConfig={
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+};
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+if(localStorage.getItem("userPhone")) location.replace("vote.html");
+
+window.showSignup=()=>{loginBox.classList.add("hide");signupBox.classList.remove("hide")}
+window.showLogin =()=>{signupBox.classList.add("hide");loginBox.classList.remove("hide")}
+
+window.signup=async()=>{
+  const n=document.getElementById("name").value.trim();
+  const p=document.getElementById("phone").value.trim();
+  const pw=document.getElementById("pass").value.trim();
+  if(!n||!p||!pw) return alert("All fields required");
+  const q=query(collection(db,"users"),where("phone","==",p));
+  const s=await getDocs(q);
+  if(!s.empty) return alert("User already exists");
+  await addDoc(collection(db,"users"),{name:n,phone:p,password:pw,createdAt:new Date().toISOString()});
+  alert("Signup successful");
+  showLogin();
+};
+
+window.login=async()=>{
+  const p=document.getElementById("loginPhone").value.trim();
+  const pw=document.getElementById("loginPass").value.trim();
+  if(!p||!pw) return alert("Enter details");
+  const q=query(collection(db,"users"),where("phone","==",p),where("password","==",pw));
+  const s=await getDocs(q);
+  if(s.empty) return alert("Invalid login");
+  localStorage.setItem("userPhone",p);
   location.replace("vote.html");
-}else{
-  document.body.style.display="flex";
-}
-
-/* BLOCK BACK */
-history.pushState(null,null,location.href);
-window.onpopstate=()=>history.go(1);
-
-function login(){
-  const phone = phone.value.trim();
-  const pass  = password.value.trim();
-
-  if(!phone || !pass) return alert("Enter phone & password");
-  if(pass!=="1") return alert("Wrong password");
-
-  sessionStorage.setItem("userPhone",phone);
-  location.replace("vote.html");
-}
+};
 </script>
-
 </body>
 </html>
