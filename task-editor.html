@@ -4,62 +4,42 @@
 <meta charset="UTF-8">
 <title>Task Editor – Faith & Fitness</title>
 
-<!-- 🚫 Cache control -->
-<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
 <style>
-/* 🔥 Prevent blinking */
 body{
-  display:none;
   font-family: Arial;
   background:#f1f5f9;
+  display:flex;
   justify-content:center;
-  align-items:flex-start;
-  min-height:100vh;
-  padding-top:30px;
+  align-items:center;
+  height:100vh;
 }
-
 .box{
   background:#fff;
   padding:20px;
-  width:420px;
+  width:380px;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-
-h2{text-align:center;margin-bottom:10px}
-
 input,button{
   width:100%;
   padding:8px;
   margin:6px 0;
 }
-
 button{
   background:#16a34a;
   color:white;
   border:none;
   cursor:pointer;
 }
-
 .task{
   border:1px solid #ddd;
-  border-radius:8px;
-  padding:10px;
-  margin-top:10px;
-  background:#fafafa;
+  padding:8px;
+  margin-top:6px;
+  border-radius:6px;
 }
-
-.small{
-  font-size:12px;
-  color:#555;
-}
-
 .del{
   background:#dc2626;
-  margin-top:6px;
+  margin-top:5px;
 }
 </style>
 </head>
@@ -69,48 +49,31 @@ button{
 <div class="box">
   <h2>Task Editor</h2>
 
-  <!-- ADD TASK -->
-  <input id="taskText" placeholder="Task name (eg: Drink Water)">
+  <input id="taskText" placeholder="Task (eg: Sugar cut)">
   <input id="taskPoints" type="number" placeholder="Points">
 
-  <label>Start Date & Time</label>
-  <input id="startTime" type="datetime-local">
+  <label>Start Date</label>
+  <input id="startDate" type="date">
 
-  <label>End Date & Time</label>
-  <input id="endTime" type="datetime-local">
+  <label>End Date</label>
+  <input id="endDate" type="date">
 
   <button onclick="addTask()">Add Task</button>
 
   <hr>
-  <h4>All Tasks</h4>
   <div id="taskList">Loading...</div>
 </div>
 
 <script type="module">
-/* 🚫 Kill back-forward cache */
-window.addEventListener("pageshow", e=>{
-  if(e.persisted){
-    location.reload();
-  }
-});
-
-/* 🔐 ADMIN PASSWORD */
-if(prompt("Admin password") !== "1"){
-  location.replace("index.html");
-}else{
-  document.body.style.display = "flex"; // 👈 show only after auth
+if(prompt("Admin password")!=="1"){
+  location.href="index.html";
 }
 
-/* 🔥 FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc
+  getFirestore, collection, addDoc,
+  getDocs, deleteDoc, doc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
@@ -123,65 +86,48 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* LOAD TASKS */
 async function loadTasks(){
-  taskList.innerHTML = "";
+  taskList.innerHTML="";
   const snap = await getDocs(collection(db,"tasks"));
-
   if(snap.empty){
-    taskList.innerHTML = "No tasks added yet";
+    taskList.innerHTML="No tasks";
     return;
   }
-
   snap.forEach(d=>{
-    const t = d.data();
-    taskList.innerHTML += `
+    const t=d.data();
+    taskList.innerHTML+=`
       <div class="task">
         <b>${t.text}</b><br>
-        <span class="small">
-          Points: ${t.points}<br>
-          Start: ${new Date(t.start).toLocaleString()}<br>
-          End: ${new Date(t.end).toLocaleString()}
-        </span>
-        <button class="del" onclick="deleteTask('${d.id}')">Delete</button>
+        ${t.start} → ${t.end}<br>
+        Points: ${t.points}
+        <button class="del" onclick="del('${d.id}')">Delete</button>
       </div>
     `;
   });
 }
 loadTasks();
 
-/* ADD TASK (UNLIMITED) */
 window.addTask = async ()=>{
-  const text = taskText.value.trim();
-  const points = Number(taskPoints.value);
-  const start = startTime.value;
-  const end   = endTime.value;
-
-  if(!text || points <= 0 || !start || !end){
+  if(!taskText.value || !taskPoints.value || !startDate.value || !endDate.value){
     alert("Fill all fields");
     return;
   }
 
   await addDoc(collection(db,"tasks"),{
-    text,
-    points,
-    start,
-    end,
-    createdAt: new Date().toISOString()
+    text: taskText.value,
+    points: Number(taskPoints.value),
+    start: startDate.value, // YYYY-MM-DD
+    end: endDate.value
   });
 
   taskText.value="";
   taskPoints.value="";
-  startTime.value="";
-  endTime.value="";
-
+  startDate.value="";
+  endDate.value="";
   loadTasks();
 };
 
-/* DELETE TASK */
-window.deleteTask = async (id)=>{
-  if(!confirm("Delete this task?")) return;
-
+window.del = async (id)=>{
   await deleteDoc(doc(db,"tasks",id));
   loadTasks();
 };
