@@ -52,11 +52,11 @@ button{
   <input id="taskText" placeholder="Task (eg: Sugar cut)">
   <input id="taskPoints" type="number" placeholder="Points">
 
-  <label>Start Date</label>
-  <input id="startDate" type="date">
+  <label>Start Date & Time</label>
+  <input id="startDT" type="datetime-local">
 
-  <label>End Date</label>
-  <input id="endDate" type="date">
+  <label>End Date & Time</label>
+  <input id="endDT" type="datetime-local">
 
   <button onclick="addTask()">Add Task</button>
 
@@ -108,7 +108,7 @@ async function loadTasks(){
 loadTasks();
 
 window.addTask = async ()=>{
-  if(!taskText.value || !taskPoints.value || !startDate.value || !endDate.value){
+  if(!taskText.value || !taskPoints.value || !startDT.value || !endDT.value){
     alert("Fill all fields");
     return;
   }
@@ -116,14 +116,14 @@ window.addTask = async ()=>{
   await addDoc(collection(db,"tasks"),{
     text: taskText.value,
     points: Number(taskPoints.value),
-    start: startDate.value, // YYYY-MM-DD
-    end: endDate.value
+    start: startDT.value, // datetime-local string
+    end: endDT.value
   });
 
   taskText.value="";
   taskPoints.value="";
-  startDate.value="";
-  endDate.value="";
+  startDT.value="";
+  endDT.value="";
   loadTasks();
 };
 
