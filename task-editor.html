@@ -10,19 +10,17 @@ body{
   background:#f1f5f9;
   display:flex;
   justify-content:center;
-  min-height:100vh;
-  align-items:flex-start;
-  padding-top:30px;
+  align-items:center;
+  height:100vh;
 }
 .box{
   background:#fff;
   padding:20px;
-  width:420px;
+  width:380px;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h3{text-align:center;margin-bottom:10px}
-
+h2{text-align:center;margin-bottom:10px}
 input,button{
   width:100%;
   padding:8px;
@@ -36,17 +34,17 @@ button{
 }
 .task{
   border:1px solid #ddd;
-  border-radius:8px;
-  padding:10px;
-  margin-top:10px;
-  background:#fafafa;
-}
-.task small{
-  color:#555;
+  padding:8px;
+  margin-top:6px;
+  border-radius:6px;
 }
 .del{
   background:#dc2626;
-  margin-top:6px;
+  margin-top:5px;
+}
+.small{
+  font-size:12px;
+  color:#555;
 }
 </style>
 </head>
@@ -54,74 +52,72 @@ button{
 <body>
 
 <div class="box">
-  <h3>Task Editor</h3>
+  <h2>Task Editor</h2>
 
-  <!-- ADD TASK -->
-  <input id="text" placeholder="Task text (eg: Sugar cut)">
-  <input id="points" type="number" placeholder="Points">
+  <input id="taskText" placeholder="Task text (eg: Sugar cut)">
+  <input id="taskPoints" type="number" placeholder="Points">
 
   <label>Vote Start</label>
-  <input id="start" type="datetime-local">
+  <input id="startDate" type="datetime-local">
 
   <label>Vote End</label>
-  <input id="end" type="datetime-local">
+  <input id="endDate" type="datetime-local">
 
-  <button onclick="addTask()">Add / Update Task</button>
+  <button onclick="addTask()">Add Task</button>
 
   <hr>
-
-  <h4>Existing Tasks</h4>
+  <b>Existing Tasks</b>
   <div id="taskList">Loading...</div>
 </div>
 
 <script type="module">
+/* 🔐 ADMIN PASSWORD */
+if(prompt("Admin password") !== "1"){
+  location.href="index.html";
+}
+
+/* 🔥 FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs,
-  doc, setDoc, deleteDoc
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔐 ADMIN PASSWORD */
-if(prompt("Admin password") !== "1"){
-  location.href = "index.html";
-}
-
-/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee",
-  storageBucket: "daily-voting-793ee.appspot.com",
-  messagingSenderId: "106583008376",
-  appId: "1:106583008376:web:9d3858939d07056a5fa0ed"
+  projectId: "daily-voting-793ee"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* LOAD ALL TASKS */
+/* LOAD TASKS */
 async function loadTasks(){
-  taskList.innerHTML = "";
-  const snap = await getDocs(collection(db,"tasks"));
+  taskList.innerHTML="";
 
+  const snap = await getDocs(collection(db,"tasks"));
   if(snap.empty){
-    taskList.innerHTML = "No tasks added yet";
+    taskList.innerHTML="No tasks added yet";
     return;
   }
 
   snap.forEach(d=>{
     const t = d.data();
-    const start = t.startTime ? new Date(t.startTime).toLocaleString() : "-";
-    const end   = t.endTime ? new Date(t.endTime).toLocaleString() : "-";
-
     taskList.innerHTML += `
       <div class="task">
-        <b>${t.text || "-"}</b><br>
-        <small>Points: ${t.points || 0}</small><br>
-        <small>From: ${start}</small><br>
-        <small>To: ${end}</small>
+        <b>${t.text}</b><br>
+        <span class="small">
+          Points: ${t.points}<br>
+          From: ${new Date(t.start).toLocaleString()}<br>
+          To: ${new Date(t.end).toLocaleString()}
+        </span>
         <button class="del" onclick="deleteTask('${d.id}')">Delete</button>
       </div>
     `;
@@ -129,34 +125,30 @@ async function loadTasks(){
 }
 loadTasks();
 
-/* ADD / UPDATE TASK */
+/* ADD TASK */
 window.addTask = async ()=>{
-  const t = document.getElementById("text").value.trim();
-  const p = Number(document.getElementById("points").value);
-  const s = document.getElementById("start").value;
-  const e = document.getElementById("end").value;
+  const text = taskText.value.trim();
+  const points = Number(taskPoints.value);
+  const start = startDate.value;
+  const end   = endDate.value;
 
-  if(!t || !p || !s || !e){
+  if(!text || points<=0 || !start || !end){
     alert("Fill all fields");
     return;
   }
 
-  /* document id = date (YYYY-MM-DD) */
-  const docId = s.split("T")[0];
-
-  await setDoc(doc(db,"tasks",docId),{
-    text: t,
-    points: p,
-    startTime: s,
-    endTime: e
+  await addDoc(collection(db,"tasks"),{
+    text,
+    points,
+    start,
+    end,
+    createdAt: new Date().toISOString()
   });
 
-  alert("Task saved ✅");
-
-  text.value = "";
-  points.value = "";
-  start.value = "";
-  end.value = "";
+  taskText.value="";
+  taskPoints.value="";
+  startDate.value="";
+  endDate.value="";
 
   loadTasks();
 };
@@ -166,7 +158,6 @@ window.deleteTask = async (id)=>{
   if(!confirm("Delete this task?")) return;
 
   await deleteDoc(doc(db,"tasks",id));
-  alert("Task deleted ❌");
   loadTasks();
 };
 </script>
