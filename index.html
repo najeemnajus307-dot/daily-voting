@@ -77,7 +77,7 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG (YOUR REAL CONFIG) */
+/* 🔥 YOUR REAL FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -96,7 +96,7 @@ if(sessionStorage.getItem("userPhone")){
   location.replace("vote.html");
 }
 
-/* TOGGLE SCREENS */
+/* TOGGLE */
 window.showSignup = ()=>{
   loginBox.classList.add("hide");
   signupBox.classList.remove("hide");
@@ -118,7 +118,7 @@ window.signup = async ()=>{
       return;
     }
 
-    /* CHECK EXISTING USER */
+    // check existing user
     const q = query(collection(db,"users"), where("phone","==",p));
     const snap = await getDocs(q);
     if(!snap.empty){
@@ -126,7 +126,7 @@ window.signup = async ()=>{
       return;
     }
 
-    /* CREATE USER */
+    // create user
     await addDoc(collection(db,"users"),{
       name: n,
       phone: p,
@@ -135,12 +135,12 @@ window.signup = async ()=>{
       createdAt: new Date().toISOString()
     });
 
-    alert("Account created successfully ✅");
+    alert("Signup successful ✅");
     showLogin();
 
   }catch(err){
-    console.error(err);
-    alert("Signup failed ❌");
+    console.error("SIGNUP ERROR:", err);
+    alert("Signup error:\n" + err.message);
   }
 };
 
@@ -171,8 +171,8 @@ window.login = async ()=>{
     location.replace("vote.html");
 
   }catch(err){
-    console.error(err);
-    alert("Login error ❌");
+    console.error("LOGIN ERROR:", err);
+    alert("Login error:\n" + err.message);
   }
 };
 </script>
