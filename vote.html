@@ -10,9 +10,9 @@
 
 <style>
 body{
+  display:none;
   font-family:Arial;
   background:#f1f5f9;
-  display:flex;
   justify-content:center;
   align-items:center;
   height:100vh;
@@ -24,23 +24,13 @@ body{
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2,h3{text-align:center;margin:5px 0}
-.task{
-  border:1px solid #ddd;
-  padding:10px;
-  margin-top:10px;
-  border-radius:6px;
-}
 button{
   width:100%;
   padding:10px;
-  margin-top:15px;
+  margin-top:12px;
   background:#16a34a;
   color:white;
   border:none;
-  font-size:16px;
-  cursor:pointer;
-  border-radius:6px;
 }
 .logout{background:#dc2626}
 </style>
@@ -49,136 +39,34 @@ button{
 <body>
 
 <div class="box">
-  <h2>WELCOME</h2>
-  <h3>FAITH & FITNESS</h3>
-
+  <h2 style="text-align:center">FAITH & FITNESS</h2>
   <p id="userInfo"></p>
-  <p>Date: <span id="today"></span></p>
-
-  <div id="taskArea">Loading task...</div>
-
-  <button onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
-/* 🔐 LOGIN CHECK */
+/* 🚫 KILL CACHE */
+window.addEventListener("pageshow", e=>{
+  if(e.persisted) location.reload();
+});
+
+/* SESSION CHECK */
 const phone = sessionStorage.getItem("userPhone");
 if(!phone){
   location.replace("index.html");
+}else{
+  document.body.style.display="flex";
 }
 
-/* 🚫 BLOCK BACK & CACHE */
+/* BLOCK BACK */
 history.pushState(null,null,location.href);
-window.onpopstate = ()=>history.go(1);
+window.onpopstate=()=>history.go(1);
 
-window.addEventListener("pageshow", function(e){
-  if(e.persisted){
-    location.reload();
-  }
-});
-
-userInfo.innerText = "Logged in : " + phone;
-today.innerText = new Date().toLocaleDateString();
-
-/* 🔥 FIREBASE */
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  addDoc,
-  query,
-  where
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-let activeTask = null;
-
-/* LOAD ACTIVE TASK */
-async function loadTask(){
-  const now = new Date().toISOString();
-  const snap = await getDocs(collection(db,"tasks"));
-
-  activeTask = null;
-  taskArea.innerHTML = "";
-
-  snap.forEach(d=>{
-    const t = d.data();
-    if(t.start <= now && t.end >= now){
-      activeTask = { id:d.id, ...t };
-    }
-  });
-
-  if(!activeTask){
-    taskArea.innerHTML = "No active task now ❌";
-    return;
-  }
-
-  taskArea.innerHTML = `
-    <div class="task">
-      <label>
-        <input type="checkbox" id="voteCheck">
-        <b>${activeTask.text}</b><br>
-        Points: ${activeTask.points}
-      </label>
-    </div>
-  `;
-}
-loadTask();
-
-/* SUBMIT VOTE */
-window.submitVote = async ()=>{
-  if(!activeTask){
-    alert("No active task");
-    return;
-  }
-
-  if(!document.getElementById("voteCheck").checked){
-    alert("Please tick the checkbox");
-    return;
-  }
-
-  const todayDate = new Date().toISOString().slice(0,10);
-
-  const q = query(
-    collection(db,"votes"),
-    where("phone","==",phone),
-    where("taskId","==",activeTask.id),
-    where("date","==",todayDate)
-  );
-
-  const snap = await getDocs(q);
-  if(!snap.empty){
-    alert("Already voted ❌");
-    return;
-  }
-
-  await addDoc(collection(db,"votes"),{
-    phone,
-    taskId: activeTask.id,
-    points: activeTask.points,
-    date: todayDate,
-    createdAt: new Date().toISOString()
-  });
-
-  alert("Vote submitted ✅");
-};
+userInfo.innerText="Logged in : "+phone;
 
 /* LOGOUT */
-window.logout = ()=>{
+window.logout=()=>{
   sessionStorage.clear();
-  history.replaceState(null,null,"index.html");
   location.replace("index.html");
 };
 </script>
