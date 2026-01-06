@@ -4,16 +4,23 @@
 <meta charset="UTF-8">
 <title>Task Editor – Faith & Fitness</title>
 
+<!-- 🚫 Cache control -->
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
 <style>
+/* 🔥 Prevent blinking */
 body{
+  display:none;
   font-family: Arial;
   background:#f1f5f9;
-  display:flex;
   justify-content:center;
   align-items:flex-start;
   min-height:100vh;
   padding-top:30px;
 }
+
 .box{
   background:#fff;
   padding:20px;
@@ -21,18 +28,22 @@ body{
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
+
 h2{text-align:center;margin-bottom:10px}
+
 input,button{
   width:100%;
   padding:8px;
   margin:6px 0;
 }
+
 button{
   background:#16a34a;
   color:white;
   border:none;
   cursor:pointer;
 }
+
 .task{
   border:1px solid #ddd;
   border-radius:8px;
@@ -40,10 +51,12 @@ button{
   margin-top:10px;
   background:#fafafa;
 }
+
 .small{
   font-size:12px;
   color:#555;
 }
+
 .del{
   background:#dc2626;
   margin-top:6px;
@@ -74,9 +87,18 @@ button{
 </div>
 
 <script type="module">
+/* 🚫 Kill back-forward cache */
+window.addEventListener("pageshow", e=>{
+  if(e.persisted){
+    location.reload();
+  }
+});
+
 /* 🔐 ADMIN PASSWORD */
 if(prompt("Admin password") !== "1"){
-  location.href = "index.html";
+  location.replace("index.html");
+}else{
+  document.body.style.display = "flex"; // 👈 show only after auth
 }
 
 /* 🔥 FIREBASE */
