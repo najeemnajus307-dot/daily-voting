@@ -2,58 +2,120 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Admin Dashboard</title>
+<title>Admin Ranking</title>
+
 <style>
-body{font-family:Arial;background:#f1f5f9;padding:20px}
-table{width:100%;border-collapse:collapse;background:white}
-th,td{border:1px solid #ccc;padding:8px;text-align:center}
-th{background:#2563eb;color:white}
+body{
+  font-family: Arial;
+  background:#f1f5f9;
+  padding:20px;
+}
+h2{text-align:center}
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:#fff;
+}
+th,td{
+  border:1px solid #ccc;
+  padding:10px;
+  text-align:center;
+}
+th{
+  background:#2563eb;
+  color:white;
+}
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
 .rank3{background:#fcd34d}
 </style>
 </head>
+
 <body>
 
-<h2 style="text-align:center">Admin Ranking</h2>
+<h2>Admin Ranking</h2>
 
 <table>
 <thead>
-<tr><th>Rank</th><th>Phone</th><th>Total Points</th></tr>
+<tr>
+  <th>Rank</th>
+  <th>Name</th>
+  <th>Phone</th>
+  <th>Total Points</th>
+</tr>
 </thead>
 <tbody id="body"></tbody>
 </table>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs } 
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-if(prompt("Admin password")!=="1"){location.href="index.html";}
+/* ADMIN PASSWORD */
+if(prompt("Admin password")!=="1"){
+  location.href="index.html";
+}
 
-const firebaseConfig={
-  apiKey:"YOUR_API_KEY",
-  authDomain:"daily-voting-793ee.firebaseapp.com",
-  projectId:"daily-voting-793ee"
+/* FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee",
+  storageBucket: "daily-voting-793ee.appspot.com",
+  messagingSenderId: "106583008376",
+  appId: "1:106583008376:web:9d3858939d07056a5fa0ed"
 };
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 async function load(){
-  const snap=await getDocs(collection(db,"users"));
-  let arr=[];
-  snap.forEach(d=>arr.push(d.data()));
-  arr.sort((a,b)=>b.totalPoints-a.totalPoints);
+  const snap = await getDocs(collection(db,"users"));
+  let users = [];
 
-  let r=0,last=null;
-  body.innerHTML="";
-  arr.forEach(u=>{
-    if(u.totalPoints!==last){r++;last=u.totalPoints;}
-    if(r>3) return;
-    body.innerHTML+=`<tr class="rank${r}"><td>${r}</td><td>${u.phone}</td><td>${u.totalPoints}</td></tr>`;
+  snap.forEach(d=>{
+    const data = d.data();
+    users.push({
+      name: data.name || "-",   // 👈 IMPORTANT
+      phone: data.phone,
+      totalPoints: Number(data.totalPoints || 0)
+    });
+  });
+
+  /* sort by points */
+  users.sort((a,b)=>b.totalPoints - a.totalPoints);
+
+  let rank = 0;
+  let lastPoints = null;
+  body.innerHTML = "";
+
+  users.forEach(u=>{
+    if(u.totalPoints !== lastPoints){
+      rank++;
+      lastPoints = u.totalPoints;
+    }
+
+    if(rank > 3) return;
+
+    const cls = rank===1?"rank1":rank===2?"rank2":"rank3";
+
+    body.innerHTML += `
+      <tr class="${cls}">
+        <td>${rank}</td>
+        <td>${u.name}</td>
+        <td>${u.phone}</td>
+        <td>${u.totalPoints}</td>
+      </tr>
+    `;
   });
 }
+
 load();
 </script>
+
 </body>
 </html>
