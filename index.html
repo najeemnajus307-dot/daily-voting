@@ -77,7 +77,7 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 YOUR REAL FIREBASE CONFIG */
+/* 🔥 FIREBASE CONFIG (YOUR REAL CONFIG) */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -96,22 +96,22 @@ if(sessionStorage.getItem("userPhone")){
   location.replace("vote.html");
 }
 
-/* TOGGLE */
+/* TOGGLE SCREENS */
 window.showSignup = ()=>{
-  loginBox.classList.add("hide");
-  signupBox.classList.remove("hide");
+  document.getElementById("loginBox").classList.add("hide");
+  document.getElementById("signupBox").classList.remove("hide");
 };
 window.showLogin = ()=>{
-  signupBox.classList.add("hide");
-  loginBox.classList.remove("hide");
+  document.getElementById("signupBox").classList.add("hide");
+  document.getElementById("loginBox").classList.remove("hide");
 };
 
-/* SIGNUP */
+/* SIGNUP – FIXED */
 window.signup = async ()=>{
   try{
-    const n = name.value.trim();
-    const p = phone.value.trim();
-    const pw = pass.value.trim();
+    const n  = document.getElementById("name").value.trim();
+    const p  = document.getElementById("phone").value.trim();
+    const pw = document.getElementById("pass").value.trim();
 
     if(!n || !p || !pw){
       alert("All fields required");
@@ -147,8 +147,8 @@ window.signup = async ()=>{
 /* LOGIN */
 window.login = async ()=>{
   try{
-    const p = loginPhone.value.trim();
-    const pw = loginPass.value.trim();
+    const p  = document.getElementById("loginPhone").value.trim();
+    const pw = document.getElementById("loginPass").value.trim();
 
     if(!p || !pw){
       alert("Enter phone & password");
