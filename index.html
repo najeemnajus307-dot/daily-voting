@@ -2,174 +2,172 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness – Login / Signup</title>
+<title>Faith & Fitness – Voting</title>
 
 <style>
 body{
-  font-family: Arial;
+  font-family:Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
-  min-height:100vh;
-  align-items:flex-start;
-  padding-top:40px;
+  align-items:center;
+  height:100vh;
 }
 .box{
   background:#fff;
   padding:25px;
-  width:340px;
+  width:360px;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h3{text-align:center}
-input,button{
-  width:100%;
+h2,h3{text-align:center;margin:5px 0}
+.task{
+  border:1px solid #ddd;
   padding:10px;
-  margin:8px 0;
+  margin-top:10px;
+  border-radius:6px;
 }
 button{
+  width:100%;
+  padding:10px;
+  margin-top:15px;
   background:#16a34a;
   color:white;
   border:none;
+  font-size:16px;
   cursor:pointer;
+  border-radius:6px;
 }
-.link{
-  text-align:center;
-  font-size:14px;
-  color:#2563eb;
-  cursor:pointer;
-}
-.hide{display:none}
+.logout{background:#dc2626}
 </style>
 </head>
 
 <body>
 
 <div class="box">
+  <h2>WELCOME</h2>
+  <h3>FAITH & FITNESS</h3>
 
-  <!-- LOGIN -->
-  <div id="loginBox">
-    <h3>Login</h3>
-    <input id="loginPhone" placeholder="Phone number">
-    <input id="loginPass" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <div class="link" onclick="showSignup()">New user? Signup</div>
-  </div>
+  <p id="userInfo"></p>
+  <p>Date: <span id="today"></span></p>
 
-  <!-- SIGNUP -->
-  <div id="signupBox" class="hide">
-    <h3>Signup</h3>
-    <input id="name" placeholder="Full name">
-    <input id="phone" placeholder="Phone number">
-    <input id="pass" type="password" placeholder="Password">
-    <button onclick="signup()">Create Account</button>
-    <div class="link" onclick="showLogin()">Already user? Login</div>
-  </div>
+  <div id="taskArea">Loading task...</div>
 
+  <button onclick="submitVote()">Submit Vote</button>
+  <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, addDoc,
-  query, where, getDocs
+  getFirestore,
+  collection,
+  getDocs,
+  addDoc,
+  query,
+  where
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE CONFIG */
+/* 🔥 FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee",
-  storageBucket: "daily-voting-793ee.appspot.com",
-  messagingSenderId: "106583008376",
-  appId: "1:106583008376:web:9d3858939d07056a5fa0ed"
+  projectId: "daily-voting-793ee"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* AUTO LOGIN */
-if(localStorage.getItem("userPhone")){
-  location.replace("vote.html");
+/* 🔐 LOGIN CHECK */
+const phone = sessionStorage.getItem("userPhone");
+if(!phone){
+  location.replace("index.html");
 }
 
-/* TOGGLE */
-window.showSignup = ()=>{
-  loginBox.classList.add("hide");
-  signupBox.classList.remove("hide");
-};
-window.showLogin = ()=>{
-  signupBox.classList.add("hide");
-  loginBox.classList.remove("hide");
-};
+/* BLOCK BACK */
+history.pushState(null,null,location.href);
+window.onpopstate = ()=>history.go(1);
 
-/* SIGNUP */
-window.signup = async ()=>{
-  try{
-    const n  = document.getElementById("name").value.trim();
-    const p  = document.getElementById("phone").value.trim();
-    const pw = document.getElementById("pass").value.trim();
+userInfo.innerText = "Logged in : " + phone;
+today.innerText = new Date().toLocaleDateString();
 
-    if(!n || !p || !pw){
-      alert("All fields required");
-      return;
+let activeTask = null;
+
+/* LOAD ACTIVE TASK */
+async function loadTask(){
+  const now = new Date().toISOString();
+  const snap = await getDocs(collection(db,"tasks"));
+
+  activeTask = null;
+  taskArea.innerHTML = "";
+
+  snap.forEach(d=>{
+    const t = d.data();
+    if(t.start <= now && t.end >= now){
+      activeTask = { id:d.id, ...t };
     }
+  });
 
-    const q = query(collection(db,"users"), where("phone","==",p));
-    const snap = await getDocs(q);
-    if(!snap.empty){
-      alert("User already exists");
-      return;
-    }
-
-    await addDoc(collection(db,"users"),{
-      name: n,
-      phone: p,
-      password: pw,
-      totalPoints: 0,
-      createdAt: new Date().toISOString()
-    });
-
-    alert("Signup successful ✅");
-    showLogin();
-
-  }catch(err){
-    alert(err.message);
+  if(!activeTask){
+    taskArea.innerHTML = "No active task now ❌";
+    return;
   }
+
+  taskArea.innerHTML = `
+    <div class="task">
+      <label>
+        <input type="checkbox" id="voteCheck">
+        <b>${activeTask.text}</b><br>
+        Points: ${activeTask.points}
+      </label>
+    </div>
+  `;
+}
+loadTask();
+
+/* SUBMIT VOTE */
+window.submitVote = async ()=>{
+  if(!activeTask){
+    alert("No active task");
+    return;
+  }
+
+  if(!document.getElementById("voteCheck").checked){
+    alert("Please check the task");
+    return;
+  }
+
+  const todayDate = new Date().toISOString().slice(0,10);
+
+  const q = query(
+    collection(db,"votes"),
+    where("phone","==",phone),
+    where("taskId","==",activeTask.id),
+    where("date","==",todayDate)
+  );
+
+  const snap = await getDocs(q);
+  if(!snap.empty){
+    alert("Already voted ❌");
+    return;
+  }
+
+  await addDoc(collection(db,"votes"),{
+    phone,
+    taskId: activeTask.id,
+    points: activeTask.points,
+    date: todayDate,
+    createdAt: new Date().toISOString()
+  });
+
+  alert("Vote submitted ✅");
 };
 
-/* LOGIN */
-window.login = async ()=>{
-  try{
-    const p  = document.getElementById("loginPhone").value.trim();
-    const pw = document.getElementById("loginPass").value.trim();
-
-    if(!p || !pw){
-      alert("Enter phone & password");
-      return;
-    }
-
-    const q = query(
-      collection(db,"users"),
-      where("phone","==",p),
-      where("password","==",pw)
-    );
-    const snap = await getDocs(q);
-
-    if(snap.empty){
-      alert("Invalid login");
-      return;
-    }
-
-    /* ✅ PERSIST LOGIN */
-    localStorage.setItem("userPhone", p);
-    location.replace("vote.html");
-
-  }catch(err){
-    alert(err.message);
-  }
+/* LOGOUT */
+window.logout = ()=>{
+  sessionStorage.clear();
+  location.replace("index.html");
 };
 </script>
 
