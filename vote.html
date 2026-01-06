@@ -3,153 +3,98 @@
 <head>
 <meta charset="UTF-8">
 <title>Faith & Fitness Voting</title>
-
 <style>
 body{
   font-family:Arial;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
-  align-items:center;
-  height:100vh;
+  min-height:100vh;
+  align-items:flex-start;
+  padding-top:40px;
 }
 .box{
   background:#fff;
-  padding:30px;
+  padding:25px;
   width:360px;
   border-radius:12px;
   text-align:center;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-button{
-  width:100%;
-  padding:12px;
-  margin-top:12px;
-  font-size:16px;
-  border:none;
-  cursor:pointer;
-  border-radius:6px;
-}
-.submit{background:#16a34a;color:#fff}
-.logout{background:#dc2626;color:#fff}
+button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px}
+.submit{background:#16a34a;color:white}
+.logout{background:#dc2626;color:white}
 .task{color:#16a34a;font-weight:bold}
 </style>
 </head>
 
 <body>
-
 <div class="box">
-  <h2>WELCOME</h2>
-  <h3>FAITH & FITNESS</h3>
-
+  <h2>FAITH & FITNESS</h2>
   <p id="userInfo"></p>
-  <p>Date : <span id="today"></span></p>
-
-  <p id="taskText" style="color:red">Loading task...</p>
-
+  <p>Date: <span id="today"></span></p>
+  <p id="taskText">Loading...</p>
   <button class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, doc, getDoc,
-  collection, query, where, getDocs, addDoc, updateDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, addDoc, query, where, getDocs, updateDoc, increment } 
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+const firebaseConfig={
+  apiKey:"YOUR_API_KEY",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
 };
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const phone=sessionStorage.getItem("userPhone");
+if(!phone) location.replace("index.html");
 
-/* 🔐 LOGIN CHECK */
-const phone = sessionStorage.getItem("userPhone");
-if(!phone){
-  location.replace("index.html");
-}
+userInfo.innerText="Logged in: "+phone;
 
-/* BLOCK BACK */
-history.pushState(null,null,location.href);
-window.onpopstate=()=>history.go(1);
+const today=new Date().toISOString().slice(0,10);
+document.getElementById("today").innerText=today;
 
-document.getElementById("userInfo").innerText =
-  "Logged in as : " + phone;
+let todayTask=null;
 
-const today =
-  new Date().toISOString().split("T")[0];
-document.getElementById("today").innerText = today;
-
-let todayTask = null;
-
-/* 🔹 LOAD TODAY TASK */
 async function loadTask(){
-  const ref = doc(db,"tasks","daily");
-  const snap = await getDoc(ref);
-
-  if(!snap.exists()){
-    document.getElementById("taskText").innerText =
-      "No tasks today";
-    return;
-  }
-
-  const data = snap.data();
-  if(data.date !== today){
-    document.getElementById("taskText").innerText =
-      "No tasks today";
-    return;
-  }
-
-  todayTask = data;
-  document.getElementById("taskText").innerHTML =
-    `<span class="task">${data.text}</span><br>
-     Points : ${data.points}`;
+  const ref=doc(db,"tasks",today);
+  const snap=await getDoc(ref);
+  if(!snap.exists()){taskText.innerText="No task today";return;}
+  const list=snap.data().list;
+  if(!list||!list.length){taskText.innerText="No task today";return;}
+  todayTask=list[0];
+  taskText.innerHTML=`<span class="task">${todayTask.text}</span><br>Points: ${todayTask.points}`;
 }
 loadTask();
 
-/* 🔹 SUBMIT VOTE */
-async function submitVote(){
-  if(!todayTask){
-    alert("No task today ❌");
-    return;
+window.submitVote=async()=>{
+  if(!todayTask){alert("No task");return;}
+  const q=query(collection(db,"votes"),where("phone","==",phone),where("date","==",today));
+  const s=await getDocs(q);
+  if(!s.empty){alert("Already voted");return;}
+
+  await addDoc(collection(db,"votes"),{phone,date:today,points:todayTask.points});
+
+  const uq=query(collection(db,"users"),where("phone","==",phone));
+  const us=await getDocs(uq);
+  if(!us.empty){
+    await updateDoc(doc(db,"users",us.docs[0].id),{
+      totalPoints:increment(todayTask.points)
+    });
   }
 
-  /* check already voted */
-  const q = query(
-    collection(db,"votes"),
-    where("phone","==",phone),
-    where("date","==",today)
-  );
-  const snap = await getDocs(q);
-  if(!snap.empty){
-    alert("Already voted today ⚠️");
-    return;
-  }
+  alert("Vote submitted");
+};
 
-  await addDoc(collection(db,"votes"),{
-    phone,
-    points: todayTask.points,
-    date: today,
-    createdAt: new Date().toISOString()
-  });
-
-  alert("Vote submitted ✅");
-}
-
-/* LOGOUT */
-function logout(){
+window.logout=()=>{
   sessionStorage.clear();
   location.replace("index.html");
-}
-
+};
 </script>
-
 </body>
 </html>
