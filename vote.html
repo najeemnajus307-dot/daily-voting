@@ -4,52 +4,52 @@
 <meta charset="UTF-8">
 <title>Faith & Fitness – Voting</title>
 
-<!-- 🚫 Cache control -->
-<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
 <style>
-/* 🔥 Prevent blink */
 body{
-  display:none;
   font-family: Arial;
   background:#f1f5f9;
+  display:flex;
   justify-content:center;
   align-items:center;
   height:100vh;
 }
-
 .box{
   background:#fff;
-  padding:25px;
-  width:360px;
-  border-radius:10px;
+  padding:28px;
+  width:380px;
+  border-radius:12px;
+  text-align:center;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2,h3{
-  text-align:center;
-  margin:4px 0;
-}
+h2{margin:0}
+h3{margin:6px 0;color:#16a34a}
 .task{
+  margin:15px 0;
+  padding:12px;
   border:1px solid #ddd;
-  padding:10px;
-  margin-top:10px;
-  border-radius:6px;
+  border-radius:8px;
+  text-align:left;
 }
+.info{
+  font-size:14px;
+  color:#374151;
+  margin-top:6px;
+}
+small{color:#555}
 button{
   width:100%;
-  padding:10px;
+  padding:12px;
   margin-top:12px;
-  background:#16a34a;
-  color:white;
-  border:none;
   font-size:16px;
+  border:none;
   cursor:pointer;
   border-radius:6px;
 }
-.logout{
-  background:#dc2626;
+.submit{background:#16a34a;color:#fff}
+.logout{background:#dc2626;color:#fff}
+.disabled{
+  background:#9ca3af !important;
+  cursor:not-allowed;
 }
 </style>
 </head>
@@ -57,143 +57,167 @@ button{
 <body>
 
 <div class="box">
+  <!-- 🔰 HEADER -->
   <h2>WELCOME</h2>
   <h3>FAITH & FITNESS</h3>
 
-  <p id="userInfo"></p>
-  <p>Date: <span id="today"></span></p>
+  <!-- 👤 USER INFO -->
+  <div class="info" id="userName">Loading...</div>
+  <div class="info" id="userPoints">Total Points: 0</div>
 
-  <div id="taskArea">Loading task...</div>
+  <!-- 🗓️ TASK -->
+  <div id="taskBox" class="task">
+    Loading task...
+  </div>
 
-  <button onclick="submitVote()">Submit Vote</button>
+  <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
-/* 🚫 Kill back-forward cache */
-window.addEventListener("pageshow", e=>{
-  if(e.persisted){
-    location.reload();
-  }
-});
-
-/* 🔐 LOGIN CHECK */
-const phone = sessionStorage.getItem("userPhone");
-if(!phone){
-  location.replace("index.html");
-}else{
-  document.body.style.display = "flex"; // 👈 show page only after check
-}
-
-/* 🚫 BLOCK BACK BUTTON */
-history.pushState(null,null,location.href);
-window.onpopstate = ()=>history.go(1);
-
-document.getElementById("userInfo").innerText =
-  "Logged in : " + phone;
-document.getElementById("today").innerText =
-  new Date().toLocaleDateString();
-
-/* 🔥 FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  getDocs,
-  addDoc,
-  query,
-  where
+  getFirestore, collection, doc, getDoc,
+  query, where, getDocs, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let activeTask = null;
+/* 🔐 LOGIN CHECK */
+const phone = localStorage.getItem("userPhone");
+if(!phone){
+  location.replace("index.html");
+}
 
-/* 🔹 LOAD ACTIVE TASK (TIME BASED) */
-async function loadTask(){
-  const now = new Date().toISOString();
-  const snap = await getDocs(collection(db,"tasks"));
-
-  activeTask = null;
-  taskArea.innerHTML = "";
-
+/* 👤 LOAD USER NAME */
+async function loadUser(){
+  const q = query(collection(db,"users"), where("phone","==",phone));
+  const snap = await getDocs(q);
   snap.forEach(d=>{
-    const t = d.data();
-    if(t.start <= now && t.end >= now){
-      activeTask = { id:d.id, ...t };
-    }
+    document.getElementById("userName").innerText =
+      "Hello, " + (d.data().name || "User");
+  });
+}
+
+/* ⭐ LOAD TOTAL POINTS (votes + bonuses) */
+async function loadTotalPoints(){
+  let total = 0;
+
+  const vSnap = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
+  vSnap.forEach(d=>{
+    total += Number(d.data().points || 0);
   });
 
-  if(!activeTask){
-    taskArea.innerHTML = "No active task now ❌";
+  const bSnap = await getDocs(
+    query(collection(db,"bonuses"), where("phone","==",phone))
+  );
+  bSnap.forEach(d=>{
+    total += Number(d.data().points || 0);
+  });
+
+  document.getElementById("userPoints").innerText =
+    "Total Points: " + total;
+}
+
+/* 🗓️ LOAD TODAY TASK */
+let activeTask = null;
+
+async function loadTask(){
+  const today = new Date().toISOString().split("T")[0];
+  const ref = doc(db,"tasks", today);
+  const snap = await getDoc(ref);
+
+  if(!snap.exists()){
+    disableVote("No task for today ❌");
     return;
   }
 
-  taskArea.innerHTML = `
-    <div class="task">
-      <label>
-        <input type="checkbox" id="voteCheck">
-        <b>${activeTask.text}</b><br>
-        Points: ${activeTask.points}
-      </label>
-    </div>
+  const t = snap.data();
+  const now = new Date();
+  const start = new Date(t.startTime);
+  const end   = new Date(t.endTime);
+
+  if(now < start || now > end){
+    disableVote(
+      `Voting not available ❌<br>
+       <small>${start.toLocaleString()} – ${end.toLocaleString()}</small>`
+    );
+    return;
+  }
+
+  activeTask = t;
+  taskBox.innerHTML = `
+    <label>
+      <input type="checkbox" id="taskCheck">
+      <strong>${t.text}</strong><br>
+      <small>Points: ${t.points}</small>
+    </label>
   `;
 }
-loadTask();
 
 /* 🗳️ SUBMIT VOTE */
 window.submitVote = async ()=>{
-  if(!activeTask){
-    alert("No active task");
+  if(!activeTask) return;
+
+  if(!document.getElementById("taskCheck").checked){
+    alert("Task complete cheythu checkbox tick cheyyu ✅");
     return;
   }
 
-  if(!document.getElementById("voteCheck").checked){
-    alert("Please tick the checkbox");
-    return;
-  }
-
-  const todayDate = new Date().toISOString().slice(0,10);
-
+  const today = new Date().toISOString().split("T")[0];
   const q = query(
     collection(db,"votes"),
     where("phone","==",phone),
-    where("taskId","==",activeTask.id),
-    where("date","==",todayDate)
+    where("date","==",today)
   );
-
-  const snap = await getDocs(q);
-  if(!snap.empty){
-    alert("Already voted ❌");
+  const s = await getDocs(q);
+  if(!s.empty){
+    alert("Already voted today ⚠️");
     return;
   }
 
   await addDoc(collection(db,"votes"),{
     phone,
-    taskId: activeTask.id,
     points: activeTask.points,
-    date: todayDate,
+    date: today,
     createdAt: new Date().toISOString()
   });
 
-  alert("Vote submitted ✅");
+  alert("Vote submitted successfully ✅");
+  disableVote("You have voted today ✅");
+  loadTotalPoints(); // 🔄 update points live
 };
+
+/* 🔒 HELPERS */
+function disableVote(msg){
+  document.getElementById("taskBox").innerHTML = msg;
+  const btn = document.getElementById("submitBtn");
+  btn.classList.add("disabled");
+  btn.disabled = true;
+}
 
 /* 🚪 LOGOUT */
 window.logout = ()=>{
-  sessionStorage.clear();
+  localStorage.removeItem("userPhone");
   location.replace("index.html");
 };
+
+/* 🔄 INIT */
+loadUser();
+loadTotalPoints();
+loadTask();
 </script>
 
 </body>
-    </html>
+</html>
