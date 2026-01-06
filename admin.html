@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Admin Ranking</title>
+<title>Admin Dashboard</title>
 
 <style>
 body{
@@ -18,7 +18,7 @@ table{
 }
 th,td{
   border:1px solid #ccc;
-  padding:10px;
+  padding:8px;
   text-align:center;
 }
 th{
@@ -28,12 +28,20 @@ th{
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
 .rank3{background:#fcd34d}
+input{width:60px}
+button{
+  padding:4px 8px;
+  background:#16a34a;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
 </style>
 </head>
 
 <body>
 
-<h2>Admin Ranking</h2>
+<h2>Admin Ranking (Votes + Manual Points)</h2>
 
 <table>
 <thead>
@@ -42,6 +50,7 @@ th{
   <th>Name</th>
   <th>Phone</th>
   <th>Total Points</th>
+  <th>Add Points</th>
 </tr>
 </thead>
 <tbody id="body"></tbody>
@@ -51,54 +60,70 @@ th{
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs
+  getFirestore, collection, getDocs, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* ADMIN PASSWORD */
-if(prompt("Admin password")!=="1"){
-  location.href="index.html";
+/* 🔐 ADMIN PASSWORD */
+if(prompt("Admin password") !== "1"){
+  location.href = "index.html";
 }
 
-/* FIREBASE CONFIG */
+/* 🔥 FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee",
-  storageBucket: "daily-voting-793ee.appspot.com",
-  messagingSenderId: "106583008376",
-  appId: "1:106583008376:web:9d3858939d07056a5fa0ed"
+  projectId: "daily-voting-793ee"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+/* LOAD DATA */
 async function load(){
-  const snap = await getDocs(collection(db,"users"));
-  let users = [];
-
-  snap.forEach(d=>{
-    const data = d.data();
-    users.push({
-      name: data.name || "-",   // 👈 IMPORTANT
-      phone: data.phone,
-      totalPoints: Number(data.totalPoints || 0)
-    });
-  });
-
-  /* sort by points */
-  users.sort((a,b)=>b.totalPoints - a.totalPoints);
-
-  let rank = 0;
-  let lastPoints = null;
   body.innerHTML = "";
 
-  users.forEach(u=>{
-    if(u.totalPoints !== lastPoints){
-      rank++;
-      lastPoints = u.totalPoints;
-    }
+  // 1️⃣ USERS
+  const usersSnap = await getDocs(collection(db,"users"));
+  let users = {};
+  usersSnap.forEach(d=>{
+    const u = d.data();
+    users[u.phone] = {
+      name: u.name || "-",
+      phone: u.phone,
+      points: 0
+    };
+  });
 
+  // 2️⃣ VOTES → ADD POINTS
+  const votesSnap = await getDocs(collection(db,"votes"));
+  votesSnap.forEach(d=>{
+    const v = d.data();
+    if(users[v.phone]){
+      users[v.phone].points += Number(v.points || 0);
+    }
+  });
+
+  // 3️⃣ BONUSES → ADD POINTS
+  const bonusSnap = await getDocs(collection(db,"bonuses"));
+  bonusSnap.forEach(d=>{
+    const b = d.data();
+    if(users[b.phone]){
+      users[b.phone].points += Number(b.points || 0);
+    }
+  });
+
+  // 4️⃣ SORT
+  const arr = Object.values(users)
+    .sort((a,b)=>b.points - a.points);
+
+  let rank = 0;
+  let last = null;
+
+  arr.forEach(u=>{
+    if(u.points !== last){
+      rank++;
+      last = u.points;
+    }
     if(rank > 3) return;
 
     const cls = rank===1?"rank1":rank===2?"rank2":"rank3";
@@ -108,13 +133,40 @@ async function load(){
         <td>${rank}</td>
         <td>${u.name}</td>
         <td>${u.phone}</td>
-        <td>${u.totalPoints}</td>
+        <td>${u.points}</td>
+        <td>
+          <input id="pt_${u.phone}" type="number" value="0">
+          <button onclick="addBonus('${u.phone}')">Add</button>
+        </td>
       </tr>
     `;
   });
 }
-
 load();
+
+/* ➕ ADD ADMIN POINTS */
+window.addBonus = async (phone)=>{
+  const v = Number(document.getElementById("pt_"+phone).value);
+  if(v <= 0){
+    alert("Enter points");
+    return;
+  }
+
+  if(prompt("Admin password") !== "1"){
+    alert("Wrong password");
+    return;
+  }
+
+  await addDoc(collection(db,"bonuses"),{
+    phone: phone,
+    points: v,
+    reason: "Admin added",
+    createdAt: new Date().toISOString()
+  });
+
+  alert("Points added ✅");
+  load();
+};
 </script>
 
 </body>
