@@ -77,11 +77,15 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG – 반드시 REAL apiKey paste ചെയ്യുക */
+/* 🔥 FIREBASE CONFIG (YOUR REAL CONFIG) */
 const firebaseConfig = {
-  apiKey: "PASTE_YOUR_REAL_API_KEY_HERE",
+  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+  projectId: "daily-voting-793ee",
+  storageBucket: "daily-voting-793ee.appspot.com",
+  messagingSenderId: "106583008376",
+  appId: "1:106583008376:web:9d3858939d07056a5fa0ed",
+  measurementId: "G-Z7Y9P84SKB"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -92,7 +96,7 @@ if(sessionStorage.getItem("userPhone")){
   location.replace("vote.html");
 }
 
-/* TOGGLE */
+/* TOGGLE SCREENS */
 window.showSignup = ()=>{
   loginBox.classList.add("hide");
   signupBox.classList.remove("hide");
@@ -136,7 +140,7 @@ window.signup = async ()=>{
 
   }catch(err){
     console.error(err);
-    alert("Signup failed ❌ (Check Firebase rules & apiKey)");
+    alert("Signup failed ❌");
   }
 };
 
