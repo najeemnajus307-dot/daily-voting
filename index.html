@@ -9,8 +9,9 @@ body{
   background:#f1f5f9;
   display:flex;
   justify-content:center;
-  align-items:center;
-  height:100vh;
+  min-height:100vh;
+  align-items:flex-start;
+  padding-top:40px;
 }
 .box{
   background:#fff;
@@ -28,11 +29,9 @@ button{
   background:#16a34a;
   color:#fff;
   border:none;
-  cursor:pointer;
 }
 </style>
 </head>
-
 <body>
 
 <div class="box">
@@ -43,32 +42,18 @@ button{
 </div>
 
 <script>
-/* Already logged in */
 if(sessionStorage.getItem("userPhone")){
   location.replace("vote.html");
 }
 
 function login(){
-  const phone = document.getElementById("phone").value.trim();
-  const pass  = document.getElementById("password").value.trim();
-
-  if(!phone || !pass){
-    alert("Enter phone & password");
-    return;
-  }
-
-  /* demo password = 1 */
-  if(pass !== "1"){
-    alert("Wrong password");
-    return;
-  }
-
-  sessionStorage.setItem("userPhone", phone);
-
-  /* 🔥 IMPORTANT */
+  const phone=document.getElementById("phone").value.trim();
+  const pass=document.getElementById("password").value.trim();
+  if(!phone||!pass){alert("Enter details");return;}
+  if(pass!=="1"){alert("Wrong password");return;}
+  sessionStorage.setItem("userPhone",phone);
   location.replace("vote.html");
 }
 </script>
-
 </body>
 </html>
