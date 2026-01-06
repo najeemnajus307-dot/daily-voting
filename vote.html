@@ -27,10 +27,9 @@ h2{margin-bottom:5px}
   padding:12px;
   border:1px solid #ddd;
   border-radius:8px;
+  text-align:left;
 }
-label{
-  font-size:16px;
-}
+small{color:#555}
 button{
   width:100%;
   padding:12px;
@@ -42,6 +41,10 @@ button{
 }
 .submit{background:#16a34a;color:#fff}
 .logout{background:#dc2626;color:#fff}
+.disabled{
+  background:#9ca3af !important;
+  cursor:not-allowed;
+}
 </style>
 </head>
 
@@ -50,13 +53,13 @@ button{
 <div class="box">
   <h2>FAITH & FITNESS</h2>
   <p id="userInfo"></p>
-  <p>Date: <span id="today"></span></p>
+  <p>Now: <span id="nowTxt"></span></p>
 
   <div id="taskBox" class="task">
     Loading task...
   </div>
 
-  <button class="submit" onclick="submitVote()">Submit Vote</button>
+  <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
@@ -83,43 +86,56 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK */
+/* 🔐 LOGIN CHECK (PERSISTENT) */
 const phone = localStorage.getItem("userPhone");
 if(!phone){
   location.replace("index.html");
 }
+document.getElementById("userInfo").innerText = "Logged in: " + phone;
 
-document.getElementById("userInfo").innerText =
-  "Logged in: " + phone;
+/* TIME DISPLAY */
+const now = new Date();
+document.getElementById("nowTxt").innerText = now.toLocaleString();
 
-const today = new Date().toISOString().split("T")[0];
-document.getElementById("today").innerText = today;
+let activeTask = null;
 
-let todayTask = null;
-
-/* 🔹 LOAD TODAY TASK */
+/* 🔹 LOAD TASK WITH DATE & TIME CHECK */
 async function loadTask(){
-  const ref = doc(db,"tasks","daily");   // admin creates this
+  const ref = doc(db,"tasks","daily"); // admin saves here
   const snap = await getDoc(ref);
 
   if(!snap.exists()){
-    taskBox.innerHTML = "No task today ❌";
+    disableVote("No task configured ❌");
     return;
   }
 
-  const data = snap.data();
-  if(data.date !== today){
-    taskBox.innerHTML = "No task today ❌";
+  const t = snap.data();
+
+  // Required fields: text, points, startTime, endTime
+  if(!t.text || !t.points || !t.startTime || !t.endTime){
+    disableVote("Task config incomplete ❌");
     return;
   }
 
-  todayTask = data;
+  const start = new Date(t.startTime);
+  const end   = new Date(t.endTime);
 
-  taskBox.innerHTML = `
+  if(now < start || now > end){
+    disableVote(
+      `Voting not available ❌<br>
+       <small>From: ${start.toLocaleString()}<br>
+       To: ${end.toLocaleString()}</small>`
+    );
+    return;
+  }
+
+  // OK to vote
+  activeTask = t;
+  document.getElementById("taskBox").innerHTML = `
     <label>
-      <input type="checkbox" id="checkTask">
-      ${data.text} <br>
-      <small>Points: ${data.points}</small>
+      <input type="checkbox" id="taskCheck">
+      <strong>${t.text}</strong><br>
+      <small>Points: ${t.points}</small>
     </label>
   `;
 }
@@ -127,39 +143,51 @@ loadTask();
 
 /* 🔹 SUBMIT VOTE */
 window.submitVote = async ()=>{
-  if(!todayTask){
-    alert("No task today");
+  if(!activeTask){
+    alert("Voting not available");
     return;
   }
 
-  if(!document.getElementById("checkTask").checked){
-    alert("Please complete the task");
+  const chk = document.getElementById("taskCheck");
+  if(!chk || !chk.checked){
+    alert("Task complete cheythu checkbox tick cheyyu ✅");
     return;
   }
 
-  /* already voted check */
+  const today = new Date().toISOString().split("T")[0];
+
+  // one vote per day
   const q = query(
     collection(db,"votes"),
     where("phone","==",phone),
     where("date","==",today)
   );
-  const snap = await getDocs(q);
-  if(!snap.empty){
+  const s = await getDocs(q);
+  if(!s.empty){
     alert("Already voted today ⚠️");
     return;
   }
 
   await addDoc(collection(db,"votes"),{
     phone: phone,
-    points: todayTask.points,
+    points: activeTask.points,
     date: today,
     createdAt: new Date().toISOString()
   });
 
-  alert("Vote submitted ✅");
+  alert("Vote submitted successfully ✅");
+  disableVote("You have voted today ✅");
 };
 
-/* 🔒 BLOCK BACK */
+/* HELPERS */
+function disableVote(msg){
+  document.getElementById("taskBox").innerHTML = msg;
+  const btn = document.getElementById("submitBtn");
+  btn.classList.add("disabled");
+  btn.disabled = true;
+}
+
+/* 🔒 BLOCK BACK BUTTON */
 history.pushState(null,null,location.href);
 window.onpopstate = ()=>history.go(1);
 
