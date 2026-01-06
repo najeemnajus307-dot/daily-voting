@@ -77,36 +77,35 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG (YOUR REAL CONFIG) */
+/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee",
   storageBucket: "daily-voting-793ee.appspot.com",
   messagingSenderId: "106583008376",
-  appId: "1:106583008376:web:9d3858939d07056a5fa0ed",
-  measurementId: "G-Z7Y9P84SKB"
+  appId: "1:106583008376:web:9d3858939d07056a5fa0ed"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* AUTO LOGIN */
-if(sessionStorage.getItem("userPhone")){
+if(localStorage.getItem("userPhone")){
   location.replace("vote.html");
 }
 
-/* TOGGLE SCREENS */
+/* TOGGLE */
 window.showSignup = ()=>{
-  document.getElementById("loginBox").classList.add("hide");
-  document.getElementById("signupBox").classList.remove("hide");
+  loginBox.classList.add("hide");
+  signupBox.classList.remove("hide");
 };
 window.showLogin = ()=>{
-  document.getElementById("signupBox").classList.add("hide");
-  document.getElementById("loginBox").classList.remove("hide");
+  signupBox.classList.add("hide");
+  loginBox.classList.remove("hide");
 };
 
-/* SIGNUP – FIXED */
+/* SIGNUP */
 window.signup = async ()=>{
   try{
     const n  = document.getElementById("name").value.trim();
@@ -118,7 +117,6 @@ window.signup = async ()=>{
       return;
     }
 
-    // check existing user
     const q = query(collection(db,"users"), where("phone","==",p));
     const snap = await getDocs(q);
     if(!snap.empty){
@@ -126,7 +124,6 @@ window.signup = async ()=>{
       return;
     }
 
-    // create user
     await addDoc(collection(db,"users"),{
       name: n,
       phone: p,
@@ -139,8 +136,7 @@ window.signup = async ()=>{
     showLogin();
 
   }catch(err){
-    console.error("SIGNUP ERROR:", err);
-    alert("Signup error:\n" + err.message);
+    alert(err.message);
   }
 };
 
@@ -163,16 +159,16 @@ window.login = async ()=>{
     const snap = await getDocs(q);
 
     if(snap.empty){
-      alert("Invalid login ❌");
+      alert("Invalid login");
       return;
     }
 
-    sessionStorage.setItem("userPhone", p);
+    /* ✅ PERSIST LOGIN */
+    localStorage.setItem("userPhone", p);
     location.replace("vote.html");
 
   }catch(err){
-    console.error("LOGIN ERROR:", err);
-    alert("Login error:\n" + err.message);
+    alert(err.message);
   }
 };
 </script>
