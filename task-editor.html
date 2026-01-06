@@ -10,16 +10,18 @@ body{
   background:#f1f5f9;
   display:flex;
   justify-content:center;
-  align-items:center;
-  height:100vh;
+  align-items:flex-start;
+  min-height:100vh;
+  padding-top:30px;
 }
 .box{
   background:#fff;
   padding:20px;
-  width:380px;
+  width:420px;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
+h2{text-align:center;margin-bottom:10px}
 input,button{
   width:100%;
   padding:8px;
@@ -33,13 +35,18 @@ button{
 }
 .task{
   border:1px solid #ddd;
-  padding:8px;
-  margin-top:6px;
-  border-radius:6px;
+  border-radius:8px;
+  padding:10px;
+  margin-top:10px;
+  background:#fafafa;
+}
+.small{
+  font-size:12px;
+  color:#555;
 }
 .del{
   background:#dc2626;
-  margin-top:5px;
+  margin-top:6px;
 }
 </style>
 </head>
@@ -49,31 +56,39 @@ button{
 <div class="box">
   <h2>Task Editor</h2>
 
-  <input id="taskText" placeholder="Task (eg: Sugar cut)">
+  <!-- ADD TASK -->
+  <input id="taskText" placeholder="Task name (eg: Drink Water)">
   <input id="taskPoints" type="number" placeholder="Points">
 
   <label>Start Date & Time</label>
-  <input id="startDT" type="datetime-local">
+  <input id="startTime" type="datetime-local">
 
   <label>End Date & Time</label>
-  <input id="endDT" type="datetime-local">
+  <input id="endTime" type="datetime-local">
 
   <button onclick="addTask()">Add Task</button>
 
   <hr>
+  <h4>All Tasks</h4>
   <div id="taskList">Loading...</div>
 </div>
 
 <script type="module">
-if(prompt("Admin password")!=="1"){
-  location.href="index.html";
+/* 🔐 ADMIN PASSWORD */
+if(prompt("Admin password") !== "1"){
+  location.href = "index.html";
 }
 
+/* 🔥 FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, addDoc,
-  getDocs, deleteDoc, doc
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
@@ -86,48 +101,65 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+/* LOAD TASKS */
 async function loadTasks(){
-  taskList.innerHTML="";
+  taskList.innerHTML = "";
   const snap = await getDocs(collection(db,"tasks"));
+
   if(snap.empty){
-    taskList.innerHTML="No tasks";
+    taskList.innerHTML = "No tasks added yet";
     return;
   }
+
   snap.forEach(d=>{
-    const t=d.data();
-    taskList.innerHTML+=`
+    const t = d.data();
+    taskList.innerHTML += `
       <div class="task">
         <b>${t.text}</b><br>
-        ${t.start} → ${t.end}<br>
-        Points: ${t.points}
-        <button class="del" onclick="del('${d.id}')">Delete</button>
+        <span class="small">
+          Points: ${t.points}<br>
+          Start: ${new Date(t.start).toLocaleString()}<br>
+          End: ${new Date(t.end).toLocaleString()}
+        </span>
+        <button class="del" onclick="deleteTask('${d.id}')">Delete</button>
       </div>
     `;
   });
 }
 loadTasks();
 
+/* ADD TASK (UNLIMITED) */
 window.addTask = async ()=>{
-  if(!taskText.value || !taskPoints.value || !startDT.value || !endDT.value){
+  const text = taskText.value.trim();
+  const points = Number(taskPoints.value);
+  const start = startTime.value;
+  const end   = endTime.value;
+
+  if(!text || points <= 0 || !start || !end){
     alert("Fill all fields");
     return;
   }
 
   await addDoc(collection(db,"tasks"),{
-    text: taskText.value,
-    points: Number(taskPoints.value),
-    start: startDT.value, // datetime-local string
-    end: endDT.value
+    text,
+    points,
+    start,
+    end,
+    createdAt: new Date().toISOString()
   });
 
   taskText.value="";
   taskPoints.value="";
-  startDT.value="";
-  endDT.value="";
+  startTime.value="";
+  endTime.value="";
+
   loadTasks();
 };
 
-window.del = async (id)=>{
+/* DELETE TASK */
+window.deleteTask = async (id)=>{
+  if(!confirm("Delete this task?")) return;
+
   await deleteDoc(doc(db,"tasks",id));
   loadTasks();
 };
