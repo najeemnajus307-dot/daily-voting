@@ -2,52 +2,34 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Admin Voting Dashboard</title>
+<title>Admin Dashboard</title>
 <style>
 body{font-family:Arial;background:#f1f5f9;padding:20px}
-h2{text-align:center}
-table{width:100%;border-collapse:collapse;background:#fff}
+table{width:100%;border-collapse:collapse;background:white}
 th,td{border:1px solid #ccc;padding:8px;text-align:center}
 th{background:#2563eb;color:white}
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
 .rank3{background:#fcd34d}
-button{padding:5px 10px;background:#16a34a;color:white;border:none}
-input{width:60px}
 </style>
 </head>
-
 <body>
 
-<h2>Admin Voting Dashboard</h2>
+<h2 style="text-align:center">Admin Ranking</h2>
 
 <table>
 <thead>
-<tr>
-  <th>Rank</th>
-  <th>Name</th>
-  <th>Phone</th>
-  <th>Total Points</th>
-  <th>Add</th>
-</tr>
+<tr><th>Rank</th><th>Phone</th><th>Total Points</th></tr>
 </thead>
 <tbody id="body"></tbody>
 </table>
 
 <script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, collection, getDocs,
-  doc, updateDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, collection, getDocs } 
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-const ADMIN_PASS="1";
-if(prompt("Admin password")!==ADMIN_PASS){
-  alert("Denied");
-  location.href="index.html";
-}
+if(prompt("Admin password")!=="1"){location.href="index.html";}
 
 const firebaseConfig={
   apiKey:"YOUR_API_KEY",
@@ -59,63 +41,19 @@ const db=getFirestore(app);
 
 async function load(){
   const snap=await getDocs(collection(db,"users"));
-  let users=[];
-  snap.forEach(d=>{
-    let data=d.data();
-    users.push({
-      id:d.id,
-      name:data.name,
-      phone:data.phone,
-      totalPoints: Number(data.totalPoints || 0)
-    });
-  });
+  let arr=[];
+  snap.forEach(d=>arr.push(d.data()));
+  arr.sort((a,b)=>b.totalPoints-a.totalPoints);
 
-  users.sort((a,b)=>b.totalPoints-a.totalPoints);
-
-  let rank=0,last=null;
+  let r=0,last=null;
   body.innerHTML="";
-
-  users.forEach(u=>{
-    if(u.totalPoints!==last){
-      rank++;
-      last=u.totalPoints;
-    }
-    if(rank>3) return;
-
-    const cls=rank===1?"rank1":rank===2?"rank2":"rank3";
-
-    body.innerHTML+=`
-      <tr class="${cls}">
-        <td>${rank}</td>
-        <td>${u.name}</td>
-        <td>${u.phone}</td>
-        <td>${u.totalPoints}</td>
-        <td>
-          <input id="pt_${u.id}" type="number" value="0">
-          <button onclick="add('${u.id}',${u.totalPoints})">Add</button>
-        </td>
-      </tr>`;
+  arr.forEach(u=>{
+    if(u.totalPoints!==last){r++;last=u.totalPoints;}
+    if(r>3) return;
+    body.innerHTML+=`<tr class="rank${r}"><td>${r}</td><td>${u.phone}</td><td>${u.totalPoints}</td></tr>`;
   });
 }
 load();
-
-window.add=async(id,old)=>{
-  const v=Number(document.getElementById("pt_"+id).value);
-  if(v<=0) return alert("Enter points");
-
-  if(prompt("Admin password")!==ADMIN_PASS){
-    alert("Wrong password");
-    return;
-  }
-
-  await updateDoc(doc(db,"users",id),{
-    totalPoints: old + v
-  });
-
-  alert("Points added");
-  load();
-};
 </script>
-
 </body>
 </html>
