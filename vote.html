@@ -69,7 +69,7 @@ button{
 </div>
 
 <script type="module">
-/* 🔥 FIREBASE */
+/* 🔥 FIREBASE IMPORTS */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -82,7 +82,7 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 CONFIG */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -92,11 +92,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK – NO FALLBACK */
+/* 🔐 LOGIN CHECK (NO FALLBACK) */
 const phone = localStorage.getItem("userPhone");
 if(!phone){
   alert("Please login again");
-  location.href = "index.html";
+  window.location.href = "/daily-voting/index.html";
 }
 
 /* 👤 LOAD USER NAME */
@@ -199,7 +199,7 @@ window.submitVote = async ()=>{
   loadTotalPoints();
 };
 
-/* 🔒 DISABLE */
+/* 🔒 DISABLE VOTE */
 function disableVote(msg){
   document.getElementById("taskBox").innerHTML = msg;
   const btn = document.getElementById("submitBtn");
@@ -207,10 +207,10 @@ function disableVote(msg){
   btn.classList.add("disabled");
 }
 
-/* 🚪 LOGOUT */
+/* 🚪 LOGOUT – GUARANTEED WORKING */
 window.logout = ()=>{
-  localStorage.removeItem("userPhone");
-  location.href = "index.html";
+  localStorage.clear();      // 🔥 remove userPhone
+  window.location.reload();  // 🔄 force refresh
 };
 
 /* 🔄 INIT */
