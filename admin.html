@@ -24,6 +24,18 @@ h2{text-align:center;margin-bottom:10px}
   box-shadow:0 0 5px rgba(0,0,0,.15);
 }
 
+.filters{
+  background:#fff;
+  padding:15px;
+  border-radius:8px;
+  margin-bottom:15px;
+}
+.note{
+  font-size:12px;
+  color:#555;
+  margin-top:6px;
+}
+
 table{
   width:100%;
   border-collapse:collapse;
@@ -42,18 +54,23 @@ th{
 .rank2{background:#e5e7eb}
 .rank3{background:#fcd34d}
 
-input{
+input[type="number"]{
   width:70px;
   padding:4px;
 }
 button{
-  padding:5px 10px;
+  padding:6px 12px;
   background:#16a34a;
   color:white;
   border:none;
   cursor:pointer;
   border-radius:4px;
 }
+button:disabled{
+  background:#9ca3af;
+  cursor:not-allowed;
+}
+.export{background:#0ea5e9}
 </style>
 </head>
 
@@ -65,6 +82,25 @@ button{
   <div class="card">
     <b>Total Users</b><br>
     <span id="userCount">0</span>
+  </div>
+  <div class="card">
+    <b>Filtered Records</b><br>
+    <span id="recordCount">0</span>
+  </div>
+</div>
+
+<div class="filters">
+  <b>Date Filter (Votes only)</b><br><br>
+  From:
+  <input type="date" id="fromDate" onchange="load()">
+  To:
+  <input type="date" id="toDate" onchange="load()">
+  <button onclick="clearFilter()">Clear</button>
+  <button class="export" onclick="exportExcel()">Export Excel</button>
+
+  <div class="note">
+    ⚠️ Date filter ON ആണെങ്കിൽ points add ചെയ്യാൻ പറ്റില്ല.  
+    Filter clear ചെയ്താൽ add points enable ആവും.
   </div>
 </div>
 
@@ -103,16 +139,31 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+let reportData = [];
+
+/* 🔎 DATE FILTER STATE */
+function isDateFilterActive(){
+  return fromDate.value !== "" || toDate.value !== "";
+}
+
+/* CLEAR FILTER */
+window.clearFilter = ()=>{
+  fromDate.value = "";
+  toDate.value = "";
+  load();
+};
+
 /* LOAD DATA */
-async function load(){
+window.load = async ()=>{
   body.innerHTML="";
+  reportData=[];
 
+  const from = fromDate.value || "0000-00-00";
+  const to   = toDate.value || "9999-12-31";
+
+  /* USERS */
   const usersSnap = await getDocs(collection(db,"users"));
-  const votesSnap = await getDocs(collection(db,"votes"));
-  const bonusSnap = await getDocs(collection(db,"bonuses"));
-
   let users = {};
-
   usersSnap.forEach(d=>{
     const u = d.data();
     users[u.phone] = {
@@ -121,14 +172,21 @@ async function load(){
       points: 0
     };
   });
+  userCount.innerText = Object.keys(users).length;
 
+  /* VOTES (DATE FILTER APPLIES) */
+  const votesSnap = await getDocs(collection(db,"votes"));
   votesSnap.forEach(d=>{
     const v = d.data();
-    if(users[v.phone]){
-      users[v.phone].points += Number(v.points || 0);
+    if(v.date >= from && v.date <= to){
+      if(users[v.phone]){
+        users[v.phone].points += Number(v.points || 0);
+      }
     }
   });
 
+  /* BONUSES (ALWAYS COUNTED) */
+  const bonusSnap = await getDocs(collection(db,"bonuses"));
   bonusSnap.forEach(d=>{
     const b = d.data();
     if(users[b.phone]){
@@ -136,17 +194,17 @@ async function load(){
     }
   });
 
-  const arr = Object.values(users).sort((a,b)=>b.points - a.points);
-
-  userCount.innerText = arr.length;
+  /* SORT */
+  const arr = Object.values(users)
+    .sort((a,b)=>b.points - a.points);
 
   let rank = 0;
-  let last = null;
+  let lastPoints = null;
 
   arr.forEach(u=>{
-    if(u.points !== last){
+    if(u.points !== lastPoints){
       rank++;
-      last = u.points;
+      lastPoints = u.points;
     }
     if(rank > 3) return;
 
@@ -155,6 +213,8 @@ async function load(){
       rank===2 ? "rank2" :
       "rank3";
 
+    const disabled = isDateFilterActive() ? "disabled" : "";
+
     body.innerHTML += `
       <tr class="${cls}">
         <td>${rank}</td>
@@ -162,17 +222,30 @@ async function load(){
         <td>${u.phone}</td>
         <td>${u.points}</td>
         <td>
-          <input id="pt_${u.phone}" type="number" placeholder="+points">
-          <button onclick="addPoints('${u.phone}')">Add</button>
+          <input id="pt_${u.phone}" type="number" placeholder="+points" ${disabled}>
+          <button onclick="addPoints('${u.phone}')" ${disabled}>Add</button>
         </td>
       </tr>
     `;
-  });
-}
-load();
 
-/* ➕ ADD POINTS BUTTON FUNCTION */
+    reportData.push({
+      Rank: rank,
+      Name: u.name,
+      Phone: u.phone,
+      Points: u.points
+    });
+  });
+
+  recordCount.innerText = reportData.length;
+};
+
+/* ➕ ADD POINTS */
 window.addPoints = async (phone)=>{
+  if(isDateFilterActive()){
+    alert("Date filter clear cheythal mathrame points add cheyyan pattoo ❌");
+    return;
+  }
+
   const v = Number(document.getElementById("pt_"+phone).value);
   if(v <= 0){
     alert("Enter valid points");
@@ -193,6 +266,30 @@ window.addPoints = async (phone)=>{
   alert("Points added ✅");
   load();
 };
+
+/* EXPORT CSV (EXCEL) */
+window.exportExcel = ()=>{
+  if(reportData.length === 0){
+    alert("No data to export");
+    return;
+  }
+
+  let csv = "Rank,Name,Phone,Points\n";
+  reportData.forEach(r=>{
+    csv += `${r.Rank},${r.Name},${r.Phone},${r.Points}\n`;
+  });
+
+  const blob = new Blob([csv],{type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "faith_fitness_report.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+/* INITIAL LOAD */
+load();
 </script>
 
 </body>
