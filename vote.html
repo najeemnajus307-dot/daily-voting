@@ -69,7 +69,7 @@ button{
 </div>
 
 <script type="module">
-/* 🔥 FIREBASE IMPORTS */
+/* 🔥 FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -82,7 +82,7 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* 🔥 CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -92,11 +92,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 USER LOGIN (TEMP SAFE FALLBACK) */
-let phone = localStorage.getItem("userPhone");
+/* 🔐 LOGIN CHECK – NO FALLBACK */
+const phone = localStorage.getItem("userPhone");
 if(!phone){
-  phone = "9999999999"; // fallback for test
-  localStorage.setItem("userPhone", phone);
+  alert("Please login again");
+  location.href = "index.html";
 }
 
 /* 👤 LOAD USER NAME */
@@ -112,7 +112,7 @@ async function loadUser(){
 
   snap.forEach(d=>{
     document.getElementById("userName").innerText =
-      "Hello, " + (d.data().name || "User");
+      "Hello, " + d.data().name;
   });
 }
 
@@ -125,11 +125,12 @@ async function loadTotalPoints(){
   snap.forEach(d=>{
     total += Number(d.data().points || 0);
   });
+
   document.getElementById("userPoints").innerText =
     "Total Points: " + total;
 }
 
-/* 🗓️ LOAD TODAY TASK (DATE ONLY LOGIC) */
+/* 🗓️ LOAD TODAY TASK (DATE ONLY) */
 let activeTask = null;
 
 async function loadTask(){
@@ -198,7 +199,7 @@ window.submitVote = async ()=>{
   loadTotalPoints();
 };
 
-/* 🔒 DISABLE VOTE */
+/* 🔒 DISABLE */
 function disableVote(msg){
   document.getElementById("taskBox").innerHTML = msg;
   const btn = document.getElementById("submitBtn");
@@ -209,7 +210,7 @@ function disableVote(msg){
 /* 🚪 LOGOUT */
 window.logout = ()=>{
   localStorage.removeItem("userPhone");
-  location.reload();
+  location.href = "index.html";
 };
 
 /* 🔄 INIT */
