@@ -4,10 +4,6 @@
 <meta charset="UTF-8">
 <title>Faith & Fitness – Voting</title>
 
-<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
 <style>
 body{
   font-family: Arial;
@@ -28,17 +24,13 @@ body{
 h2{margin:0}
 h3{margin:6px 0;color:#16a34a}
 .task{
-  margin:15px 0;
-  padding:12px;
+  margin:12px 0;
+  padding:10px;
   border:1px solid #ddd;
   border-radius:8px;
   text-align:left;
 }
-.info{
-  font-size:14px;
-  color:#374151;
-  margin-top:6px;
-}
+.info{font-size:14px;color:#374151}
 button{
   width:100%;
   padding:12px;
@@ -54,6 +46,10 @@ button{
   background:#9ca3af !important;
   cursor:not-allowed;
 }
+.done{
+  color:green;
+  font-size:13px;
+}
 </style>
 </head>
 
@@ -66,14 +62,14 @@ button{
   <div class="info" id="userName">Loading...</div>
   <div class="info" id="userPoints">Total Points: 0</div>
 
-  <div id="taskBox" class="task">Loading task...</div>
+  <div id="taskBox">Loading tasks...</div>
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
-/* 🔥 Firebase */
+/* 🔥 FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -95,14 +91,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 Login check */
+/* 🔐 LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
 if(!phone){
-  alert("Please login again");
   location.replace("index.html");
 }
 
-/* 👤 Load user */
+/* 👤 LOAD USER */
 async function loadUser(){
   const snap = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
@@ -112,8 +107,8 @@ async function loadUser(){
   });
 }
 
-/* ⭐ Load total points */
-async function loadPoints(){
+/* ⭐ TOTAL POINTS */
+async function loadTotalPoints(){
   let total = 0;
   const snap = await getDocs(
     query(collection(db,"votes"), where("phone","==",phone))
@@ -122,92 +117,100 @@ async function loadPoints(){
   userPoints.innerText = "Total Points: " + total;
 }
 
-/* 🗓️ Load active task (TIME BASED – FIXED) */
-let activeTask=null;
+/* 🗳️ LOAD ACTIVE TASKS */
+let activeTasks = [];
+let votedTaskIds = [];
 
-async function loadTask(){
-  const now = new Date().getTime();
+async function loadTasks(){
+  taskBox.innerHTML = "";
+  activeTasks = [];
+  votedTaskIds = [];
+
+  const now = Date.now();
+
+  // already voted tasks
+  const votedSnap = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
+  votedSnap.forEach(v=> votedTaskIds.push(v.data().taskId));
+
   const snap = await getDocs(collection(db,"tasks"));
-  let found=false;
+  let anyTask = false;
 
   snap.forEach(d=>{
-    if(found) return;
-    const t=d.data();
-    const start=new Date(t.start).getTime();
-    const end=new Date(t.end).getTime();
+    const t = d.data();
+    const start = new Date(t.start).getTime();
+    const end   = new Date(t.end).getTime();
 
-    if(now>=start && now<=end){
-      found=true;
-      activeTask={...t,id:d.id};
-      taskBox.innerHTML=`
-        <label>
-          <input type="checkbox" id="taskCheck">
-          <strong>${t.text}</strong><br>
-          <small>Points: ${t.points}</small>
-        </label>
-      `;
+    if(now >= start && now <= end){
+      anyTask = true;
+      activeTasks.push({id:d.id,...t});
+
+      if(votedTaskIds.includes(d.id)){
+        taskBox.innerHTML += `
+          <div class="task">
+            <b>${t.text}</b><br>
+            <small>Points: ${t.points}</small><br>
+            <span class="done">Completed ✅</span>
+          </div>`;
+      }else{
+        taskBox.innerHTML += `
+          <div class="task">
+            <label>
+              <input type="checkbox" class="taskCheck" value="${d.id}">
+              <b>${t.text}</b><br>
+              <small>Points: ${t.points}</small>
+            </label>
+          </div>`;
+      }
     }
   });
 
-  if(!found){
-    disableVote("No active task right now ⏳");
+  if(!anyTask){
+    taskBox.innerHTML = "No active tasks now ⏳<br>Next task starts at 8 PM";
+    submitBtn.disabled = true;
+    submitBtn.classList.add("disabled");
   }
 }
 
-/* 🗳️ Submit vote */
+/* ✅ SUBMIT VOTES (MULTI TASK) */
 window.submitVote = async ()=>{
-  if(!activeTask) return;
-
-  const chk=document.getElementById("taskCheck");
-  if(!chk || !chk.checked){
-    alert("Task complete cheythu checkbox tick cheyyu ✅");
+  const checks = document.querySelectorAll(".taskCheck:checked");
+  if(checks.length === 0){
+    alert("Complete at least one task ✅");
     return;
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  for(const chk of checks){
+    const task = activeTasks.find(t=>t.id===chk.value);
+    if(!task) continue;
 
-  const s = await getDocs(
-    query(
-      collection(db,"votes"),
-      where("phone","==",phone),
-      where("date","==",today)
-    )
-  );
+    const taskDate = task.start.split("T")[0]; // 🔥 start date
 
-  if(!s.empty){
-    disableVote("You have done today's voting. Next voting is tomorrow at 8 PM ⏰");
-    return;
+    await addDoc(collection(db,"votes"),{
+      phone,
+      taskId: task.id,
+      taskDate,
+      points: task.points,
+      createdAt: new Date().toISOString()
+    });
   }
-
-  await addDoc(collection(db,"votes"),{
-    phone,
-    points: activeTask.points,
-    date: today,
-    createdAt: new Date().toISOString()
-  });
 
   alert("Vote submitted successfully ✅");
-  disableVote("You have done today's voting. Next voting is tomorrow at 8 PM ⏰");
-  loadPoints();
+  loadTasks();
+  loadTotalPoints();
 };
 
-/* 🔒 Disable vote */
-function disableVote(msg){
-  taskBox.innerHTML = msg;
-  submitBtn.disabled=true;
-  submitBtn.classList.add("disabled");
-}
-
-/* 🚪 Logout – NO BLINK */
-window.logout=()=>{
+/* 🚪 LOGOUT */
+window.logout = ()=>{
   localStorage.clear();
   location.replace("index.html");
 };
 
 /* INIT */
 loadUser();
-loadPoints();
-loadTask();
+loadTotalPoints();
+loadTasks();
 </script>
 
 </body>
