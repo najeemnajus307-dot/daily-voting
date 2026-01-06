@@ -11,6 +11,7 @@ body{
   padding:20px;
 }
 h2{text-align:center;margin-bottom:10px}
+
 .summary{
   display:flex;
   justify-content:space-between;
@@ -18,16 +19,18 @@ h2{text-align:center;margin-bottom:10px}
 }
 .card{
   background:#fff;
-  padding:10px 15px;
+  padding:12px 18px;
   border-radius:8px;
   box-shadow:0 0 5px rgba(0,0,0,.15);
 }
+
 .filters{
   background:#fff;
   padding:15px;
   border-radius:8px;
   margin-bottom:15px;
 }
+
 table{
   width:100%;
   border-collapse:collapse;
@@ -45,6 +48,7 @@ th{
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
 .rank3{background:#fcd34d}
+
 button{
   padding:6px 12px;
   background:#16a34a;
@@ -54,6 +58,11 @@ button{
   border-radius:4px;
 }
 .export{background:#0ea5e9}
+.note{
+  font-size:12px;
+  color:#555;
+  margin-top:6px;
+}
 </style>
 </head>
 
@@ -73,13 +82,16 @@ button{
 </div>
 
 <div class="filters">
-  <b>Date Filter</b><br><br>
+  <b>Date Filter (Votes only)</b><br><br>
   From:
   <input type="date" id="fromDate">
   To:
   <input type="date" id="toDate">
   <button onclick="load()">Apply</button>
   <button class="export" onclick="exportExcel()">Export Excel</button>
+  <div class="note">
+    Note: Admin added points are NOT affected by date filter.
+  </div>
 </div>
 
 <table>
@@ -139,7 +151,7 @@ window.load = async ()=>{
   });
   userCount.innerText = Object.keys(users).length;
 
-  /* VOTES */
+  /* VOTES (DATE FILTER APPLIES) */
   const votesSnap = await getDocs(collection(db,"votes"));
   votesSnap.forEach(d=>{
     const v = d.data();
@@ -150,15 +162,12 @@ window.load = async ()=>{
     }
   });
 
-  /* BONUSES */
+  /* BONUSES (NO DATE FILTER) */
   const bonusSnap = await getDocs(collection(db,"bonuses"));
   bonusSnap.forEach(d=>{
     const b = d.data();
-    const date = b.createdAt?.split("T")[0] || "0000-00-00";
-    if(date >= from && date <= to){
-      if(users[b.phone]){
-        users[b.phone].points += Number(b.points || 0);
-      }
+    if(users[b.phone]){
+      users[b.phone].points += Number(b.points || 0);
     }
   });
 
@@ -166,7 +175,7 @@ window.load = async ()=>{
   const arr = Object.values(users)
     .sort((a,b)=>b.points - a.points);
 
-  /* RANK WITH TIES */
+  /* RANK WITH SAME-POINT TIES */
   let rank = 0;
   let lastPoints = null;
 
@@ -202,7 +211,7 @@ window.load = async ()=>{
   recordCount.innerText = reportData.length;
 };
 
-/* EXPORT CSV (EXCEL) */
+/* EXPORT EXCEL (CSV) */
 window.exportExcel = ()=>{
   if(reportData.length === 0){
     alert("No data to export");
