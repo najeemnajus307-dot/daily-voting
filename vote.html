@@ -21,8 +21,6 @@ body{
   text-align:center;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2{margin:0}
-h3{margin:6px 0;color:#16a34a}
 .task{
   margin:15px 0;
   padding:12px;
@@ -30,27 +28,18 @@ h3{margin:6px 0;color:#16a34a}
   border-radius:8px;
   text-align:left;
 }
-.info{
-  font-size:14px;
-  color:#374151;
-  margin-top:6px;
-}
-small{color:#555}
 button{
   width:100%;
   padding:12px;
   margin-top:12px;
   font-size:16px;
   border:none;
-  cursor:pointer;
   border-radius:6px;
+  cursor:pointer;
 }
 .submit{background:#16a34a;color:#fff}
 .logout{background:#dc2626;color:#fff}
-.disabled{
-  background:#9ca3af !important;
-  cursor:not-allowed;
-}
+.disabled{background:#9ca3af}
 </style>
 </head>
 
@@ -58,32 +47,26 @@ button{
 
 <div class="box">
   <h2>WELCOME</h2>
-  <h3>FAITH & FITNESS</h3>
+  <h3 style="color:#16a34a">FAITH & FITNESS</h3>
 
-  <div class="info" id="userName">Loading...</div>
-  <div class="info" id="userPoints">Total Points: 0</div>
+  <div id="userName">Hello User</div>
+  <div id="userPoints">Total Points: 0</div>
 
-  <div id="taskBox" class="task">Loading task...</div>
+  <div id="taskBox" class="task">Loading...</div>
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
-/* 🔥 FIREBASE IMPORTS */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  getDocs,
-  query,
-  where,
-  addDoc
+  getFirestore, collection, getDocs,
+  query, where, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -93,133 +76,90 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
 if(!phone){
-  location.replace("index.html");
+  localStorage.setItem("userPhone","9999999999"); // temp test
 }
 
-/* 👤 LOAD USER */
-async function loadUser(){
-  const q = query(collection(db,"users"), where("phone","==",phone));
-  const snap = await getDocs(q);
-  snap.forEach(d=>{
-    document.getElementById("userName").innerText =
-      "Hello, " + (d.data().name || "User");
-  });
-}
-
-/* ⭐ LOAD TOTAL POINTS */
-async function loadTotalPoints(){
-  let total = 0;
-
-  const vSnap = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
-  );
-  vSnap.forEach(d=>{
-    total += Number(d.data().points || 0);
-  });
-
-  document.getElementById("userPoints").innerText =
-    "Total Points: " + total;
-}
-
-/* 🗓️ LOAD ACTIVE TASK */
-let activeTask = null;
+let activeTask=null;
 
 async function loadTask(){
-  const box = document.getElementById("taskBox");
-  const now = new Date();
-
+  const today = new Date().toISOString().split("T")[0];
   const snap = await getDocs(collection(db,"tasks"));
-
-  if(snap.empty){
-    disableVote("No task available ❌");
-    return;
-  }
-
-  let found = false;
+  let found=false;
 
   snap.forEach(d=>{
     if(found) return;
-
-    const t = d.data();
-    const start = new Date(t.start);
-    const end   = new Date(t.end);
-
-    if(now >= start && now <= end){
-      found = true;
-      activeTask = { ...t, id: d.id };
-
-      box.innerHTML = `
+    const t=d.data();
+    if(today>=t.start && today<=t.end){
+      found=true;
+      activeTask={...t,id:d.id};
+      taskBox.innerHTML=`
         <label>
-          <input type="checkbox" id="taskCheck">
-          <strong>${t.text}</strong><br>
-          <small>Points: ${t.points}</small>
+          <input type="checkbox" id="chk">
+          <b>${t.text}</b><br>
+          Points: ${t.points}
         </label>
       `;
     }
   });
 
   if(!found){
-    disableVote("No active task right now ❌");
+    disable("No task for today ❌");
   }
 }
 
-/* 🗳️ SUBMIT VOTE */
+async function loadPoints(){
+  let total=0;
+  const snap=await getDocs(
+    query(collection(db,"votes"),where("phone","==",phone))
+  );
+  snap.forEach(d=> total+=Number(d.data().points));
+  userPoints.innerText="Total Points: "+total;
+}
+
 window.submitVote = async ()=>{
   if(!activeTask) return;
-
-  const chk = document.getElementById("taskCheck");
-  if(!chk || !chk.checked){
-    alert("Task complete cheythu checkbox tick cheyyu ✅");
+  if(!chk.checked){
+    alert("Checkbox tick cheyyu");
     return;
   }
 
-  const today = new Date().toISOString().split("T")[0];
-
-  const q = query(
-    collection(db,"votes"),
-    where("phone","==",phone),
-    where("date","==",today)
+  const today=new Date().toISOString().split("T")[0];
+  const s=await getDocs(
+    query(collection(db,"votes"),
+      where("phone","==",phone),
+      where("date","==",today))
   );
-  const s = await getDocs(q);
   if(!s.empty){
-    alert("Already voted today ⚠️");
+    alert("Already voted");
     return;
   }
 
   await addDoc(collection(db,"votes"),{
     phone,
-    taskId: activeTask.id,
     points: activeTask.points,
-    date: today,
-    createdAt: new Date().toISOString()
+    date: today
   });
 
-  alert("Vote submitted successfully ✅");
-  disableVote("You have voted today ✅");
-  loadTotalPoints();
+  alert("Vote success ✅");
+  disable("You have voted today ✅");
+  loadPoints();
 };
 
-/* 🔒 DISABLE */
-function disableVote(msg){
-  document.getElementById("taskBox").innerHTML = msg;
-  const btn = document.getElementById("submitBtn");
-  btn.disabled = true;
-  btn.classList.add("disabled");
+function disable(msg){
+  taskBox.innerHTML=msg;
+  submitBtn.disabled=true;
+  submitBtn.classList.add("disabled");
 }
 
-/* 🚪 LOGOUT */
-window.logout = ()=>{
+window.logout=()=>{
   localStorage.removeItem("userPhone");
-  location.replace("index.html");
+  location.reload();
 };
 
-/* 🔄 INIT */
-loadUser();
-loadTotalPoints();
 loadTask();
+loadPoints();
 </script>
 
 </body>
