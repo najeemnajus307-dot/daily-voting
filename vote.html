@@ -93,25 +93,26 @@ if(!phone){
 }
 document.getElementById("userInfo").innerText = "Logged in: " + phone;
 
-/* TIME DISPLAY */
+/* TIME */
 const now = new Date();
 document.getElementById("nowTxt").innerText = now.toLocaleString();
 
 let activeTask = null;
 
-/* 🔹 LOAD TASK WITH DATE & TIME CHECK */
+/* 🔹 LOAD TODAY TASK (DATE BASED) */
 async function loadTask(){
-  const ref = doc(db,"tasks","daily"); // admin saves here
+  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
+  const ref = doc(db,"tasks", today);   // 👈 SAME AS TASK EDITOR
   const snap = await getDoc(ref);
 
   if(!snap.exists()){
-    disableVote("No task configured ❌");
+    disableVote("No task for today ❌");
     return;
   }
 
   const t = snap.data();
 
-  // Required fields: text, points, startTime, endTime
   if(!t.text || !t.points || !t.startTime || !t.endTime){
     disableVote("Task config incomplete ❌");
     return;
@@ -123,13 +124,15 @@ async function loadTask(){
   if(now < start || now > end){
     disableVote(
       `Voting not available ❌<br>
-       <small>From: ${start.toLocaleString()}<br>
-       To: ${end.toLocaleString()}</small>`
+       <small>
+         From: ${start.toLocaleString()}<br>
+         To: ${end.toLocaleString()}
+       </small>`
     );
     return;
   }
 
-  // OK to vote
+  /* READY TO VOTE */
   activeTask = t;
   document.getElementById("taskBox").innerHTML = `
     <label>
@@ -156,7 +159,7 @@ window.submitVote = async ()=>{
 
   const today = new Date().toISOString().split("T")[0];
 
-  // one vote per day
+  /* ONE VOTE PER DAY */
   const q = query(
     collection(db,"votes"),
     where("phone","==",phone),
