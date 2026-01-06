@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <title>Faith & Fitness – Voting</title>
 
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
 <style>
 body{
   font-family:Arial;
@@ -58,6 +62,26 @@ button{
 </div>
 
 <script type="module">
+/* 🔐 LOGIN CHECK */
+const phone = sessionStorage.getItem("userPhone");
+if(!phone){
+  location.replace("index.html");
+}
+
+/* 🚫 BLOCK BACK & CACHE */
+history.pushState(null,null,location.href);
+window.onpopstate = ()=>history.go(1);
+
+window.addEventListener("pageshow", function(e){
+  if(e.persisted){
+    location.reload();
+  }
+});
+
+userInfo.innerText = "Logged in : " + phone;
+today.innerText = new Date().toLocaleDateString();
+
+/* 🔥 FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -70,27 +94,14 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-/* 🔐 LOGIN CHECK */
-const phone = sessionStorage.getItem("userPhone");
-if(!phone){
-  location.replace("index.html");
-}
-
-/* BLOCK BACK */
-history.pushState(null,null,location.href);
-window.onpopstate = ()=>history.go(1);
-
-userInfo.innerText = "Logged in : " + phone;
-today.innerText = new Date().toLocaleDateString();
 
 let activeTask = null;
 
@@ -134,7 +145,7 @@ window.submitVote = async ()=>{
   }
 
   if(!document.getElementById("voteCheck").checked){
-    alert("Please check the task");
+    alert("Please tick the checkbox");
     return;
   }
 
@@ -167,6 +178,7 @@ window.submitVote = async ()=>{
 /* LOGOUT */
 window.logout = ()=>{
   sessionStorage.clear();
+  history.replaceState(null,null,"index.html");
   location.replace("index.html");
 };
 </script>
