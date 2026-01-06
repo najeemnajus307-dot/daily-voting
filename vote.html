@@ -15,19 +15,25 @@ body{
 }
 .box{
   background:#fff;
-  padding:30px;
+  padding:28px;
   width:380px;
   border-radius:12px;
   text-align:center;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2{margin-bottom:5px}
+h2{margin:0}
+h3{margin:6px 0;color:#16a34a}
 .task{
   margin:15px 0;
   padding:12px;
   border:1px solid #ddd;
   border-radius:8px;
   text-align:left;
+}
+.info{
+  font-size:14px;
+  color:#374151;
+  margin-top:6px;
 }
 small{color:#555}
 button{
@@ -51,10 +57,15 @@ button{
 <body>
 
 <div class="box">
-  <h2>FAITH & FITNESS</h2>
-  <p id="userInfo"></p>
-  <p>Now: <span id="nowTxt"></span></p>
+  <!-- 🔰 HEADER -->
+  <h2>WELCOME</h2>
+  <h3>FAITH & FITNESS</h3>
 
+  <!-- 👤 USER INFO -->
+  <div class="info" id="userName">Loading...</div>
+  <div class="info" id="userPoints">Total Points: 0</div>
+
+  <!-- 🗓️ TASK -->
   <div id="taskBox" class="task">
     Loading task...
   </div>
@@ -67,9 +78,8 @@ button{
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, doc, getDoc,
-  collection, query, where,
-  getDocs, addDoc
+  getFirestore, collection, doc, getDoc,
+  query, where, getDocs, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
@@ -77,33 +87,55 @@ import {
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee",
-  storageBucket: "daily-voting-793ee.appspot.com",
-  messagingSenderId: "106583008376",
-  appId: "1:106583008376:web:9d3858939d07056a5fa0ed"
+  projectId: "daily-voting-793ee"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK (PERSISTENT) */
+/* 🔐 LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
 if(!phone){
   location.replace("index.html");
 }
-document.getElementById("userInfo").innerText = "Logged in: " + phone;
 
-/* TIME */
-const now = new Date();
-document.getElementById("nowTxt").innerText = now.toLocaleString();
+/* 👤 LOAD USER NAME */
+async function loadUser(){
+  const q = query(collection(db,"users"), where("phone","==",phone));
+  const snap = await getDocs(q);
+  snap.forEach(d=>{
+    document.getElementById("userName").innerText =
+      "Hello, " + (d.data().name || "User");
+  });
+}
 
+/* ⭐ LOAD TOTAL POINTS (votes + bonuses) */
+async function loadTotalPoints(){
+  let total = 0;
+
+  const vSnap = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
+  vSnap.forEach(d=>{
+    total += Number(d.data().points || 0);
+  });
+
+  const bSnap = await getDocs(
+    query(collection(db,"bonuses"), where("phone","==",phone))
+  );
+  bSnap.forEach(d=>{
+    total += Number(d.data().points || 0);
+  });
+
+  document.getElementById("userPoints").innerText =
+    "Total Points: " + total;
+}
+
+/* 🗓️ LOAD TODAY TASK */
 let activeTask = null;
 
-/* 🔹 LOAD TODAY TASK (DATE BASED) */
 async function loadTask(){
-  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-
-  const ref = doc(db,"tasks", today);   // 👈 SAME AS TASK EDITOR
+  const today = new Date().toISOString().split("T")[0];
+  const ref = doc(db,"tasks", today);
   const snap = await getDoc(ref);
 
   if(!snap.exists()){
@@ -112,29 +144,20 @@ async function loadTask(){
   }
 
   const t = snap.data();
-
-  if(!t.text || !t.points || !t.startTime || !t.endTime){
-    disableVote("Task config incomplete ❌");
-    return;
-  }
-
+  const now = new Date();
   const start = new Date(t.startTime);
   const end   = new Date(t.endTime);
 
   if(now < start || now > end){
     disableVote(
       `Voting not available ❌<br>
-       <small>
-         From: ${start.toLocaleString()}<br>
-         To: ${end.toLocaleString()}
-       </small>`
+       <small>${start.toLocaleString()} – ${end.toLocaleString()}</small>`
     );
     return;
   }
 
-  /* READY TO VOTE */
   activeTask = t;
-  document.getElementById("taskBox").innerHTML = `
+  taskBox.innerHTML = `
     <label>
       <input type="checkbox" id="taskCheck">
       <strong>${t.text}</strong><br>
@@ -142,24 +165,17 @@ async function loadTask(){
     </label>
   `;
 }
-loadTask();
 
-/* 🔹 SUBMIT VOTE */
+/* 🗳️ SUBMIT VOTE */
 window.submitVote = async ()=>{
-  if(!activeTask){
-    alert("Voting not available");
-    return;
-  }
+  if(!activeTask) return;
 
-  const chk = document.getElementById("taskCheck");
-  if(!chk || !chk.checked){
+  if(!document.getElementById("taskCheck").checked){
     alert("Task complete cheythu checkbox tick cheyyu ✅");
     return;
   }
 
   const today = new Date().toISOString().split("T")[0];
-
-  /* ONE VOTE PER DAY */
   const q = query(
     collection(db,"votes"),
     where("phone","==",phone),
@@ -172,7 +188,7 @@ window.submitVote = async ()=>{
   }
 
   await addDoc(collection(db,"votes"),{
-    phone: phone,
+    phone,
     points: activeTask.points,
     date: today,
     createdAt: new Date().toISOString()
@@ -180,9 +196,10 @@ window.submitVote = async ()=>{
 
   alert("Vote submitted successfully ✅");
   disableVote("You have voted today ✅");
+  loadTotalPoints(); // 🔄 update points live
 };
 
-/* HELPERS */
+/* 🔒 HELPERS */
 function disableVote(msg){
   document.getElementById("taskBox").innerHTML = msg;
   const btn = document.getElementById("submitBtn");
@@ -190,15 +207,16 @@ function disableVote(msg){
   btn.disabled = true;
 }
 
-/* 🔒 BLOCK BACK BUTTON */
-history.pushState(null,null,location.href);
-window.onpopstate = ()=>history.go(1);
-
 /* 🚪 LOGOUT */
 window.logout = ()=>{
   localStorage.removeItem("userPhone");
   location.replace("index.html");
 };
+
+/* 🔄 INIT */
+loadUser();
+loadTotalPoints();
+loadTask();
 </script>
 
 </body>
