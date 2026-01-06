@@ -4,25 +4,38 @@
 <meta charset="UTF-8">
 <title>Faith & Fitness – Voting</title>
 
+<!-- 🚫 Cache control -->
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 
 <style>
+/* 🔥 Prevent blink */
 body{
   display:none;
-  font-family:Arial;
+  font-family: Arial;
   background:#f1f5f9;
   justify-content:center;
   align-items:center;
   height:100vh;
 }
+
 .box{
   background:#fff;
   padding:25px;
   width:360px;
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+h2,h3{
+  text-align:center;
+  margin:4px 0;
+}
+.task{
+  border:1px solid #ddd;
+  padding:10px;
+  margin-top:10px;
+  border-radius:6px;
 }
 button{
   width:100%;
@@ -31,45 +44,156 @@ button{
   background:#16a34a;
   color:white;
   border:none;
+  font-size:16px;
+  cursor:pointer;
+  border-radius:6px;
 }
-.logout{background:#dc2626}
+.logout{
+  background:#dc2626;
+}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2 style="text-align:center">FAITH & FITNESS</h2>
+  <h2>WELCOME</h2>
+  <h3>FAITH & FITNESS</h3>
+
   <p id="userInfo"></p>
+  <p>Date: <span id="today"></span></p>
+
+  <div id="taskArea">Loading task...</div>
+
+  <button onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
-/* 🚫 KILL CACHE */
+/* 🚫 Kill back-forward cache */
 window.addEventListener("pageshow", e=>{
-  if(e.persisted) location.reload();
+  if(e.persisted){
+    location.reload();
+  }
 });
 
-/* SESSION CHECK */
+/* 🔐 LOGIN CHECK */
 const phone = sessionStorage.getItem("userPhone");
 if(!phone){
   location.replace("index.html");
 }else{
-  document.body.style.display="flex";
+  document.body.style.display = "flex"; // 👈 show page only after check
 }
 
-/* BLOCK BACK */
+/* 🚫 BLOCK BACK BUTTON */
 history.pushState(null,null,location.href);
-window.onpopstate=()=>history.go(1);
+window.onpopstate = ()=>history.go(1);
 
-userInfo.innerText="Logged in : "+phone;
+document.getElementById("userInfo").innerText =
+  "Logged in : " + phone;
+document.getElementById("today").innerText =
+  new Date().toLocaleDateString();
 
-/* LOGOUT */
-window.logout=()=>{
+/* 🔥 FIREBASE */
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  addDoc,
+  query,
+  where
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let activeTask = null;
+
+/* 🔹 LOAD ACTIVE TASK (TIME BASED) */
+async function loadTask(){
+  const now = new Date().toISOString();
+  const snap = await getDocs(collection(db,"tasks"));
+
+  activeTask = null;
+  taskArea.innerHTML = "";
+
+  snap.forEach(d=>{
+    const t = d.data();
+    if(t.start <= now && t.end >= now){
+      activeTask = { id:d.id, ...t };
+    }
+  });
+
+  if(!activeTask){
+    taskArea.innerHTML = "No active task now ❌";
+    return;
+  }
+
+  taskArea.innerHTML = `
+    <div class="task">
+      <label>
+        <input type="checkbox" id="voteCheck">
+        <b>${activeTask.text}</b><br>
+        Points: ${activeTask.points}
+      </label>
+    </div>
+  `;
+}
+loadTask();
+
+/* 🗳️ SUBMIT VOTE */
+window.submitVote = async ()=>{
+  if(!activeTask){
+    alert("No active task");
+    return;
+  }
+
+  if(!document.getElementById("voteCheck").checked){
+    alert("Please tick the checkbox");
+    return;
+  }
+
+  const todayDate = new Date().toISOString().slice(0,10);
+
+  const q = query(
+    collection(db,"votes"),
+    where("phone","==",phone),
+    where("taskId","==",activeTask.id),
+    where("date","==",todayDate)
+  );
+
+  const snap = await getDocs(q);
+  if(!snap.empty){
+    alert("Already voted ❌");
+    return;
+  }
+
+  await addDoc(collection(db,"votes"),{
+    phone,
+    taskId: activeTask.id,
+    points: activeTask.points,
+    date: todayDate,
+    createdAt: new Date().toISOString()
+  });
+
+  alert("Vote submitted ✅");
+};
+
+/* 🚪 LOGOUT */
+window.logout = ()=>{
   sessionStorage.clear();
   location.replace("index.html");
 };
 </script>
 
 </body>
-</html>
+    </html>
