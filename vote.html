@@ -30,10 +30,12 @@ h3{margin:6px 0;color:#16a34a}
   border-radius:8px;
   text-align:left;
 }
-.info{
+.msg{
+  background:#fef3c7;
+  padding:10px;
+  border-radius:6px;
   font-size:14px;
-  color:#374151;
-  margin-top:6px;
+  margin-top:10px;
 }
 button{
   width:100%;
@@ -46,18 +48,7 @@ button{
 }
 .submit{background:#16a34a;color:#fff}
 .logout{background:#dc2626;color:#fff}
-.disabled{
-  background:#9ca3af !important;
-  cursor:not-allowed;
-}
-.msg{
-  background:#fef3c7;
-  color:#92400e;
-  padding:10px;
-  border-radius:6px;
-  margin-top:10px;
-  font-size:14px;
-}
+.disabled{background:#9ca3af;cursor:not-allowed}
 </style>
 </head>
 
@@ -67,18 +58,18 @@ button{
   <h2>WELCOME</h2>
   <h3>FAITH & FITNESS</h3>
 
-  <div class="info" id="userName">Loading...</div>
-  <div class="info" id="userPoints">Total Points: 0</div>
+  <div id="userName">Hello</div>
+  <div id="userPoints">Total Points: 0</div>
 
-  <div id="taskBox" class="task">Loading task...</div>
-  <div id="messageBox"></div>
+  <div id="taskBox" class="task">Loading...</div>
+
+  <div id="infoMsg"></div>
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
-/* 🔥 FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -100,135 +91,123 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
 if(!phone){
-  location.replace("index.html");
+  location.href="index.html";
 }
 
-/* 👤 LOAD USER */
+/* LOAD USER */
 async function loadUser(){
-  const snap = await getDocs(
-    query(collection(db,"users"), where("phone","==",phone))
-  );
-  snap.forEach(d=>{
-    document.getElementById("userName").innerText =
-      "Hello, " + d.data().name;
+  const s = await getDocs(query(
+    collection(db,"users"),
+    where("phone","==",phone)
+  ));
+  s.forEach(d=>{
+    userName.innerText = "Hello, " + d.data().name;
   });
 }
 
-/* ⭐ TOTAL POINTS (ADMIN + VOTE SAME COLLECTION) */
-async function loadTotalPoints(){
+/* TOTAL POINTS (USER + ADMIN) */
+async function loadPoints(){
   let total = 0;
-  const snap = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
-  );
-  snap.forEach(d=>{
+  const s = await getDocs(query(
+    collection(db,"votes"),
+    where("phone","==",phone)
+  ));
+  s.forEach(d=>{
     total += Number(d.data().points || 0);
   });
-  document.getElementById("userPoints").innerText =
-    "Total Points: " + total;
+  userPoints.innerText = "Total Points: " + total;
 }
 
-/* 🗓️ LOAD ACTIVE TASK (TIME BASED) */
-let activeTask = null;
+/* LOAD ACTIVE TASK */
+let activeTask=null;
 
 async function loadTask(){
-  const now = new Date().getTime();
+  const now = new Date().toISOString();
   const snap = await getDocs(collection(db,"tasks"));
-  let found = false;
 
+  let found=false;
   snap.forEach(d=>{
     if(found) return;
-    const t = d.data();
-    const start = new Date(t.start).getTime();
-    const end   = new Date(t.end).getTime();
-
-    if(now >= start && now <= end){
-      found = true;
-      activeTask = { ...t };
-
-      document.getElementById("taskBox").innerHTML = `
+    const t=d.data();
+    if(now>=t.start && now<=t.end){
+      found=true;
+      activeTask={...t,id:d.id};
+      taskBox.innerHTML=`
         <label>
-          <input type="checkbox" id="taskCheck">
+          <input type="checkbox" id="chk">
           <b>${t.text}</b><br>
-          <small>Points: ${t.points}</small>
-        </label>
-      `;
+          Points: ${t.points}
+        </label>`;
     }
   });
 
   if(!found){
     disableVote("No active task right now ❌");
-  }else{
-    checkAlreadyVoted();
   }
 }
 
-/* ✅ CHECK TODAY VOTED */
-async function checkAlreadyVoted(){
-  const today = new Date().toISOString().split("T")[0];
-  const snap = await getDocs(
-    query(
-      collection(db,"votes"),
-      where("phone","==",phone),
-      where("date","==",today),
-      where("source","==","vote")
-    )
-  );
-
-  if(!snap.empty){
-    disableVote(
-      "You have done today’s voting ✅<br>Next voting is tomorrow at <b>8 PM</b>"
-    );
-  }
-}
-
-/* 🗳️ SUBMIT VOTE */
+/* SUBMIT VOTE */
 window.submitVote = async ()=>{
   if(!activeTask) return;
 
-  const chk = document.getElementById("taskCheck");
-  if(!chk || !chk.checked){
-    alert("Task completed checkbox tick cheyyu");
+  if(!chk.checked){
+    alert("Task complete cheyth checkbox tick cheyyu");
     return;
   }
 
   const today = new Date().toISOString().split("T")[0];
 
+  const s = await getDocs(query(
+    collection(db,"votes"),
+    where("phone","==",phone),
+    where("date","==",today),
+    where("type","==","user")
+  ));
+
+  if(!s.empty){
+    showDoneMsg();
+    return;
+  }
+
   await addDoc(collection(db,"votes"),{
     phone,
-    points: Number(activeTask.points),
-    date: today,
-    source: "vote",
-    createdAt: new Date().toISOString()
+    points:activeTask.points,
+    type:"user",
+    date:today,
+    createdAt:new Date().toISOString()
   });
 
-  disableVote(
-    "You have done today’s voting ✅<br>Next voting is tomorrow at <b>8 PM</b>"
-  );
-  loadTotalPoints();
+  showDoneMsg();
+  loadPoints();
 };
 
-/* 🔒 DISABLE VOTE */
-function disableVote(msg){
-  document.getElementById("taskBox").innerHTML = "—";
-  document.getElementById("messageBox").innerHTML =
-    `<div class="msg">${msg}</div>`;
-  const btn = document.getElementById("submitBtn");
-  btn.disabled = true;
-  btn.classList.add("disabled");
+/* DONE MESSAGE */
+function showDoneMsg(){
+  disableVote("");
+  infoMsg.innerHTML=`
+    <div class="msg">
+      You have done today's voting ✅<br>
+      Next voting is tomorrow at <b>8 PM</b>
+    </div>`;
 }
 
-/* 🚪 LOGOUT */
-window.logout = ()=>{
+/* DISABLE */
+function disableVote(msg){
+  taskBox.innerHTML=msg;
+  submitBtn.disabled=true;
+  submitBtn.classList.add("disabled");
+}
+
+/* LOGOUT */
+window.logout=()=>{
   localStorage.clear();
-  location.replace("index.html");
+  location.reload();
 };
 
-/* INIT */
 loadUser();
-loadTotalPoints();
+loadPoints();
 loadTask();
 </script>
 
