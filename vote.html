@@ -35,6 +35,12 @@ h3{margin:6px 0;color:#16a34a}
   color:#374151;
   margin-top:6px;
 }
+#infoMsg{
+  margin-top:10px;
+  font-size:14px;
+  color:#16a34a;
+  font-weight:bold;
+}
 button{
   width:100%;
   padding:12px;
@@ -50,7 +56,6 @@ button{
   background:#9ca3af !important;
   cursor:not-allowed;
 }
-small{color:#555}
 </style>
 </head>
 
@@ -64,13 +69,14 @@ small{color:#555}
   <div class="info" id="userPoints">Total Points: 0</div>
 
   <div id="taskBox" class="task">Loading task...</div>
+  <div id="infoMsg"></div>
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
-/* 🔥 FIREBASE */
+/* 🔥 Firebase imports */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -83,6 +89,7 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+/* 🔥 Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -92,59 +99,61 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK */
+/* 🔐 Login check */
 const phone = localStorage.getItem("userPhone");
 if(!phone){
   alert("Please login again");
-  location.replace("index.html");
+  location.href = "index.html";
 }
 
-/* 👤 LOAD USER */
+/* 👤 Load user name */
 async function loadUser(){
-  const s = await getDocs(
+  const snap = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
   );
-  if(!s.empty){
-    s.forEach(d=>{
-      userName.innerText = "Hello, " + d.data().name;
+  if(!snap.empty){
+    snap.forEach(d=>{
+      document.getElementById("userName").innerText =
+        "Hello, " + d.data().name;
     });
   }
 }
 
-/* ⭐ TOTAL POINTS */
+/* ⭐ Load total points (votes + admin adds) */
 async function loadTotalPoints(){
   let total = 0;
-  const s = await getDocs(
+  const snap = await getDocs(
     query(collection(db,"votes"), where("phone","==",phone))
   );
-  s.forEach(d=>{
+  snap.forEach(d=>{
     total += Number(d.data().points || 0);
   });
-  userPoints.innerText = "Total Points: " + total;
+  document.getElementById("userPoints").innerText =
+    "Total Points: " + total;
 }
 
-/* 🗓️ LOAD ACTIVE TASK (DATE + TIME) */
+/* 🗓️ Load active task by DATE+TIME */
 let activeTask = null;
 
 async function loadTask(){
-  const now = new Date();
+  const now = new Date().getTime();
   const snap = await getDocs(collection(db,"tasks"));
   let found = false;
 
   snap.forEach(d=>{
     if(found) return;
     const t = d.data();
-    const start = new Date(t.start);
-    const end   = new Date(t.end);
+    const start = new Date(t.start).getTime();
+    const end   = new Date(t.end).getTime();
 
     if(now >= start && now <= end){
       found = true;
-      activeTask = { ...t, id:d.id };
+      activeTask = { ...t, id: d.id };
 
-      taskBox.innerHTML = `
+      document.getElementById("taskBox").innerHTML = `
         <label>
           <input type="checkbox" id="taskCheck">
-          <b>${t.text}</b><br>
+          <strong>${t.text}</strong><br>
           <small>Points: ${t.points}</small>
         </label>
       `;
@@ -152,16 +161,19 @@ async function loadTask(){
   });
 
   if(!found){
-    disableVote("No active task right now ❌");
+    document.getElementById("taskBox").innerHTML =
+      "No active task right now ❌";
+    disableVote();
   }else{
     checkAlreadyVoted();
   }
 }
 
-/* 🗳️ CHECK ALREADY VOTED */
+/* 🗳️ Check already voted for this task day */
 async function checkAlreadyVoted(){
   const voteDate = activeTask.start.split("T")[0];
-  const s = await getDocs(
+
+  const snap = await getDocs(
     query(
       collection(db,"votes"),
       where("phone","==",phone),
@@ -169,22 +181,37 @@ async function checkAlreadyVoted(){
     )
   );
 
-  if(!s.empty){
+  if(!snap.empty){
     showDoneMessage();
+    disableVote();
   }
 }
 
-/* 🗳️ SUBMIT VOTE */
+/* 🗳️ Submit vote */
 window.submitVote = async ()=>{
   if(!activeTask) return;
 
   const chk = document.getElementById("taskCheck");
   if(!chk || !chk.checked){
-    alert("Task complete cheythu checkbox tick cheyyu ✅");
+    alert("Task complete cheyth checkbox tick cheyyu ✅");
     return;
   }
 
   const voteDate = activeTask.start.split("T")[0];
+
+  const snap = await getDocs(
+    query(
+      collection(db,"votes"),
+      where("phone","==",phone),
+      where("date","==",voteDate)
+    )
+  );
+
+  if(!snap.empty){
+    showDoneMessage();
+    disableVote();
+    return;
+  }
 
   await addDoc(collection(db,"votes"),{
     phone,
@@ -194,39 +221,41 @@ window.submitVote = async ()=>{
   });
 
   showDoneMessage();
+  disableVote();
   loadTotalPoints();
 };
 
-/* ✅ AFTER VOTE MESSAGE */
+/* ✅ Show done message with next time */
 function showDoneMessage(){
-  const nextTime = new Date(activeTask.end).toLocaleString("en-IN",{
-    hour:"numeric",
-    minute:"2-digit",
-    hour12:true,
-    day:"numeric",
-    month:"short"
+  const start = new Date(activeTask.start);
+  start.setDate(start.getDate() + 1);
+
+  const time = start.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
   });
 
-  disableVote(
-    `You have done today's voting ✅<br>
-     <small>Next voting is on ${nextTime}</small>`
-  );
+  document.getElementById("taskBox").innerHTML =
+    "You have done today’s voting ✅";
+
+  document.getElementById("infoMsg").innerText =
+    "Now the voting is tomorrow at " + time;
 }
 
-/* 🔒 DISABLE */
-function disableVote(msg){
-  taskBox.innerHTML = msg;
-  submitBtn.disabled = true;
-  submitBtn.classList.add("disabled");
+/* 🔒 Disable vote button */
+function disableVote(){
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.classList.add("disabled");
 }
 
-/* 🚪 LOGOUT */
+/* 🚪 Logout */
 window.logout = ()=>{
   localStorage.clear();
-  location.replace("index.html");
+  location.reload();
 };
 
-/* 🚀 INIT */
+/* 🚀 Init */
 loadUser();
 loadTotalPoints();
 loadTask();
