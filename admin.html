@@ -6,71 +6,56 @@
 
 <style>
 body{
-  font-family: Arial;
+  font-family:Arial;
   background:#f1f5f9;
   padding:20px;
 }
-h2{text-align:center;margin-bottom:10px}
-
-.summary{
+h2{text-align:center}
+.top{
   display:flex;
   justify-content:space-between;
   margin-bottom:15px;
 }
-.card{
+.box{
   background:#fff;
-  padding:12px 18px;
+  padding:12px;
   border-radius:8px;
-  box-shadow:0 0 5px rgba(0,0,0,.15);
+  box-shadow:0 0 6px rgba(0,0,0,.15);
 }
-
-.filters{
-  background:#fff;
-  padding:15px;
-  border-radius:8px;
-  margin-bottom:15px;
-}
-.note{
-  font-size:12px;
-  color:#555;
-  margin-top:6px;
-}
-
 table{
   width:100%;
   border-collapse:collapse;
   background:#fff;
 }
 th,td{
-  border:1px solid #ccc;
+  border:1px solid #ddd;
   padding:8px;
   text-align:center;
 }
 th{
   background:#2563eb;
-  color:white;
+  color:#fff;
 }
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
-.rank3{background:#fcd34d}
-
-input[type="number"]{
+input{
   width:70px;
-  padding:4px;
+  padding:5px;
 }
 button{
-  padding:6px 12px;
-  background:#16a34a;
-  color:white;
+  padding:6px 10px;
   border:none;
   cursor:pointer;
   border-radius:4px;
 }
-button:disabled{
-  background:#9ca3af;
-  cursor:not-allowed;
+.add{background:#16a34a;color:#fff}
+.clear{background:#6b7280;color:#fff}
+.export{background:#0284c7;color:#fff}
+.note{
+  font-size:13px;
+  color:#b91c1c;
+  margin-top:6px;
 }
-.export{background:#0ea5e9}
 </style>
 </head>
 
@@ -78,31 +63,24 @@ button:disabled{
 
 <h2>Admin Dashboard – Faith & Fitness</h2>
 
-<div class="summary">
-  <div class="card">
-    <b>Total Users</b><br>
-    <span id="userCount">0</span>
-  </div>
-  <div class="card">
-    <b>Filtered Records</b><br>
-    <span id="recordCount">0</span>
-  </div>
+<div class="top">
+  <div class="box">Total Users: <b id="totalUsers">0</b></div>
+  <div class="box">Filtered Records: <b id="filtered">0</b></div>
 </div>
 
-<div class="filters">
+<div class="box">
   <b>Date Filter (Votes only)</b><br><br>
-  From:
-  <input type="date" id="fromDate" onchange="load()">
-  To:
-  <input type="date" id="toDate" onchange="load()">
-  <button onclick="clearFilter()">Clear</button>
+  From: <input type="date" id="from">
+  To: <input type="date" id="to">
+  <button class="clear" onclick="clearFilter()">Clear</button>
   <button class="export" onclick="exportExcel()">Export Excel</button>
 
   <div class="note">
-    ⚠️ Date filter ON ആണെങ്കിൽ points add ചെയ്യാൻ പറ്റില്ല.  
-    Filter clear ചെയ്താൽ add points enable ആവും.
+    ⚠️ Date filter ON ആയാൽ admin add points disable ആയിരിക്കും
   </div>
 </div>
+
+<br>
 
 <table>
 <thead>
@@ -114,182 +92,141 @@ button:disabled{
   <th>Add Points</th>
 </tr>
 </thead>
-<tbody id="body"></tbody>
+<tbody id="tbody"></tbody>
 </table>
 
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+
 import {
-  getFirestore, collection, getDocs, addDoc
+  getFirestore, collection, getDocs,
+  query, where, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔐 ADMIN PASSWORD */
-if(prompt("Admin password") !== "1"){
-  location.href="index.html";
+/* 🔐 Admin password */
+if(prompt("Admin password")!=="1"){
+  location.replace("index.html");
 }
 
-/* 🔥 FIREBASE */
-const firebaseConfig = {
-  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-const app = initializeApp(firebaseConfig);
+/* 🔥 Firebase */
+const app = initializeApp({
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
 const db = getFirestore(app);
 
-let reportData = [];
+/* 🔢 TOTAL POINTS = votes + adminPoints */
+async function getTotalPoints(phone){
+  let total = 0;
 
-/* 🔎 DATE FILTER STATE */
-function isDateFilterActive(){
-  return fromDate.value !== "" || toDate.value !== "";
+  const vSnap = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
+  vSnap.forEach(d=>{
+    total += Number(d.data().points||0);
+  });
+
+  const aSnap = await getDocs(
+    query(collection(db,"adminPoints"), where("phone","==",phone))
+  );
+  aSnap.forEach(d=>{
+    total += Number(d.data().points||0);
+  });
+
+  return total;
 }
 
-/* CLEAR FILTER */
-window.clearFilter = ()=>{
-  fromDate.value = "";
-  toDate.value = "";
-  load();
-};
+/* 📊 LOAD DATA */
+async function load(){
+  tbody.innerHTML="";
+  const users = await getDocs(collection(db,"users"));
+  document.getElementById("totalUsers").innerText = users.size;
 
-/* LOAD DATA */
-window.load = async ()=>{
-  body.innerHTML="";
-  reportData=[];
+  let rows=[];
 
-  const from = fromDate.value || "0000-00-00";
-  const to   = toDate.value || "9999-12-31";
+  for(const u of users.docs){
+    const data=u.data();
+    const total = await getTotalPoints(data.phone);
 
-  /* USERS */
-  const usersSnap = await getDocs(collection(db,"users"));
-  let users = {};
-  usersSnap.forEach(d=>{
-    const u = d.data();
-    users[u.phone] = {
-      name: u.name || "-",
-      phone: u.phone,
-      points: 0
-    };
-  });
-  userCount.innerText = Object.keys(users).length;
-
-  /* VOTES (DATE FILTER APPLIES) */
-  const votesSnap = await getDocs(collection(db,"votes"));
-  votesSnap.forEach(d=>{
-    const v = d.data();
-    if(v.date >= from && v.date <= to){
-      if(users[v.phone]){
-        users[v.phone].points += Number(v.points || 0);
-      }
-    }
-  });
-
-  /* BONUSES (ALWAYS COUNTED) */
-  const bonusSnap = await getDocs(collection(db,"bonuses"));
-  bonusSnap.forEach(d=>{
-    const b = d.data();
-    if(users[b.phone]){
-      users[b.phone].points += Number(b.points || 0);
-    }
-  });
-
-  /* SORT */
-  const arr = Object.values(users)
-    .sort((a,b)=>b.points - a.points);
-
-  let rank = 0;
-  let lastPoints = null;
-
-  arr.forEach(u=>{
-    if(u.points !== lastPoints){
-      rank++;
-      lastPoints = u.points;
-    }
-    if(rank > 3) return;
-
-    const cls =
-      rank===1 ? "rank1" :
-      rank===2 ? "rank2" :
-      "rank3";
-
-    const disabled = isDateFilterActive() ? "disabled" : "";
-
-    body.innerHTML += `
-      <tr class="${cls}">
-        <td>${rank}</td>
-        <td>${u.name}</td>
-        <td>${u.phone}</td>
-        <td>${u.points}</td>
-        <td>
-          <input id="pt_${u.phone}" type="number" placeholder="+points" ${disabled}>
-          <button onclick="addPoints('${u.phone}')" ${disabled}>Add</button>
-        </td>
-      </tr>
-    `;
-
-    reportData.push({
-      Rank: rank,
-      Name: u.name,
-      Phone: u.phone,
-      Points: u.points
+    rows.push({
+      name:data.name,
+      phone:data.phone,
+      total
     });
+  }
+
+  rows.sort((a,b)=>b.total-a.total);
+
+  let rank=0,prev=null,shown=0;
+
+  rows.forEach((r,i)=>{
+    if(prev===null||r.total<prev) rank=i+1;
+    prev=r.total;
+    shown++;
+
+    const tr=document.createElement("tr");
+    tr.className = rank===1?"rank1":rank===2?"rank2":"";
+
+    tr.innerHTML=`
+      <td>${rank}</td>
+      <td>${r.name}</td>
+      <td>${r.phone}</td>
+      <td>${r.total}</td>
+      <td>
+        <input type="number" id="p_${r.phone}" placeholder="+">
+        <button class="add" onclick="addPoint('${r.phone}')">Add</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
   });
 
-  recordCount.innerText = reportData.length;
-};
+  document.getElementById("filtered").innerText = shown;
+}
+load();
 
-/* ➕ ADD POINTS */
-window.addPoints = async (phone)=>{
-  if(isDateFilterActive()){
-    alert("Date filter clear cheythal mathrame points add cheyyan pattoo ❌");
+/* ➕ ADMIN ADD POINTS */
+window.addPoint = async(phone)=>{
+  if(from.value||to.value){
+    alert("Date filter ON. Clear filter first ❌");
     return;
   }
 
-  const v = Number(document.getElementById("pt_"+phone).value);
-  if(v <= 0){
-    alert("Enter valid points");
-    return;
-  }
+  const val = Number(document.getElementById("p_"+phone).value);
+  if(val<=0) return alert("Enter valid points");
 
-  if(prompt("Admin password") !== "1"){
-    alert("Wrong password");
-    return;
-  }
-
-  await addDoc(collection(db,"bonuses"),{
-    phone: phone,
-    points: v,
-    createdAt: new Date().toISOString()
+  await addDoc(collection(db,"adminPoints"),{
+    phone,
+    points:val,
+    createdAt:new Date().toISOString()
   });
 
   alert("Points added ✅");
   load();
 };
 
-/* EXPORT CSV (EXCEL) */
-window.exportExcel = ()=>{
-  if(reportData.length === 0){
-    alert("No data to export");
-    return;
-  }
-
-  let csv = "Rank,Name,Phone,Points\n";
-  reportData.forEach(r=>{
-    csv += `${r.Rank},${r.Name},${r.Phone},${r.Points}\n`;
-  });
-
-  const blob = new Blob([csv],{type:"text/csv"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "faith_fitness_report.csv";
-  a.click();
-  URL.revokeObjectURL(url);
+/* 🧹 CLEAR FILTER */
+window.clearFilter=()=>{
+  from.value="";
+  to.value="";
+  load();
 };
 
-/* INITIAL LOAD */
-load();
+/* 📤 EXPORT (simple csv) */
+window.exportExcel=()=>{
+  let csv="Name,Phone,Points\n";
+  document.querySelectorAll("#tbody tr").forEach(tr=>{
+    const t=tr.children;
+    csv+=`${t[1].innerText},${t[2].innerText},${t[3].innerText}\n`;
+  });
+  const blob=new Blob([csv]);
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="report.csv";
+  a.click();
+};
 </script>
 
 </body>
