@@ -35,12 +35,6 @@ h3{margin:6px 0;color:#16a34a}
   color:#374151;
   margin-top:6px;
 }
-#infoMsg{
-  margin-top:10px;
-  font-size:14px;
-  color:#16a34a;
-  font-weight:bold;
-}
 button{
   width:100%;
   padding:12px;
@@ -56,6 +50,14 @@ button{
   background:#9ca3af !important;
   cursor:not-allowed;
 }
+.msg{
+  background:#fef3c7;
+  color:#92400e;
+  padding:10px;
+  border-radius:6px;
+  margin-top:10px;
+  font-size:14px;
+}
 </style>
 </head>
 
@@ -69,14 +71,14 @@ button{
   <div class="info" id="userPoints">Total Points: 0</div>
 
   <div id="taskBox" class="task">Loading task...</div>
-  <div id="infoMsg"></div>
+  <div id="messageBox"></div>
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <script type="module">
-/* 🔥 Firebase imports */
+/* 🔥 FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -89,7 +91,6 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -99,27 +100,24 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 Login check */
+/* 🔐 LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
 if(!phone){
-  alert("Please login again");
-  location.href = "index.html";
+  location.replace("index.html");
 }
 
-/* 👤 Load user name */
+/* 👤 LOAD USER */
 async function loadUser(){
   const snap = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
   );
-  if(!snap.empty){
-    snap.forEach(d=>{
-      document.getElementById("userName").innerText =
-        "Hello, " + d.data().name;
-    });
-  }
+  snap.forEach(d=>{
+    document.getElementById("userName").innerText =
+      "Hello, " + d.data().name;
+  });
 }
 
-/* ⭐ Load total points (votes + admin adds) */
+/* ⭐ TOTAL POINTS (ADMIN + VOTE SAME COLLECTION) */
 async function loadTotalPoints(){
   let total = 0;
   const snap = await getDocs(
@@ -132,7 +130,7 @@ async function loadTotalPoints(){
     "Total Points: " + total;
 }
 
-/* 🗓️ Load active task by DATE+TIME */
+/* 🗓️ LOAD ACTIVE TASK (TIME BASED) */
 let activeTask = null;
 
 async function loadTask(){
@@ -148,12 +146,12 @@ async function loadTask(){
 
     if(now >= start && now <= end){
       found = true;
-      activeTask = { ...t, id: d.id };
+      activeTask = { ...t };
 
       document.getElementById("taskBox").innerHTML = `
         <label>
           <input type="checkbox" id="taskCheck">
-          <strong>${t.text}</strong><br>
+          <b>${t.text}</b><br>
           <small>Points: ${t.points}</small>
         </label>
       `;
@@ -161,101 +159,74 @@ async function loadTask(){
   });
 
   if(!found){
-    document.getElementById("taskBox").innerHTML =
-      "No active task right now ❌";
-    disableVote();
+    disableVote("No active task right now ❌");
   }else{
     checkAlreadyVoted();
   }
 }
 
-/* 🗳️ Check already voted for this task day */
+/* ✅ CHECK TODAY VOTED */
 async function checkAlreadyVoted(){
-  const voteDate = activeTask.start.split("T")[0];
-
+  const today = new Date().toISOString().split("T")[0];
   const snap = await getDocs(
     query(
       collection(db,"votes"),
       where("phone","==",phone),
-      where("date","==",voteDate)
+      where("date","==",today),
+      where("source","==","vote")
     )
   );
 
   if(!snap.empty){
-    showDoneMessage();
-    disableVote();
+    disableVote(
+      "You have done today’s voting ✅<br>Next voting is tomorrow at <b>8 PM</b>"
+    );
   }
 }
 
-/* 🗳️ Submit vote */
+/* 🗳️ SUBMIT VOTE */
 window.submitVote = async ()=>{
   if(!activeTask) return;
 
   const chk = document.getElementById("taskCheck");
   if(!chk || !chk.checked){
-    alert("Task complete cheyth checkbox tick cheyyu ✅");
+    alert("Task completed checkbox tick cheyyu");
     return;
   }
 
-  const voteDate = activeTask.start.split("T")[0];
-
-  const snap = await getDocs(
-    query(
-      collection(db,"votes"),
-      where("phone","==",phone),
-      where("date","==",voteDate)
-    )
-  );
-
-  if(!snap.empty){
-    showDoneMessage();
-    disableVote();
-    return;
-  }
+  const today = new Date().toISOString().split("T")[0];
 
   await addDoc(collection(db,"votes"),{
     phone,
-    points: activeTask.points,
-    date: voteDate,
+    points: Number(activeTask.points),
+    date: today,
+    source: "vote",
     createdAt: new Date().toISOString()
   });
 
-  showDoneMessage();
-  disableVote();
+  disableVote(
+    "You have done today’s voting ✅<br>Next voting is tomorrow at <b>8 PM</b>"
+  );
   loadTotalPoints();
 };
 
-/* ✅ Show done message with next time */
-function showDoneMessage(){
-  const start = new Date(activeTask.start);
-  start.setDate(start.getDate() + 1);
-
-  const time = start.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-
-  document.getElementById("taskBox").innerHTML =
-    "You have done today’s voting ✅";
-
-  document.getElementById("infoMsg").innerText =
-    "Now the voting is tomorrow at " + time;
-}
-
-/* 🔒 Disable vote button */
-function disableVote(){
+/* 🔒 DISABLE VOTE */
+function disableVote(msg){
+  document.getElementById("taskBox").innerHTML = "—";
+  document.getElementById("messageBox").innerHTML =
+    `<div class="msg">${msg}</div>`;
   const btn = document.getElementById("submitBtn");
   btn.disabled = true;
   btn.classList.add("disabled");
 }
 
-/* 🚪 Logout */
+/* 🚪 LOGOUT */
 window.logout = ()=>{
   localStorage.clear();
-  location.reload();
+  location.replace("index.html");
 };
 
-/* 🚀 Init */
+/* INIT */
 loadUser();
 loadTotalPoints();
 loadTask();
