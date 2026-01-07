@@ -50,6 +50,7 @@ button{
   background:#9ca3af !important;
   cursor:not-allowed;
 }
+small{color:#555}
 </style>
 </head>
 
@@ -78,12 +79,10 @@ import {
   getDocs,
   query,
   where,
-  addDoc,
-  onSnapshot
+  addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
@@ -100,53 +99,52 @@ if(!phone){
   location.replace("index.html");
 }
 
-/* 👤 LOAD USER NAME */
+/* 👤 LOAD USER */
 async function loadUser(){
-  const snap = await getDocs(
+  const s = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
   );
-  snap.forEach(d=>{
-    document.getElementById("userName").innerText =
-      "Hello, " + d.data().name;
-  });
+  if(!s.empty){
+    s.forEach(d=>{
+      userName.innerText = "Hello, " + d.data().name;
+    });
+  }
 }
 
-/* ⭐ LIVE TOTAL POINTS (ADMIN + USER VOTES) */
-function liveTotalPoints(){
-  onSnapshot(
-    query(collection(db,"votes"), where("phone","==",phone)),
-    snap=>{
-      let total = 0;
-      snap.forEach(d=>{
-        total += Number(d.data().points || 0);
-      });
-      document.getElementById("userPoints").innerText =
-        "Total Points: " + total;
-    }
+/* ⭐ TOTAL POINTS */
+async function loadTotalPoints(){
+  let total = 0;
+  const s = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
   );
+  s.forEach(d=>{
+    total += Number(d.data().points || 0);
+  });
+  userPoints.innerText = "Total Points: " + total;
 }
 
-/* 🗓️ LOAD ACTIVE TASK (TIME BASED) */
+/* 🗓️ LOAD ACTIVE TASK (DATE + TIME) */
 let activeTask = null;
 
 async function loadTask(){
-  const now = new Date().toISOString();
+  const now = new Date();
   const snap = await getDocs(collection(db,"tasks"));
-
   let found = false;
 
   snap.forEach(d=>{
     if(found) return;
     const t = d.data();
+    const start = new Date(t.start);
+    const end   = new Date(t.end);
 
-    if(now >= t.start && now <= t.end){
+    if(now >= start && now <= end){
       found = true;
-      activeTask = { ...t, id: d.id };
+      activeTask = { ...t, id:d.id };
 
-      document.getElementById("taskBox").innerHTML = `
+      taskBox.innerHTML = `
         <label>
           <input type="checkbox" id="taskCheck">
-          <strong>${t.text}</strong><br>
+          <b>${t.text}</b><br>
           <small>Points: ${t.points}</small>
         </label>
       `;
@@ -154,65 +152,83 @@ async function loadTask(){
   });
 
   if(!found){
-    disableVote("No active task now ❌");
+    disableVote("No active task right now ❌");
+  }else{
+    checkAlreadyVoted();
   }
 }
 
-/* 🗳️ SUBMIT VOTE (ONE PER DAY) */
+/* 🗳️ CHECK ALREADY VOTED */
+async function checkAlreadyVoted(){
+  const voteDate = activeTask.start.split("T")[0];
+  const s = await getDocs(
+    query(
+      collection(db,"votes"),
+      where("phone","==",phone),
+      where("date","==",voteDate)
+    )
+  );
+
+  if(!s.empty){
+    showDoneMessage();
+  }
+}
+
+/* 🗳️ SUBMIT VOTE */
 window.submitVote = async ()=>{
   if(!activeTask) return;
 
   const chk = document.getElementById("taskCheck");
   if(!chk || !chk.checked){
-    alert("Task completed checkbox tick cheyyu ✅");
+    alert("Task complete cheythu checkbox tick cheyyu ✅");
     return;
   }
 
-  const today = new Date().toISOString().split("T")[0];
-
-  const s = await getDocs(
-    query(
-      collection(db,"votes"),
-      where("phone","==",phone),
-      where("date","==",today),
-      where("task","==",activeTask.text)
-    )
-  );
-
-  if(!s.empty){
-    alert("Already voted today ⚠️");
-    return;
-  }
+  const voteDate = activeTask.start.split("T")[0];
 
   await addDoc(collection(db,"votes"),{
     phone,
-    task: activeTask.text,
     points: activeTask.points,
-    date: today,
-    source: "user",
+    date: voteDate,
     createdAt: new Date().toISOString()
   });
 
-  disableVote("You have voted today ✅");
+  showDoneMessage();
+  loadTotalPoints();
 };
+
+/* ✅ AFTER VOTE MESSAGE */
+function showDoneMessage(){
+  const nextTime = new Date(activeTask.end).toLocaleString("en-IN",{
+    hour:"numeric",
+    minute:"2-digit",
+    hour12:true,
+    day:"numeric",
+    month:"short"
+  });
+
+  disableVote(
+    `You have done today's voting ✅<br>
+     <small>Next voting is on ${nextTime}</small>`
+  );
+}
 
 /* 🔒 DISABLE */
 function disableVote(msg){
-  document.getElementById("taskBox").innerHTML = msg;
-  const btn = document.getElementById("submitBtn");
-  btn.disabled = true;
-  btn.classList.add("disabled");
+  taskBox.innerHTML = msg;
+  submitBtn.disabled = true;
+  submitBtn.classList.add("disabled");
 }
 
 /* 🚪 LOGOUT */
 window.logout = ()=>{
   localStorage.clear();
-  location.reload();
+  location.replace("index.html");
 };
 
 /* 🚀 INIT */
 loadUser();
-liveTotalPoints();
+loadTotalPoints();
 loadTask();
 </script>
 
