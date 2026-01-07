@@ -2,51 +2,63 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness – Login</title>
+<title>Faith & Fitness – Login / Signup</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   background:#f1f5f9;
   display:flex;
   justify-content:center;
   align-items:center;
-  height:100vh;
+  min-height:100vh;
 }
+
 .box{
   background:#fff;
-  padding:30px;
-  width:360px;
+  padding:25px;
+  width:340px;
   border-radius:12px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
-  text-align:center;
+  box-shadow:0 0 12px rgba(0,0,0,.15);
 }
-h2{
-  margin:0;
-}
+
 h3{
-  margin:6px 0 20px;
-  color:#16a34a;
+  text-align:center;
+  margin-bottom:10px;
 }
-input{
+
+input,button{
   width:100%;
   padding:10px;
   margin:8px 0;
-  font-size:16px;
+  font-size:15px;
 }
+
 button{
-  width:100%;
-  padding:12px;
-  margin-top:12px;
-  font-size:16px;
   background:#16a34a;
-  color:white;
+  color:#fff;
   border:none;
   border-radius:6px;
   cursor:pointer;
 }
-small{
-  color:#555;
+
+button:active{
+  transform:scale(0.98);
+}
+
+.link{
+  text-align:center;
+  margin-top:12px;
+  font-size:15px;
+  color:#2563eb;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.hide{
+  display:none;
 }
 </style>
 </head>
@@ -54,28 +66,45 @@ small{
 <body>
 
 <div class="box">
-  <h2>WELCOME</h2>
-  <h3>FAITH & FITNESS</h3>
 
-  <input id="phone" type="tel" placeholder="Phone number">
-  <input id="password" type="password" placeholder="Password">
+  <!-- 🔐 LOGIN -->
+  <div id="loginBox">
+    <h3>WELCOME<br>FAITH & FITNESS</h3>
 
-  <button onclick="login()">Login</button>
+    <input id="loginPhone" placeholder="Phone number">
+    <input id="loginPass" type="password" placeholder="Password">
 
-  <small>Daily Challenge Voting</small>
+    <button onclick="login()">Login</button>
+
+    <!-- ✅ SIGNUP LINK (VISIBLE) -->
+    <div class="link" onclick="showSignup()">New user? Signup</div>
+  </div>
+
+  <!-- 📝 SIGNUP -->
+  <div id="signupBox" class="hide">
+    <h3>Create Account</h3>
+
+    <input id="name" placeholder="Full name">
+    <input id="phone" placeholder="Phone number">
+    <input id="pass" type="password" placeholder="Password">
+
+    <button onclick="signup()">Create Account</button>
+
+    <div class="link" onclick="showLogin()">Already user? Login</div>
+  </div>
+
 </div>
 
 <script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore,
   collection,
+  addDoc,
   query,
   where,
   getDocs
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
@@ -87,19 +116,65 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔐 LOGIN FUNCTION */
-window.login = async ()=>{
-  const p = phone.value.trim();
-  const pass = password.value.trim();
+/* 🔁 AUTO REDIRECT IF LOGGED */
+if(localStorage.getItem("userPhone")){
+  location.replace("vote.html");
+}
 
-  if(!p || !pass){
+/* 🔄 TOGGLE */
+window.showSignup = ()=>{
+  document.getElementById("loginBox").classList.add("hide");
+  document.getElementById("signupBox").classList.remove("hide");
+};
+
+window.showLogin = ()=>{
+  document.getElementById("signupBox").classList.add("hide");
+  document.getElementById("loginBox").classList.remove("hide");
+};
+
+/* 📝 SIGNUP */
+window.signup = async ()=>{
+  const name  = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const pass  = document.getElementById("pass").value.trim();
+
+  if(!name || !phone || !pass){
+    alert("All fields required");
+    return;
+  }
+
+  const q = query(collection(db,"users"), where("phone","==",phone));
+  const snap = await getDocs(q);
+
+  if(!snap.empty){
+    alert("User already exists");
+    return;
+  }
+
+  await addDoc(collection(db,"users"),{
+    name,
+    phone,
+    password: pass,
+    createdAt: new Date().toISOString()
+  });
+
+  alert("Signup successful ✅");
+  showLogin();
+};
+
+/* 🔐 LOGIN */
+window.login = async ()=>{
+  const phone = document.getElementById("loginPhone").value.trim();
+  const pass  = document.getElementById("loginPass").value.trim();
+
+  if(!phone || !pass){
     alert("Enter phone & password");
     return;
   }
 
   const q = query(
     collection(db,"users"),
-    where("phone","==",p),
+    where("phone","==",phone),
     where("password","==",pass)
   );
 
@@ -110,11 +185,8 @@ window.login = async ()=>{
     return;
   }
 
-  // save login
-  localStorage.setItem("userPhone", p);
-
-  // redirect to voting page
-  window.location.href = "vote.html";
+  localStorage.setItem("userPhone", phone);
+  location.replace("vote.html");
 };
 </script>
 
