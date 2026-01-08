@@ -24,7 +24,7 @@ body{
 h2{margin:0}
 h3{margin:6px 0;color:#16a34a}
 .task{
-  margin:12px 0;
+  margin:10px 0;
   padding:10px;
   border:1px solid #ddd;
   border-radius:8px;
@@ -82,12 +82,13 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 Firebase */
+/* 🔥 Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -97,7 +98,7 @@ if(!phone){
   location.replace("index.html");
 }
 
-/* 👤 Load user */
+/* 👤 Load user name */
 async function loadUser(){
   const snap = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
@@ -107,13 +108,15 @@ async function loadUser(){
   });
 }
 
-/* ⭐ Load total points (user votes + admin adds in votes) */
+/* ⭐ TOTAL POINTS (USER + ADMIN BOTH FROM votes) */
 async function loadTotalPoints(){
   let total = 0;
   const snap = await getDocs(
     query(collection(db,"votes"), where("phone","==",phone))
   );
-  snap.forEach(d=> total += Number(d.data().points||0));
+  snap.forEach(d=>{
+    total += Number(d.data().points || 0);
+  });
   userPoints.innerText = "Total Points: " + total;
 }
 
@@ -121,9 +124,11 @@ async function loadTotalPoints(){
 async function checkVoted(){
   const today = new Date().toISOString().split("T")[0];
   const snap = await getDocs(
-    query(collection(db,"votes"),
+    query(
+      collection(db,"votes"),
       where("phone","==",phone),
-      where("date","==",today)
+      where("date","==",today),
+      where("source","==","user")
     )
   );
 
@@ -141,7 +146,7 @@ async function checkVoted(){
   return false;
 }
 
-/* 🗓️ Load active tasks (MULTIPLE) */
+/* 🗓️ Load ACTIVE TASKS (MULTIPLE) */
 async function loadTasks(){
   if(await checkVoted()) return;
 
@@ -171,7 +176,8 @@ async function loadTasks(){
   });
 
   if(!any){
-    taskBox.innerHTML = `<div class="msg">No active tasks right now ❌</div>`;
+    taskBox.innerHTML =
+      `<div class="msg">No active tasks right now ❌</div>`;
     submitBtn.disabled = true;
     submitBtn.classList.add("disabled");
   }
@@ -197,6 +203,7 @@ window.submitVote = async ()=>{
     phone,
     points,
     date: today,
+    source: "user",
     createdAt: new Date().toISOString()
   });
 
