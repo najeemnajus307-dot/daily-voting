@@ -11,46 +11,57 @@ body{
   padding:20px;
 }
 h2{text-align:center}
+
 .top{
   display:flex;
   justify-content:space-between;
   margin-bottom:15px;
 }
+
 .box{
   background:#fff;
   padding:12px;
   border-radius:8px;
   box-shadow:0 0 6px rgba(0,0,0,.15);
 }
+
 table{
   width:100%;
   border-collapse:collapse;
   background:#fff;
 }
+
 th,td{
   border:1px solid #ddd;
   padding:8px;
   text-align:center;
 }
+
 th{
   background:#2563eb;
   color:#fff;
 }
+
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
+.rank3{background:#fecaca}
+
 input{
   width:70px;
   padding:5px;
 }
+
 button{
   padding:6px 10px;
   border:none;
   cursor:pointer;
   border-radius:4px;
 }
+
 .add{background:#16a34a;color:#fff}
 .clear{background:#6b7280;color:#fff}
 .export{background:#0284c7;color:#fff}
+
 .note{
   font-size:13px;
   color:#b91c1c;
@@ -85,6 +96,7 @@ button{
 <table>
 <thead>
 <tr>
+  <th>SL No</th>
   <th>Rank</th>
   <th>Name</th>
   <th>Phone</th>
@@ -132,7 +144,7 @@ async function getTotalPoints(phone){
 
 /* 📊 LOAD DASHBOARD */
 async function load(){
-  tbody.innerHTML="";
+  tbody.innerHTML = "";
 
   const usersSnap = await getDocs(collection(db,"users"));
   document.getElementById("totalUsers").innerText = usersSnap.size;
@@ -150,19 +162,30 @@ async function load(){
     });
   }
 
+  /* 🔥 SORT BY POINTS DESC */
   rows.sort((a,b)=>b.total - a.total);
 
-  let rank = 0, prev = null, shown = 0;
+  let rank = 0;
+  let prevPoints = null;
+  let shown = 0;
 
-  rows.forEach((r,i)=>{
-    if(prev===null || r.total < prev) rank = i+1;
-    prev = r.total;
+  rows.forEach((r, index)=>{
+    const slno = index + 1; // ✅ SL NO always continuous
+
+    if(prevPoints === null || r.total < prevPoints){
+      rank++; // ✅ same points = same rank
+    }
+    prevPoints = r.total;
     shown++;
 
     const tr = document.createElement("tr");
-    tr.className = rank===1?"rank1":rank===2?"rank2":"";
+    tr.className =
+      rank === 1 ? "rank1" :
+      rank === 2 ? "rank2" :
+      rank === 3 ? "rank3" : "";
 
     tr.innerHTML = `
+      <td>${slno}</td>
       <td>${rank}</td>
       <td>${r.name}</td>
       <td>${r.phone}</td>
@@ -210,15 +233,15 @@ window.clearFilter = ()=>{
 
 /* 📤 EXPORT CSV */
 window.exportCSV = ()=>{
-  let csv="Name,Phone,Total Points\n";
+  let csv="SL No,Rank,Name,Phone,Total Points\n";
   document.querySelectorAll("#tbody tr").forEach(tr=>{
-    const t=tr.children;
-    csv+=`${t[1].innerText},${t[2].innerText},${t[3].innerText}\n`;
+    const t = tr.children;
+    csv += `${t[0].innerText},${t[1].innerText},${t[2].innerText},${t[3].innerText},${t[4].innerText}\n`;
   });
-  const blob=new Blob([csv]);
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="faith_fitness_report.csv";
+  const blob = new Blob([csv]);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "faith_fitness_report.csv";
   a.click();
 };
 </script>
