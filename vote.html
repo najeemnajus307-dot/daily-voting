@@ -33,16 +33,10 @@ h3{margin:6px 0;color:#16a34a}
 .msg{
   margin-top:12px;
   padding:12px;
-  background:#ecfeff;
-  color:#065f46;
+  background:#fef3c7;
+  color:#92400e;
   border-radius:8px;
   font-size:14px;
-}
-.timer{
-  font-size:18px;
-  font-weight:bold;
-  color:#dc2626;
-  margin-top:6px;
 }
 button{
   width:100%;
@@ -113,7 +107,7 @@ async function loadUser(){
   });
 }
 
-/* ⭐ Load total points */
+/* ⭐ Load total points (user votes + admin adds in votes) */
 async function loadTotalPoints(){
   let total = 0;
   const snap = await getDocs(
@@ -123,32 +117,7 @@ async function loadTotalPoints(){
   userPoints.innerText = "Total Points: " + total;
 }
 
-/* 🕒 Countdown logic */
-function startCountdown(){
-  // next voting = tomorrow 8:00 PM
-  const now = new Date();
-  const next = new Date();
-  next.setDate(now.getDate() + 1);
-  next.setHours(20,0,0,0); // 8:00 PM
-
-  const timerEl = document.createElement("div");
-  timerEl.className = "timer";
-  message.appendChild(timerEl);
-
-  setInterval(()=>{
-    const diff = next - new Date();
-    if(diff <= 0){
-      location.reload(); // auto refresh when time reached
-      return;
-    }
-    const h = String(Math.floor(diff/3600000)).padStart(2,"0");
-    const m = String(Math.floor(diff%3600000/60000)).padStart(2,"0");
-    const s = String(Math.floor(diff%60000/1000)).padStart(2,"0");
-    timerEl.innerText = `Next voting starts in ${h}:${m}:${s}`;
-  },1000);
-}
-
-/* 🗳️ Check already voted */
+/* 🗳️ Check already voted today */
 async function checkVoted(){
   const today = new Date().toISOString().split("T")[0];
   const snap = await getDocs(
@@ -159,20 +128,20 @@ async function checkVoted(){
   );
 
   if(!snap.empty){
+    taskBox.innerHTML = "";
     submitBtn.disabled = true;
     submitBtn.classList.add("disabled");
-    taskBox.innerHTML = "";
     message.innerHTML = `
       <div class="msg">
-        You have done today’s voting ✅
+        You have done today’s voting ✅<br>
+        Next voting is tomorrow at <b>8 PM</b>
       </div>`;
-    startCountdown();
     return true;
   }
   return false;
 }
 
-/* 🗓️ Load tasks (multiple) */
+/* 🗓️ Load active tasks (MULTIPLE) */
 async function loadTasks(){
   if(await checkVoted()) return;
 
@@ -181,6 +150,7 @@ async function loadTasks(){
   let any = false;
 
   taskBox.innerHTML = "";
+  message.innerHTML = "";
 
   snap.forEach(d=>{
     const t = d.data();
@@ -231,7 +201,7 @@ window.submitVote = async ()=>{
   });
 
   loadTotalPoints();
-  checkVoted();
+  checkVoted(); // hide tasks + show message
 };
 
 /* 🚪 Logout */
