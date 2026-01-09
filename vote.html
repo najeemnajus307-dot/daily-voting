@@ -2,72 +2,42 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Faith & Fitness – Voting</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
-  margin:0;
-  font-family:Arial, sans-serif;
+  font-family: Arial;
   background:#f1f5f9;
-}
-
-/* 🔝 HEADER WITH LOGO */
-header{
-  background:#ffffff;
-  text-align:center;
-  padding:18px 10px;
-  box-shadow:0 2px 6px rgba(0,0,0,.1);
-}
-
-.logo{
-  width:200px;        /* 👈 logo size (change if needed) */
-  max-width:85%;
-  height:auto;
-  margin-bottom:8px;
-}
-
-header h4{
-  margin:0;
-  color:#16a34a;
-  font-weight:bold;
-  letter-spacing:1px;
-}
-
-/* 📦 MAIN BOX */
-.container{
   display:flex;
   justify-content:center;
-  padding:30px 10px;
-}
-
-.box{
-  background:#fff;
-  width:100%;
-  max-width:380px;
-  padding:25px;
-  border-radius:12px;
-  box-shadow:0 0 12px rgba(0,0,0,.2);
-  text-align:center;
-}
-
-.box h2{
+  align-items:center;
+  min-height:100vh;
   margin:0;
 }
+.box{
+  background:#fff;
+  padding:24px;
+  width:100%;
+  max-width:380px;
+  border-radius:12px;
+  text-align:center;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+h2{margin:0}
+h3{margin:6px 0;color:#16a34a}
 
-.box h3{
-  margin:6px 0;
-  color:#16a34a;
+.task{
+  margin:10px 0;
+  padding:10px;
+  border:1px solid #ddd;
+  border-radius:8px;
+  text-align:left;
 }
 
-.info{
-  margin:6px 0;
-  font-size:14px;
-}
-
-/* MESSAGE */
 .msg{
-  margin:12px 0;
+  margin-top:12px;
   padding:12px;
   background:#fef3c7;
   color:#92400e;
@@ -75,7 +45,6 @@ header h4{
   font-size:14px;
 }
 
-/* BUTTONS */
 button{
   width:100%;
   padding:12px;
@@ -86,55 +55,189 @@ button{
   cursor:pointer;
 }
 
-.submit{
-  background:#16a34a;
-  color:#fff;
-}
-
-.submit:disabled{
-  background:#9ca3af;
-  cursor:not-allowed;
-}
-
-.logout{
-  background:#dc2626;
-  color:#fff;
-}
+.submit{background:#16a34a;color:#fff}
+.logout{background:#dc2626;color:#fff}
+.disabled{background:#9ca3af;cursor:not-allowed}
 </style>
 </head>
 
 <body>
 
-<!-- 🔝 LOGO HEADER -->
-<header>
-  <img src="logo.png" class="logo">
-  <h4>WELCOME</h4>
-</header>
+<div class="box">
+  <h2>WELCOME</h2>
+  <h3>FAITH & FITNESS</h3>
 
-<!-- 📦 VOTING BOX -->
-<div class="container">
-  <div class="box">
-    <h3>FAITH & FITNESS</h3>
+  <div id="userName">Hello</div>
+  <div id="userPoints">Total Points: 0</div>
 
-    <div class="info" id="userName">Hello, User</div>
-    <div class="info" id="userPoints">Total Points: 0</div>
+  <div id="taskBox"></div>
+  <div id="message"></div>
 
-    <div id="message" class="msg">
-      You have done today’s voting ✅ <br>
-      Next voting is tomorrow at <b>8 PM</b>
-    </div>
-
-    <button class="submit" disabled>Submit Vote</button>
-    <button class="logout" onclick="logout()">Logout</button>
-  </div>
+  <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
+  <button class="logout" onclick="logout()">Logout</button>
 </div>
 
-<script>
-/* 🔐 Logout */
-function logout(){
-  localStorage.clear();
+<script type="module">
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where, addDoc
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* 🔥 Firebase */
+const app = initializeApp({
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
+const db = getFirestore(app);
+
+/* 🔐 LOGIN CHECK */
+const phone = localStorage.getItem("userPhone");
+if(!phone){
   location.replace("index.html");
 }
+
+/* 🗓️ TODAY */
+const today = new Date().toISOString().split("T")[0];
+
+/* 👤 LOAD USER */
+async function loadUser(){
+  const snap = await getDocs(
+    query(collection(db,"users"), where("phone","==",phone))
+  );
+  snap.forEach(d=>{
+    userName.innerText = "Hello, " + d.data().name;
+  });
+}
+
+/* ⭐ TOTAL POINTS (USER + ADMIN) */
+async function loadTotalPoints(){
+  let total = 0;
+  const snap = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
+  snap.forEach(d=>{
+    total += Number(d.data().points || 0);
+  });
+  userPoints.innerText = "Total Points: " + total;
+}
+
+/* ❌ CHECK ALREADY VOTED */
+async function alreadyVoted(){
+  const snap = await getDocs(
+    query(
+      collection(db,"votes"),
+      where("phone","==",phone),
+      where("date","==",today),
+      where("source","==","user")
+    )
+  );
+
+  if(!snap.empty){
+    taskBox.innerHTML = "";
+    submitBtn.disabled = true;
+    submitBtn.classList.add("disabled");
+    message.innerHTML = `
+      <div class="msg">
+        You have done today’s voting ✅<br>
+        Next voting is tomorrow at <b>8 PM</b>
+      </div>`;
+    return true;
+  }
+  return false;
+}
+
+/* 🗳️ LOAD ACTIVE TASKS */
+async function loadTasks(){
+  if(await alreadyVoted()) return;
+
+  const now = new Date();
+  const snap = await getDocs(collection(db,"tasks"));
+
+  let hasTask = false;
+  taskBox.innerHTML = "";
+  message.innerHTML = "";
+
+  snap.forEach(d=>{
+    const t = d.data();
+    const start = new Date(t.start);
+    const end   = new Date(t.end);
+
+    if(now >= start && now <= end){
+      hasTask = true;
+      taskBox.innerHTML += `
+        <div class="task">
+          <label>
+            <input type="checkbox" data-points="${t.points}">
+            <b>${t.text}</b> (Points: ${t.points})
+          </label>
+        </div>
+      `;
+    }
+  });
+
+  if(!hasTask){
+    taskBox.innerHTML =
+      `<div class="msg">No active tasks right now ❌</div>`;
+    submitBtn.disabled = true;
+    submitBtn.classList.add("disabled");
+  }
+}
+
+/* ✅ SUBMIT VOTE (DOUBLE PROTECTION) */
+window.submitVote = async ()=>{
+  const checks =
+    document.querySelectorAll("#taskBox input[type=checkbox]:checked");
+
+  if(checks.length === 0){
+    alert("At least one task complete cheyyanam ✅");
+    return;
+  }
+
+  /* 🔒 FINAL DB CHECK (ANTI DUPLICATE) */
+  const checkSnap = await getDocs(
+    query(
+      collection(db,"votes"),
+      where("phone","==",phone),
+      where("date","==",today),
+      where("source","==","user")
+    )
+  );
+
+  if(!checkSnap.empty){
+    alert("You already voted today ❌");
+    alreadyVoted();
+    return;
+  }
+
+  let points = 0;
+  checks.forEach(c => points += Number(c.dataset.points));
+
+  await addDoc(collection(db,"votes"),{
+    phone,
+    points,
+    date: today,
+    source: "user",
+    createdAt: new Date().toISOString()
+  });
+
+  loadTotalPoints();
+  alreadyVoted();
+};
+
+/* 🚪 LOGOUT */
+window.logout = ()=>{
+  localStorage.clear();
+  location.replace("index.html");
+};
+
+/* 🚀 INIT */
+loadUser();
+loadTotalPoints();
+loadTasks();
 </script>
 
 </body>
