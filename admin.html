@@ -19,7 +19,6 @@ h2{text-align:center}
   gap:10px;
   flex-wrap:wrap;
 }
-
 .box{
   background:#fff;
   padding:10px 14px;
@@ -32,14 +31,12 @@ table{
   border-collapse:collapse;
   background:#fff;
 }
-
 th,td{
   border:1px solid #ddd;
   padding:6px;
   text-align:center;
   font-size:14px;
 }
-
 th{
   background:#2563eb;
   color:#fff;
@@ -53,14 +50,12 @@ input{
   width:65px;
   padding:4px;
 }
-
 button{
   padding:5px 8px;
   border:none;
   border-radius:4px;
   cursor:pointer;
 }
-
 .add{background:#16a34a;color:#fff}
 .clear{background:#6b7280;color:#fff}
 .export{background:#0284c7;color:#fff}
@@ -88,7 +83,6 @@ button{
   <input type="date" id="from" onchange="load()">
   To:
   <input type="date" id="to" onchange="load()">
-
   <button class="clear" onclick="clearFilter()">Clear</button>
   <button class="export" onclick="exportCSV()">Export CSV</button>
 
@@ -126,7 +120,7 @@ import {
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔐 ADMIN PASSWORD */
-if(prompt("Admin password") !== "1"){
+if(prompt("Admin password")!=="1"){
   location.replace("index.html");
 }
 
@@ -138,20 +132,21 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* 🔢 GET TOTAL POINTS (DATE FILTER SAFE) */
+/* 🔢 TOTAL POINTS (DATE FILTER SAFE) */
 async function getTotalPoints(phone){
   let total = 0;
   let q;
 
   if(from.value){
     const toDate = to.value || from.value;
+
     q = query(
       collection(db,"votes"),
       where("phone","==",phone),
       where("date",">=",from.value),
       where("date","<=",toDate)
     );
-  }else{
+  } else {
     q = query(
       collection(db,"votes"),
       where("phone","==",phone)
@@ -168,10 +163,10 @@ async function getTotalPoints(phone){
 
 /* 📊 LOAD DASHBOARD */
 window.load = async ()=>{
-  tbody.innerHTML = "";
+  tbody.innerHTML="";
 
   const usersSnap = await getDocs(collection(db,"users"));
-  totalUsers.innerText = usersSnap.size;
+  document.getElementById("totalUsers").innerText = usersSnap.size;
 
   let rows = [];
 
@@ -182,18 +177,19 @@ window.load = async ()=>{
     rows.push({
       name:data.name,
       phone:data.phone,
-      total
+      total: total || 0
     });
   }
 
+  /* SORT HIGH → LOW */
   rows.sort((a,b)=>b.total - a.total);
 
   let rank = 0;
   let prevPoints = null;
   let shown = 0;
 
-  rows.forEach((r,index)=>{
-    const slno = index + 1;
+  rows.forEach((r,i)=>{
+    const slno = i + 1;
 
     if(prevPoints === null || r.total < prevPoints){
       rank++;
@@ -221,7 +217,7 @@ window.load = async ()=>{
     tbody.appendChild(tr);
   });
 
-  shownUsers.innerText = shown;
+  document.getElementById("shown").innerText = shown;
 };
 load();
 
@@ -233,10 +229,7 @@ window.addPoint = async(phone)=>{
   }
 
   const val = Number(document.getElementById("p_"+phone).value);
-  if(val <= 0){
-    alert("Enter valid points");
-    return;
-  }
+  if(val<=0) return alert("Enter valid points");
 
   await addDoc(collection(db,"votes"),{
     phone,
@@ -257,14 +250,13 @@ window.clearFilter = ()=>{
   load();
 };
 
-/* 📤 EXPORT CSV */
+/* 📤 EXPORT CSV (FILTERED DATA ONLY) */
 window.exportCSV = ()=>{
   let csv="SL No,Rank,Name,Phone,Total Points\n";
   document.querySelectorAll("#tbody tr").forEach(tr=>{
     const t = tr.children;
     csv += `${t[0].innerText},${t[1].innerText},${t[2].innerText},${t[3].innerText},${t[4].innerText}\n`;
   });
-
   const blob = new Blob([csv]);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
