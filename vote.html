@@ -6,37 +6,47 @@
 <title>Faith & Fitness – Voting</title>
 
 <style>
-*{
-  box-sizing:border-box;
-}
 body{
   font-family: Arial, sans-serif;
   background:#f1f5f9;
-  min-height:100vh;
   margin:0;
-  padding:16px;
+  padding:0;
+  min-height:100vh;
   display:flex;
   justify-content:center;
   align-items:center;
 }
 
+/* LOGO */
+.logo-wrap{
+  display:flex;
+  justify-content:center;
+  margin-bottom:12px;
+}
+.logo-wrap img{
+  width:70%;
+  max-width:220px;
+  height:auto;
+}
+
+/* CARD */
 .box{
-  background:#ffffff;
-  width:100%;
-  max-width:420px;   /* 🔥 SAME SIZE AS LOGIN PAGE */
-  padding:26px;
-  border-radius:16px;
+  background:#fff;
+  padding:22px;
+  width:92%;
+  max-width:360px;
+  border-radius:14px;
   text-align:center;
-  box-shadow:0 10px 25px rgba(0,0,0,.15);
+  box-shadow:0 6px 18px rgba(0,0,0,.15);
 }
 
 h2{
-  margin:0;
-  font-size:24px;
+  margin:8px 0 4px;
 }
 h3{
-  margin:6px 0 12px;
+  margin:0 0 8px;
   color:#16a34a;
+  font-size:16px;
 }
 
 .info{
@@ -44,35 +54,28 @@ h3{
   margin-bottom:6px;
 }
 
-.task{
-  margin:12px 0;
-  padding:12px;
-  border:1px solid #e5e7eb;
-  border-radius:10px;
-  text-align:left;
-}
-
+/* MESSAGE */
 .msg{
-  margin-top:14px;
-  padding:14px;
+  margin-top:10px;
+  padding:12px;
   background:#fef3c7;
   color:#92400e;
-  border-radius:10px;
+  border-radius:8px;
   font-size:14px;
 }
 
+/* BUTTONS */
 button{
   width:100%;
-  padding:14px;
+  padding:12px;
+  margin-top:10px;
   font-size:16px;
   border:none;
   border-radius:8px;
   cursor:pointer;
-  margin-top:12px;
 }
-
 .submit{
-  background:#16a34a;
+  background:#9ca3af;
   color:#fff;
 }
 .logout{
@@ -80,7 +83,7 @@ button{
   color:#fff;
 }
 .disabled{
-  background:#9ca3af;
+  opacity:.7;
   cursor:not-allowed;
 }
 </style>
@@ -89,169 +92,47 @@ button{
 <body>
 
 <div class="box">
+
+  <!-- LOGO -->
+  <div class="logo-wrap">
+    <img src="logo.png" alt="Faith & Fitness">
+  </div>
+
   <h2>WELCOME</h2>
   <h3>FAITH & FITNESS</h3>
 
-  <div class="info" id="userName">Hello</div>
-  <div class="info" id="userPoints">Total Points: 0</div>
+  <div id="userName" class="info">Hello</div>
+  <div id="userPoints" class="info">Total Points: 0</div>
 
-  <div id="taskBox"></div>
-  <div id="message"></div>
+  <div class="msg">
+    You have done today’s voting ✅<br>
+    Next voting is tomorrow at <b>8 PM</b>
+  </div>
 
-  <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
+  <button class="submit disabled" disabled>Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
-<script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-
-import {
-  getFirestore, collection, getDocs,
-  query, where, addDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-/* 🔥 FIREBASE CONFIG */
-const firebaseConfig = {
-  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-/* 🔐 LOGIN CHECK */
+<script>
+/* 🔐 SIMPLE LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
+const name  = localStorage.getItem("userName");
+const points = localStorage.getItem("userPoints") || 0;
+
 if(!phone){
   location.replace("index.html");
 }
 
-/* 👤 LOAD USER */
-async function loadUser(){
-  const snap = await getDocs(
-    query(collection(db,"users"), where("phone","==",phone))
-  );
-  snap.forEach(d=>{
-    userName.innerText = "Hello, " + d.data().name;
-  });
-}
-
-/* ⭐ TOTAL POINTS (USER + ADMIN) */
-async function loadTotalPoints(){
-  let total = 0;
-  const snap = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
-  );
-  snap.forEach(d=>{
-    total += Number(d.data().points || 0);
-  });
-  userPoints.innerText = "Total Points: " + total;
-}
-
-/* ✅ CHECK ALREADY VOTED TODAY */
-async function checkVoted(){
-  const today = new Date().toISOString().split("T")[0];
-
-  const snap = await getDocs(
-    query(
-      collection(db,"votes"),
-      where("phone","==",phone),
-      where("date","==",today),
-      where("source","==","user")
-    )
-  );
-
-  if(!snap.empty){
-    taskBox.innerHTML="";
-    submitBtn.disabled=true;
-    submitBtn.classList.add("disabled");
-
-    message.innerHTML = `
-      <div class="msg">
-        You have done today’s voting ✅<br>
-        Next voting is <b>tomorrow at 8 PM</b>
-      </div>
-    `;
-    return true;
-  }
-  return false;
-}
-
-/* 🗓️ LOAD ACTIVE TASKS */
-async function loadTasks(){
-  if(await checkVoted()) return;
-
-  const now = new Date();
-  const snap = await getDocs(collection(db,"tasks"));
-
-  let active=false;
-  taskBox.innerHTML="";
-  message.innerHTML="";
-
-  snap.forEach(d=>{
-    const t = d.data();
-    const start = new Date(t.start);
-    const end   = new Date(t.end);
-
-    if(now >= start && now <= end){
-      active=true;
-      taskBox.innerHTML += `
-        <div class="task">
-          <label>
-            <input type="checkbox" data-points="${t.points}">
-            <b>${t.text}</b><br>
-            Points: ${t.points}
-          </label>
-        </div>
-      `;
-    }
-  });
-
-  if(!active){
-    taskBox.innerHTML = `<div class="msg">No active tasks right now ❌</div>`;
-    submitBtn.disabled=true;
-    submitBtn.classList.add("disabled");
-  }
-}
-
-/* 🗳️ SUBMIT VOTE */
-window.submitVote = async ()=>{
-  const checks = document.querySelectorAll(
-    "#taskBox input[type=checkbox]:checked"
-  );
-
-  if(checks.length===0){
-    alert("At least one task complete cheyyanam ✅");
-    return;
-  }
-
-  let points=0;
-  checks.forEach(c=>points+=Number(c.dataset.points));
-
-  await addDoc(collection(db,"votes"),{
-    phone,
-    points,
-    date:new Date().toISOString().split("T")[0],
-    source:"user",
-    createdAt:new Date().toISOString()
-  });
-
-  loadTotalPoints();
-  checkVoted();
-};
+document.getElementById("userName").innerText =
+  "Hello, " + (name || "User");
+document.getElementById("userPoints").innerText =
+  "Total Points: " + points;
 
 /* 🚪 LOGOUT */
-window.logout = ()=>{
+function logout(){
   localStorage.clear();
   location.replace("index.html");
-};
-
-/* INIT */
-loadUser();
-loadTotalPoints();
-loadTasks();
+}
 </script>
 
 </body>
