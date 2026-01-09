@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-content="width=device-width, initial-scale=0.85, user-scalable=yes">
 <title>Faith & Fitness – Voting</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
@@ -14,22 +14,20 @@ body{
   justify-content:center;
   align-items:center;
   min-height:100vh;
+  margin:0;
 }
 .box{
   background:#fff;
-  padding:28px;
-  width:380px;
+  padding:24px;
+  width:100%;
+  max-width:380px;
   border-radius:12px;
   text-align:center;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
 h2{margin:0}
 h3{margin:6px 0;color:#16a34a}
-.info{
-  font-size:14px;
-  color:#374151;
-  margin-top:6px;
-}
+
 .task{
   margin:10px 0;
   padding:10px;
@@ -37,6 +35,7 @@ h3{margin:6px 0;color:#16a34a}
   border-radius:8px;
   text-align:left;
 }
+
 .msg{
   margin-top:12px;
   padding:12px;
@@ -45,6 +44,7 @@ h3{margin:6px 0;color:#16a34a}
   border-radius:8px;
   font-size:14px;
 }
+
 button{
   width:100%;
   padding:12px;
@@ -54,6 +54,7 @@ button{
   border-radius:6px;
   cursor:pointer;
 }
+
 .submit{background:#16a34a;color:#fff}
 .logout{background:#dc2626;color:#fff}
 .disabled{background:#9ca3af;cursor:not-allowed}
@@ -66,9 +67,8 @@ button{
   <h2>WELCOME</h2>
   <h3>FAITH & FITNESS</h3>
 
-  <div class="info" id="userName">Hello</div>
-  <div class="info" id="userPoints">Total Points: 0</div>
-  <div class="info" id="voteDateInfo"></div>
+  <div id="userName">Hello</div>
+  <div id="userPoints">Total Points: 0</div>
 
   <div id="taskBox"></div>
   <div id="message"></div>
@@ -81,31 +81,29 @@ button{
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  getDocs,
-  query,
-  where,
-  addDoc
+  getFirestore, collection, getDocs,
+  query, where, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔥 Firebase */
-const firebaseConfig = {
-  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-const app = initializeApp(firebaseConfig);
+const app = initializeApp({
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
 const db = getFirestore(app);
 
-/* 🔐 Login check */
+/* 🔐 LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
 if(!phone){
   location.replace("index.html");
 }
 
-/* 👤 Load user */
+/* 🗓️ TODAY */
+const today = new Date().toISOString().split("T")[0];
+
+/* 👤 LOAD USER */
 async function loadUser(){
   const snap = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
@@ -115,30 +113,25 @@ async function loadUser(){
   });
 }
 
-/* ⭐ Total points (user + admin from votes) */
+/* ⭐ TOTAL POINTS (USER + ADMIN) */
 async function loadTotalPoints(){
   let total = 0;
   const snap = await getDocs(
     query(collection(db,"votes"), where("phone","==",phone))
   );
-  snap.forEach(d=> total += Number(d.data().points || 0));
+  snap.forEach(d=>{
+    total += Number(d.data().points || 0);
+  });
   userPoints.innerText = "Total Points: " + total;
 }
 
-/* 🔑 Active tasks (MULTIPLE) */
-let activeTasks = [];
-
-/* 🗳️ Check voted for THIS voting window */
-async function checkVoted(){
-  if(activeTasks.length === 0) return false;
-
-  const voteDate = activeTasks[0].start.split("T")[0];
-
+/* ❌ CHECK ALREADY VOTED */
+async function alreadyVoted(){
   const snap = await getDocs(
     query(
       collection(db,"votes"),
       where("phone","==",phone),
-      where("date","==",voteDate),
+      where("date","==",today),
       where("source","==","user")
     )
   );
@@ -149,23 +142,24 @@ async function checkVoted(){
     submitBtn.classList.add("disabled");
     message.innerHTML = `
       <div class="msg">
-        You have done this voting ✅<br>
-        Next voting starts at <b>8:00 PM</b>
+        You have done today’s voting ✅<br>
+        Next voting is tomorrow at <b>8 PM</b>
       </div>`;
     return true;
   }
   return false;
 }
 
-/* 🗓️ Load ACTIVE TASKS (MULTI-TASK + 12 PM RULE) */
+/* 🗳️ LOAD ACTIVE TASKS */
 async function loadTasks(){
+  if(await alreadyVoted()) return;
+
   const now = new Date();
   const snap = await getDocs(collection(db,"tasks"));
 
-  activeTasks = [];
+  let hasTask = false;
   taskBox.innerHTML = "";
   message.innerHTML = "";
-  voteDateInfo.innerText = "";
 
   snap.forEach(d=>{
     const t = d.data();
@@ -173,17 +167,7 @@ async function loadTasks(){
     const end   = new Date(t.end);
 
     if(now >= start && now <= end){
-      activeTasks.push(t);
-
-      const showDate = start.toLocaleDateString("en-GB");
-      const endTime  = end.toLocaleTimeString("en-IN",{
-        hour:"2-digit", minute:"2-digit", hour12:true
-      });
-
-      voteDateInfo.innerText =
-        "You are voting for: " + showDate +
-        " (Valid till " + endTime + ")";
-
+      hasTask = true;
       taskBox.innerHTML += `
         <div class="task">
           <label>
@@ -195,56 +179,62 @@ async function loadTasks(){
     }
   });
 
-  if(activeTasks.length === 0){
+  if(!hasTask){
     taskBox.innerHTML =
-      `<div class="msg">No active voting right now ❌</div>`;
+      `<div class="msg">No active tasks right now ❌</div>`;
     submitBtn.disabled = true;
     submitBtn.classList.add("disabled");
-    return;
   }
-
-  await checkVoted();
 }
 
-/* 🗳️ Submit Vote (SUM points, SAVE AS START DATE) */
+/* ✅ SUBMIT VOTE (DOUBLE PROTECTION) */
 window.submitVote = async ()=>{
-  if(activeTasks.length === 0) return;
-
-  const checks = document.querySelectorAll(
-    "#taskBox input[type=checkbox]:checked"
-  );
+  const checks =
+    document.querySelectorAll("#taskBox input[type=checkbox]:checked");
 
   if(checks.length === 0){
     alert("At least one task complete cheyyanam ✅");
     return;
   }
 
-  let points = 0;
-  checks.forEach(c=>{
-    points += Number(c.dataset.points);
-  });
+  /* 🔒 FINAL DB CHECK (ANTI DUPLICATE) */
+  const checkSnap = await getDocs(
+    query(
+      collection(db,"votes"),
+      where("phone","==",phone),
+      where("date","==",today),
+      where("source","==","user")
+    )
+  );
 
-  const voteDate = activeTasks[0].start.split("T")[0];
+  if(!checkSnap.empty){
+    alert("You already voted today ❌");
+    alreadyVoted();
+    return;
+  }
+
+  let points = 0;
+  checks.forEach(c => points += Number(c.dataset.points));
 
   await addDoc(collection(db,"votes"),{
     phone,
     points,
-    date: voteDate,       // 🔥 TASK START DATE
+    date: today,
     source: "user",
     createdAt: new Date().toISOString()
   });
 
   loadTotalPoints();
-  checkVoted();
+  alreadyVoted();
 };
 
-/* 🚪 Logout */
+/* 🚪 LOGOUT */
 window.logout = ()=>{
   localStorage.clear();
   location.replace("index.html");
 };
 
-/* INIT */
+/* 🚀 INIT */
 loadUser();
 loadTotalPoints();
 loadTasks();
