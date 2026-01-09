@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <title>Task Editor – Faith & Fitness</title>
 
-<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<!-- 🚫 Cache control (blink avoid) -->
+<meta http-equiv="Cache-Control" content="no-store">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 
@@ -12,7 +13,7 @@
 body{
   font-family: Arial;
   background:#f1f5f9;
-  display:flex;
+  display:none;
   justify-content:center;
   align-items:flex-start;
   min-height:100vh;
@@ -25,7 +26,8 @@ body{
   border-radius:10px;
   box-shadow:0 0 10px rgba(0,0,0,.2);
 }
-h2{text-align:center;margin-bottom:10px}
+h2{text-align:center}
+
 input,button{
   width:100%;
   padding:8px;
@@ -36,7 +38,9 @@ button{
   color:white;
   border:none;
   cursor:pointer;
+  border-radius:6px;
 }
+
 .task{
   border:1px solid #ddd;
   border-radius:8px;
@@ -44,10 +48,24 @@ button{
   margin-top:10px;
   background:#fafafa;
 }
-.small{font-size:12px;color:#555}
+.small{
+  font-size:12px;
+  color:#555;
+}
+
+.row{
+  display:flex;
+  gap:6px;
+}
+.row button{
+  flex:1;
+}
+
 .del{
   background:#dc2626;
-  margin-top:6px;
+}
+.edit{
+  background:#0284c7;
 }
 </style>
 </head>
@@ -57,17 +75,16 @@ button{
 <div class="box">
   <h2>Task Editor</h2>
 
-  <!-- TASK INPUTS -->
-  <input id="taskText" placeholder="Task name (eg: Drink Water)">
-  <input id="taskPoints" type="number" placeholder="Points">
-
+  <input id="taskText" placeholder="Task text (eg: No challenge completed)">
+  <input id="taskPoints" type="number" placeholder="Points (0 allowed)">
+  
   <label>Start Date & Time</label>
   <input id="startTime" type="datetime-local">
 
   <label>End Date & Time</label>
   <input id="endTime" type="datetime-local">
 
-  <button onclick="addTask()">Add Task</button>
+  <button onclick="saveTask()">Save Task</button>
 
   <hr>
   <h4>All Tasks</h4>
@@ -77,32 +94,31 @@ button{
 <script type="module">
 /* 🔐 ADMIN PASSWORD */
 if(prompt("Admin password") !== "1"){
-  location.replace("gate.html");
+  location.replace("index.html");
+}else{
+  document.body.style.display = "flex";
 }
 
 /* 🔥 FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc
+  getFirestore, collection, addDoc,
+  getDocs, deleteDoc, updateDoc, doc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
-
-const app = initializeApp(firebaseConfig);
+const app = initializeApp({
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
 const db = getFirestore(app);
 
-/* LOAD TASKS */
+/* 🔁 EDIT MODE */
+let editId = null;
+
+/* 📥 LOAD TASKS */
 async function loadTasks(){
   taskList.innerHTML = "";
   const snap = await getDocs(collection(db,"tasks"));
@@ -114,6 +130,7 @@ async function loadTasks(){
 
   snap.forEach(d=>{
     const t = d.data();
+
     taskList.innerHTML += `
       <div class="task">
         <b>${t.text}</b><br>
@@ -122,40 +139,49 @@ async function loadTasks(){
           Start: ${new Date(t.start).toLocaleString()}<br>
           End: ${new Date(t.end).toLocaleString()}
         </span>
-        <button class="del" onclick="deleteTask('${d.id}')">Delete</button>
+        <div class="row">
+          <button class="edit"
+            onclick="editTask(
+              '${d.id}',
+              '${t.text.replace(/'/g,"\\'")}',
+              ${t.points},
+              '${t.start}',
+              '${t.end}'
+            )">Edit</button>
+          <button class="del"
+            onclick="deleteTask('${d.id}')">Delete</button>
+        </div>
       </div>
     `;
   });
 }
 loadTasks();
 
-/* ADD TASK – SAME TIME ALLOWED */
-window.addTask = async ()=>{
+/* ➕ ADD / ✏️ UPDATE TASK */
+window.saveTask = async ()=>{
   const text = taskText.value.trim();
   const points = Number(taskPoints.value);
   const start = startTime.value;
   const end   = endTime.value;
 
-  if(!text || points <= 0 || !start || !end){
-    alert("All fields required");
+  if(!text || points < 0 || !start || !end){
+    alert("Fill all fields (points can be 0)");
     return;
   }
 
-  const startDate = new Date(start);
-  const endDate   = new Date(end);
-
-  if(endDate <= startDate){
-    alert("End time must be AFTER start time");
-    return;
+  if(editId){
+    // ✏️ UPDATE
+    await updateDoc(doc(db,"tasks",editId),{
+      text, points, start, end
+    });
+    editId = null;
+  }else{
+    // ➕ ADD
+    await addDoc(collection(db,"tasks"),{
+      text, points, start, end,
+      createdAt:new Date().toISOString()
+    });
   }
-
-  await addDoc(collection(db,"tasks"),{
-    text,
-    points,
-    start: startDate.toISOString(),
-    end: endDate.toISOString(),
-    createdAt: new Date().toISOString()
-  });
 
   taskText.value="";
   taskPoints.value="";
@@ -165,8 +191,17 @@ window.addTask = async ()=>{
   loadTasks();
 };
 
-/* DELETE TASK */
-window.deleteTask = async (id)=>{
+/* ✏️ EDIT TASK */
+window.editTask = (id,text,points,start,end)=>{
+  editId = id;
+  taskText.value = text;
+  taskPoints.value = points;
+  startTime.value = start;
+  endTime.value = end;
+};
+
+/* ❌ DELETE TASK */
+window.deleteTask = async(id)=>{
   if(!confirm("Delete this task?")) return;
   await deleteDoc(doc(db,"tasks",id));
   loadTasks();
