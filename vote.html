@@ -6,133 +6,205 @@
 <title>Faith & Fitness – Voting</title>
 
 <style>
+*{
+  box-sizing:border-box;
+}
 body{
-  font-family: Arial, sans-serif;
-  background:#f1f5f9;
   margin:0;
-  padding:0;
-  min-height:100vh;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+  font-family:Arial, sans-serif;
+  background:#f1f5f9;
 }
 
-/* LOGO */
-.logo-wrap{
-  display:flex;
-  justify-content:center;
-  margin-bottom:12px;
-}
-.logo-wrap img{
-  width:70%;
-  max-width:220px;
-  height:auto;
-}
-
-/* CARD */
-.box{
-  background:#fff;
-  padding:22px;
-  width:92%;
-  max-width:360px;
-  border-radius:14px;
+/* ===== HEADER ===== */
+.header{
+  background:#ffffff;
+  padding:16px 10px;
   text-align:center;
-  box-shadow:0 6px 18px rgba(0,0,0,.15);
+  box-shadow:0 2px 6px rgba(0,0,0,.12);
+}
+.header img{
+  width:200px;
+  max-width:90%;
+}
+.header h2{
+  margin:8px 0 0;
+  font-size:20px;
+  color:#166534;
 }
 
-h2{
-  margin:8px 0 4px;
+/* ===== PAGE CENTER ===== */
+.wrapper{
+  display:flex;
+  justify-content:center;
+  padding:20px 10px;
 }
-h3{
-  margin:0 0 8px;
+
+/* ===== VOTING CARD ===== */
+.box{
+  background:#ffffff;
+  width:100%;
+  max-width:420px;
+  padding:26px;
+  border-radius:16px;
+  text-align:center;
+  box-shadow:0 10px 25px rgba(0,0,0,.18);
+}
+
+.box h3{
+  margin:6px 0;
   color:#16a34a;
-  font-size:16px;
 }
 
 .info{
-  font-size:14px;
-  margin-bottom:6px;
+  margin:10px 0;
+  font-size:15px;
 }
 
-/* MESSAGE */
 .msg{
-  margin-top:10px;
+  margin:14px 0;
   padding:12px;
   background:#fef3c7;
   color:#92400e;
-  border-radius:8px;
+  border-radius:10px;
   font-size:14px;
 }
 
-/* BUTTONS */
 button{
   width:100%;
-  padding:12px;
+  padding:13px;
   margin-top:10px;
   font-size:16px;
   border:none;
   border-radius:8px;
   cursor:pointer;
 }
+
 .submit{
   background:#9ca3af;
   color:#fff;
 }
+
 .logout{
   background:#dc2626;
   color:#fff;
-}
-.disabled{
-  opacity:.7;
-  cursor:not-allowed;
 }
 </style>
 </head>
 
 <body>
 
-<div class="box">
-
-  <!-- LOGO -->
-  <div class="logo-wrap">
-    <img src="logo.png" alt="Faith & Fitness">
-  </div>
-
+<!-- ===== TOP HEADER ===== -->
+<div class="header">
+  <!-- logo.png same folder-il vechittundavuka -->
+  <img src="logo.png" alt="Faith & Fitness">
   <h2>WELCOME</h2>
-  <h3>FAITH & FITNESS</h3>
-
-  <div id="userName" class="info">Hello</div>
-  <div id="userPoints" class="info">Total Points: 0</div>
-
-  <div class="msg">
-    You have done today’s voting ✅<br>
-    Next voting is tomorrow at <b>8 PM</b>
-  </div>
-
-  <button class="submit disabled" disabled>Submit Vote</button>
-  <button class="logout" onclick="logout()">Logout</button>
 </div>
 
-<script>
-/* 🔐 SIMPLE LOGIN CHECK */
-const phone = localStorage.getItem("userPhone");
-const name  = localStorage.getItem("userName");
-const points = localStorage.getItem("userPoints") || 0;
+<!-- ===== VOTING AREA ===== -->
+<div class="wrapper">
+  <div class="box">
 
+    <h3>FAITH & FITNESS</h3>
+
+    <div class="info" id="userInfo">
+      Hello, User<br>
+      Total Points: 0
+    </div>
+
+    <div class="msg" id="message">
+      Loading...
+    </div>
+
+    <button class="submit" id="submitBtn" disabled>Submit Vote</button>
+    <button class="logout" onclick="logout()">Logout</button>
+
+  </div>
+</div>
+
+<!-- ===== FIREBASE LOGIC ===== -->
+<script type="module">
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* 🔥 Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain: "daily-voting-793ee.firebaseapp.com",
+  projectId: "daily-voting-793ee"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* 🔐 Login check */
+const phone = localStorage.getItem("userPhone");
 if(!phone){
   location.replace("index.html");
 }
 
-document.getElementById("userName").innerText =
-  "Hello, " + (name || "User");
-document.getElementById("userPoints").innerText =
-  "Total Points: " + points;
+/* 👤 Load user info */
+async function loadUser(){
+  const snap = await getDocs(
+    query(collection(db,"users"), where("phone","==",phone))
+  );
+  snap.forEach(d=>{
+    userInfo.innerHTML =
+      `Hello, ${d.data().name}<br>Total Points: 0`;
+  });
+}
 
-/* 🚪 LOGOUT */
-function logout(){
+/* ⭐ Load total points */
+async function loadPoints(){
+  let total = 0;
+  const snap = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
+  snap.forEach(d=>{
+    total += Number(d.data().points || 0);
+  });
+
+  const name = userInfo.innerHTML.split("<br>")[0];
+  userInfo.innerHTML = `${name}<br>Total Points: ${total}`;
+}
+
+/* 🗳️ Check today vote */
+async function checkVoted(){
+  const today = new Date().toISOString().split("T")[0];
+  const snap = await getDocs(
+    query(
+      collection(db,"votes"),
+      where("phone","==",phone),
+      where("date","==",today),
+      where("source","==","user")
+    )
+  );
+
+  if(!snap.empty){
+    message.innerHTML =
+      `You have done today’s voting ✅<br>
+       Next voting is tomorrow at <b>8 PM</b>`;
+    submitBtn.disabled = true;
+  }else{
+    message.innerHTML =
+      `Voting will be available at <b>8 PM</b>`;
+  }
+}
+
+/* 🚪 Logout */
+window.logout = ()=>{
   localStorage.clear();
   location.replace("index.html");
-}
+};
+
+/* INIT */
+loadUser();
+loadPoints();
+checkVoted();
 </script>
 
 </body>
