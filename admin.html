@@ -80,9 +80,11 @@ button{
 </div>
 
 <div class="box">
-  <b>Date Filter (USER votes only)</b><br><br>
-  From: <input type="date" id="from">
-  To: <input type="date" id="to">
+  <b>Date Filter (USER + ADMIN votes)</b><br><br>
+  From:
+  <input type="date" id="from" onchange="load()">
+  To:
+  <input type="date" id="to" onchange="load()">
   <button class="clear" onclick="clearFilter()">Clear</button>
   <button class="export" onclick="exportCSV()">Export CSV</button>
 
@@ -130,20 +132,34 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* 🔢 TOTAL POINTS (ONLY votes collection) */
+/* 🔢 TOTAL POINTS (WITH DATE FILTER) */
 async function getTotalPoints(phone){
   let total = 0;
-  const snap = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
+
+  let q = query(
+    collection(db,"votes"),
+    where("phone","==",phone)
   );
+
+  if(from.value){
+    q = query(
+      collection(db,"votes"),
+      where("phone","==",phone),
+      where("date",">=",from.value),
+      where("date","<=",to.value || from.value)
+    );
+  }
+
+  const snap = await getDocs(q);
   snap.forEach(d=>{
     total += Number(d.data().points || 0);
   });
+
   return total;
 }
 
 /* 📊 LOAD DASHBOARD */
-async function load(){
+window.load = async ()=>{
   tbody.innerHTML = "";
 
   const usersSnap = await getDocs(collection(db,"users"));
@@ -162,18 +178,18 @@ async function load(){
     });
   }
 
-  /* 🔥 SORT BY POINTS DESC */
+  /* 🔥 SORT POINTS DESC */
   rows.sort((a,b)=>b.total - a.total);
 
   let rank = 0;
   let prevPoints = null;
   let shown = 0;
 
-  rows.forEach((r, index)=>{
-    const slno = index + 1; // ✅ SL NO always continuous
+  rows.forEach((r,index)=>{
+    const slno = index + 1;
 
     if(prevPoints === null || r.total < prevPoints){
-      rank++; // ✅ same points = same rank
+      rank++;
     }
     prevPoints = r.total;
     shown++;
@@ -199,10 +215,10 @@ async function load(){
   });
 
   document.getElementById("shown").innerText = shown;
-}
+};
 load();
 
-/* ➕ ADMIN ADD POINTS (SAVE TO votes) */
+/* ➕ ADMIN ADD POINTS (ONLY WHEN NO DATE FILTER) */
 window.addPoint = async(phone)=>{
   if(from.value || to.value){
     alert("Date filter ON. Clear filter first ❌");
