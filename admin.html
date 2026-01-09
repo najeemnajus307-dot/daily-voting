@@ -19,7 +19,6 @@ h2{text-align:center}
   gap:10px;
   margin-bottom:15px;
 }
-
 .box{
   background:#fff;
   padding:10px 14px;
@@ -47,10 +46,7 @@ th{
 .rank2{background:#e5e7eb}
 .rank3{background:#fecaca}
 
-input{
-  width:65px;
-  padding:4px;
-}
+input{width:70px;padding:4px}
 button{
   padding:5px 8px;
   border:none;
@@ -59,13 +55,6 @@ button{
 }
 .add{background:#16a34a;color:#fff}
 .clear{background:#6b7280;color:#fff}
-.export{background:#0284c7;color:#fff}
-
-.note{
-  font-size:12px;
-  color:#b91c1c;
-  margin-top:6px;
-}
 </style>
 </head>
 
@@ -75,21 +64,16 @@ button{
 
 <div class="top">
   <div class="box">Total Users: <b id="totalUsers">0</b></div>
-  <div class="box">Shown Users: <b id="shown">0</b></div>
+  <div class="box">Shown Users: <b id="shownUsers">0</b></div>
 </div>
 
 <div class="box">
-  <b>Date Filter (USER + ADMIN votes)</b><br><br>
+  <b>Date Filter (optional)</b><br><br>
   From:
   <input type="date" id="from" onchange="load()">
   To:
   <input type="date" id="to" onchange="load()">
   <button class="clear" onclick="clearFilter()">Clear</button>
-  <button class="export" onclick="exportCSV()">Export CSV</button>
-
-  <div class="note">
-    ⚠️ Date filter ON ആണെങ്കിൽ admin add points disable ആയിരിക്കും
-  </div>
 </div>
 
 <br>
@@ -103,7 +87,7 @@ button{
   <th>Name</th>
   <th>Phone</th>
   <th>Total Points</th>
-  <th>Add Points</th>
+  <th>Add</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
@@ -114,12 +98,11 @@ button{
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs,
-  query, where, addDoc
+  getFirestore, collection, getDocs, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔐 ADMIN PASSWORD */
+/* 🔐 ADMIN CHECK */
 if(prompt("Admin password") !== "1"){
   location.replace("index.html");
 }
@@ -132,63 +115,48 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* 🔢 TOTAL POINTS (JS-side DATE FILTER) */
-async function getTotalPoints(phone){
-  let total = 0;
-
-  const snap = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
-  );
-
-  snap.forEach(d=>{
-    const v = d.data();
-    if(from.value){
-      const toDate = to.value || from.value;
-      if(v.date < from.value || v.date > toDate) return;
-    }
-    total += Number(v.points || 0);
-  });
-
-  return total;
-}
-
 /* 📊 LOAD DASHBOARD */
 window.load = async ()=>{
   tbody.innerHTML = "";
 
   const usersSnap = await getDocs(collection(db,"users"));
-  document.getElementById("totalUsers").innerText = usersSnap.size;
+  const votesSnap = await getDocs(collection(db,"votes"));
 
-  let rows = [];
+  totalUsers.innerText = usersSnap.size;
 
-  for(const u of usersSnap.docs){
+  // build vote map (JS-side date filter)
+  const voteMap = {};
+  votesSnap.forEach(d=>{
+    const v = d.data();
+    if(from.value){
+      const toDate = to.value || from.value;
+      if(v.date < from.value || v.date > toDate) return;
+    }
+    voteMap[v.phone] = (voteMap[v.phone] || 0) + Number(v.points || 0);
+  });
+
+  // build rows for ALL users (0-point users included)
+  const rows = [];
+  usersSnap.forEach(u=>{
     const data = u.data();
-    const total = await getTotalPoints(data.phone);
     rows.push({
       name: data.name,
       phone: data.phone,
-      total: total || 0
+      total: voteMap[data.phone] || 0
     });
-  }
+  });
 
-  /* SORT POINTS DESC */
+  // sort by points desc
   rows.sort((a,b)=>b.total - a.total);
 
   let rank = 0;
-  let prevPoints = null;
+  let prev = null;
   let shown = 0;
 
-  rows.forEach((r)=>{
-    // 🔥 DATE FILTER ON ആണെങ്കിൽ 0-point users skip
-    if(from.value && r.total === 0) return;
-
+  rows.forEach(r=>{
     shown++;
-    const slno = shown;
-
-    if(prevPoints === null || r.total < prevPoints){
-      rank++;
-    }
-    prevPoints = r.total;
+    if(prev === null || r.total < prev) rank++;
+    prev = r.total;
 
     const tr = document.createElement("tr");
     tr.className =
@@ -197,45 +165,35 @@ window.load = async ()=>{
       rank===3 ? "rank3" : "";
 
     tr.innerHTML = `
-      <td>${slno}</td>
+      <td>${shown}</td>
       <td>${rank}</td>
       <td>${r.name}</td>
       <td>${r.phone}</td>
       <td>${r.total}</td>
       <td>
-        <input type="number" id="p_${r.phone}" placeholder="+">
-        <button class="add" onclick="addPoint('${r.phone}')">Add</button>
+        <input type="number" id="p_${r.phone}" style="width:60px">
+        <button class="add" onclick="addPoint('${r.phone}')">+</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
 
-  document.getElementById("shown").innerText = shown;
+  shownUsers.innerText = shown;
 };
 load();
 
-/* ➕ ADMIN ADD POINTS */
+/* ➕ ADMIN ADD POINT */
 window.addPoint = async(phone)=>{
-  if(from.value || to.value){
-    alert("Date filter ON. Clear filter first ❌");
-    return;
-  }
-
   const val = Number(document.getElementById("p_"+phone).value);
-  if(val <= 0){
-    alert("Enter valid points");
-    return;
-  }
+  if(val<=0) return alert("Enter points");
 
   await addDoc(collection(db,"votes"),{
     phone,
     points: val,
     date: new Date().toISOString().split("T")[0],
-    source: "admin",
-    createdAt: new Date().toISOString()
+    source:"admin"
   });
 
-  alert("Points added ✅");
   load();
 };
 
@@ -244,20 +202,6 @@ window.clearFilter = ()=>{
   from.value="";
   to.value="";
   load();
-};
-
-/* 📤 EXPORT CSV (WHAT YOU SEE = WHAT YOU EXPORT) */
-window.exportCSV = ()=>{
-  let csv="SL No,Rank,Name,Phone,Total Points\n";
-  document.querySelectorAll("#tbody tr").forEach(tr=>{
-    const t = tr.children;
-    csv += `${t[0].innerText},${t[1].innerText},${t[2].innerText},${t[3].innerText},${t[4].innerText}\n`;
-  });
-  const blob = new Blob([csv]);
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "faith_fitness_report.csv";
-  a.click();
 };
 </script>
 
