@@ -2,103 +2,83 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-
-<!-- 🔥 MUST FOR MOBILE (NO ZOOM) -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Faith & Fitness – Voting</title>
 
 <style>
 *{
   box-sizing:border-box;
 }
-
 body{
   font-family: Arial, sans-serif;
   background:#f1f5f9;
+  min-height:100vh;
   margin:0;
-  padding:12px;
-
+  padding:16px;
   display:flex;
   justify-content:center;
   align-items:center;
-  min-height:100svh;
 }
 
-/* MAIN CARD */
 .box{
-  background:#fff;
+  background:#ffffff;
   width:100%;
-  max-width:360px;
-  padding:22px;
-  border-radius:14px;
+  max-width:420px;   /* 🔥 SAME SIZE AS LOGIN PAGE */
+  padding:26px;
+  border-radius:16px;
   text-align:center;
-  box-shadow:0 8px 18px rgba(0,0,0,.15);
+  box-shadow:0 10px 25px rgba(0,0,0,.15);
 }
 
 h2{
   margin:0;
-  font-size:22px;
+  font-size:24px;
 }
-
 h3{
-  margin:6px 0 10px;
+  margin:6px 0 12px;
   color:#16a34a;
-  font-size:15px;
 }
 
-#userName{
-  margin-top:4px;
+.info{
   font-size:14px;
+  margin-bottom:6px;
 }
 
-#userPoints{
-  margin:4px 0 12px;
-  font-size:14px;
-  font-weight:bold;
-}
-
-/* TASK */
 .task{
-  margin:10px 0;
-  padding:10px;
-  border:1px solid #ddd;
-  border-radius:8px;
+  margin:12px 0;
+  padding:12px;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
   text-align:left;
-  font-size:14px;
 }
 
-/* MESSAGE */
 .msg{
-  margin-top:12px;
-  padding:12px;
+  margin-top:14px;
+  padding:14px;
   background:#fef3c7;
   color:#92400e;
-  border-radius:8px;
+  border-radius:10px;
   font-size:14px;
 }
 
-/* BUTTONS */
 button{
   width:100%;
-  padding:12px;
-  margin-top:10px;
-  font-size:15px;
+  padding:14px;
+  font-size:16px;
   border:none;
   border-radius:8px;
   cursor:pointer;
+  margin-top:12px;
 }
 
 .submit{
   background:#16a34a;
   color:#fff;
 }
-
 .logout{
   background:#dc2626;
   color:#fff;
 }
-
 .disabled{
   background:#9ca3af;
   cursor:not-allowed;
@@ -112,8 +92,8 @@ button{
   <h2>WELCOME</h2>
   <h3>FAITH & FITNESS</h3>
 
-  <div id="userName">Hello</div>
-  <div id="userPoints">Total Points: 0</div>
+  <div class="info" id="userName">Hello</div>
+  <div class="info" id="userPoints">Total Points: 0</div>
 
   <div id="taskBox"></div>
   <div id="message"></div>
@@ -127,12 +107,8 @@ import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 
 import {
-  getFirestore,
-  collection,
-  getDocs,
-  query,
-  where,
-  addDoc
+  getFirestore, collection, getDocs,
+  query, where, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
@@ -174,7 +150,7 @@ async function loadTotalPoints(){
   userPoints.innerText = "Total Points: " + total;
 }
 
-/* 🗳️ CHECK TODAY VOTED */
+/* ✅ CHECK ALREADY VOTED TODAY */
 async function checkVoted(){
   const today = new Date().toISOString().split("T")[0];
 
@@ -195,8 +171,9 @@ async function checkVoted(){
     message.innerHTML = `
       <div class="msg">
         You have done today’s voting ✅<br>
-        Next voting is tomorrow at <b>8 PM</b>
-      </div>`;
+        Next voting is <b>tomorrow at 8 PM</b>
+      </div>
+    `;
     return true;
   }
   return false;
@@ -208,32 +185,32 @@ async function loadTasks(){
 
   const now = new Date();
   const snap = await getDocs(collection(db,"tasks"));
-  let any = false;
 
+  let active=false;
   taskBox.innerHTML="";
   message.innerHTML="";
 
   snap.forEach(d=>{
     const t = d.data();
     const start = new Date(t.start);
-    const end = new Date(t.end);
+    const end   = new Date(t.end);
 
     if(now >= start && now <= end){
-      any = true;
+      active=true;
       taskBox.innerHTML += `
         <div class="task">
           <label>
             <input type="checkbox" data-points="${t.points}">
-            <b>${t.text}</b> (Points: ${t.points})
+            <b>${t.text}</b><br>
+            Points: ${t.points}
           </label>
         </div>
       `;
     }
   });
 
-  if(!any){
-    taskBox.innerHTML = `
-      <div class="msg">No active tasks right now ❌</div>`;
+  if(!active){
+    taskBox.innerHTML = `<div class="msg">No active tasks right now ❌</div>`;
     submitBtn.disabled=true;
     submitBtn.classList.add("disabled");
   }
@@ -245,24 +222,20 @@ window.submitVote = async ()=>{
     "#taskBox input[type=checkbox]:checked"
   );
 
-  if(checks.length === 0){
+  if(checks.length===0){
     alert("At least one task complete cheyyanam ✅");
     return;
   }
 
-  let points = 0;
-  checks.forEach(c=>{
-    points += Number(c.dataset.points);
-  });
-
-  const today = new Date().toISOString().split("T")[0];
+  let points=0;
+  checks.forEach(c=>points+=Number(c.dataset.points));
 
   await addDoc(collection(db,"votes"),{
     phone,
     points,
-    date: today,
-    source: "user",
-    createdAt: new Date().toISOString()
+    date:new Date().toISOString().split("T")[0],
+    source:"user",
+    createdAt:new Date().toISOString()
   });
 
   loadTotalPoints();
