@@ -6,7 +6,7 @@
 
 <style>
 body{
-  font-family: Arial;
+  font-family:Arial;
   background:#f1f5f9;
   padding:15px;
 }
@@ -57,7 +57,11 @@ button{
 .clear{background:#6b7280;color:#fff}
 .export{background:#0284c7;color:#fff}
 
-label{font-size:14px}
+.note{
+  font-size:12px;
+  color:#b91c1c;
+  margin-top:6px;
+}
 </style>
 </head>
 
@@ -71,8 +75,7 @@ label{font-size:14px}
 </div>
 
 <div class="box">
-  <b>Date Filter (Optional)</b><br><br>
-
+  <b>Date Filter</b><br><br>
   From:
   <input type="date" id="from" onchange="load()">
   To:
@@ -82,11 +85,14 @@ label{font-size:14px}
   <button class="export" onclick="exportCSV()">Export CSV</button>
 
   <br><br>
-
   <label>
     <input type="checkbox" id="hideZero" onchange="load()">
-    Hide users with 0 points
+    Hide users with NO VOTE
   </label>
+
+  <div class="note">
+    ℹ️ Date filter ON ആണെങ്കിൽ vote ചെയ്ത users മാത്രം കാണിക്കും
+  </div>
 </div>
 
 <br>
@@ -95,11 +101,11 @@ label{font-size:14px}
 <table>
 <thead>
 <tr>
-  <th>SL No</th>
+  <th>SL</th>
   <th>Rank</th>
   <th>Name</th>
   <th>Phone</th>
-  <th>Total Points</th>
+  <th>Points</th>
   <th>Add</th>
 </tr>
 </thead>
@@ -115,8 +121,8 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔐 ADMIN CHECK */
-if(prompt("Admin password") !== "1"){
+/* 🔐 ADMIN PASSWORD */
+if(prompt("Admin password")!=="5"){
   location.replace("index.html");
 }
 
@@ -130,66 +136,94 @@ const db = getFirestore(app);
 
 let CURRENT_ROWS = [];
 
-/* 📊 LOAD DASHBOARD (JS DATE FILTER ONLY) */
 window.load = async ()=>{
-  tbody.innerHTML = "";
-  CURRENT_ROWS = [];
+  tbody.innerHTML="";
+  CURRENT_ROWS=[];
 
   const usersSnap = await getDocs(collection(db,"users"));
   const votesSnap = await getDocs(collection(db,"votes"));
 
   totalUsers.innerText = usersSnap.size;
 
-  /* 🧮 Build vote map */
+  const isDateFilterOn = from.value !== "";
+
+  /* 🔢 BUILD VOTE MAP */
   const voteMap = {};
 
   votesSnap.forEach(d=>{
     const v = d.data();
 
-    // JS date filter (SAFE)
-    if(from.value){
+    if(isDateFilterOn){
       const toDate = to.value || from.value;
       if(v.date < from.value || v.date > toDate) return;
     }
 
-    voteMap[v.phone] =
-      (voteMap[v.phone] || 0) + Number(v.points || 0);
+    if(!voteMap[v.phone]){
+      voteMap[v.phone] = { points:0, count:0 };
+    }
+    voteMap[v.phone].points += Number(v.points||0);
+    voteMap[v.phone].count  += 1;
   });
 
-  /* 👥 Build rows for ALL users */
-  usersSnap.forEach(u=>{
-    const data = u.data();
-    CURRENT_ROWS.push({
-      name: data.name,
-      phone: data.phone,
-      total: voteMap[data.phone] || 0
+  /* 🧱 BUILD ROWS */
+  if(isDateFilterOn){
+    // 👉 ONLY users who voted
+    for(const phone in voteMap){
+      const u = usersSnap.docs.find(
+        d => d.data().phone === phone
+      );
+      if(!u) continue;
+
+      CURRENT_ROWS.push({
+        name: u.data().name,
+        phone,
+        total: voteMap[phone].points,
+        voted:true
+      });
+    }
+  }else{
+    // 👉 ALL users
+    usersSnap.forEach(u=>{
+      const p = u.data().phone;
+      CURRENT_ROWS.push({
+        name: u.data().name,
+        phone:p,
+        total: voteMap[p]?.points || 0,
+        voted: voteMap[p]?.count > 0
+      });
     });
-  });
-
-  /* 🚫 Hide zero points if checked */
-  if(hideZero.checked){
-    CURRENT_ROWS = CURRENT_ROWS.filter(r=>r.total>0);
   }
 
-  /* 🔽 Sort by points (HIGH → LOW) */
+  /* 🚫 HIDE NO-VOTE USERS */
+  if(hideZero.checked){
+    CURRENT_ROWS = CURRENT_ROWS.filter(r=>r.voted);
+  }
+
+  /* ❌ EMPTY RESULT */
+  if(CURRENT_ROWS.length === 0){
+    tbody.innerHTML =
+      `<tr><td colspan="6">No voting data found</td></tr>`;
+    shownUsers.innerText = 0;
+    return;
+  }
+
+  /* 🔽 SORT */
   CURRENT_ROWS.sort((a,b)=>b.total - a.total);
 
-  let rank = 0;
-  let prev = null;
-  let shown = 0;
+  let rank=0, prev=null, shown=0;
 
   CURRENT_ROWS.forEach((r,i)=>{
-    if(prev === null || r.total < prev) rank++;
+    if(prev===null || r.total < prev) rank++;
     prev = r.total;
     shown++;
 
-    const tr = document.createElement("tr");
+    const tr=document.createElement("tr");
     tr.className =
-      rank===1 ? "rank1" :
-      rank===2 ? "rank2" :
-      rank===3 ? "rank3" : "";
+      rank===1?"rank1":
+      rank===2?"rank2":
+      rank===3?"rank3":"";
 
-    tr.innerHTML = `
+    tr.innerHTML=`
       <td>${shown}</td>
       <td>${rank}</td>
       <td>${r.name}</td>
@@ -210,57 +244,47 @@ load();
 
 /* ➕ ADMIN ADD POINT */
 window.addPoint = async(phone)=>{
-  const val = Number(document.getElementById("p_"+phone).value);
-  if(val <= 0){
-    alert("Enter valid points");
-    return;
-  }
+  const v = Number(document.getElementById("p_"+phone).value);
+  if(v<=0) return alert("Enter valid points");
 
   await addDoc(collection(db,"votes"),{
     phone,
-    points: val,
-    date: new Date().toISOString().split("T")[0],
-    source: "admin"
+    points:v,
+    date:new Date().toISOString().split("T")[0],
+    source:"admin"
   });
 
   load();
 };
 
-/* 🧹 CLEAR FILTER */
+/* 🧹 CLEAR */
 window.clearFilter = ()=>{
   from.value="";
   to.value="";
   load();
 };
 
-/* 📤 EXPORT CSV (FROM CURRENT_ROWS) */
+/* 📤 EXPORT CSV */
 window.exportCSV = ()=>{
-  if(CURRENT_ROWS.length === 0){
+  if(CURRENT_ROWS.length===0){
     alert("No data to export");
     return;
   }
 
-  let csv = "SL No,Rank,Name,Phone,Total Points\n";
-  let rank = 0;
-  let prev = null;
+  let csv="SL,Rank,Name,Phone,Points\n";
+  let rank=0, prev=null;
 
   CURRENT_ROWS.forEach((r,i)=>{
-    if(prev === null || r.total < prev) rank++;
-    prev = r.total;
-
-    csv += `${i+1},${rank},"${r.name}","${r.phone}",${r.total}\n`;
+    if(prev===null || r.total < prev) rank++;
+    prev=r.total;
+    csv+=`${i+1},${rank},"${r.name}",${r.phone},${r.total}\n`;
   });
 
-  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "faith_fitness_report.csv";
-  document.body.appendChild(a);
+  const blob=new Blob([csv],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="faith_fitness_report.csv";
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 };
 </script>
 
