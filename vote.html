@@ -8,66 +8,69 @@
 <style>
 body{
   margin:0;
-  font-family: Arial, sans-serif;
+  font-family:Arial, sans-serif;
   background:#f1f5f9;
-  min-height:100vh;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
 }
 
-/* 🔰 HEADER */
+/* HEADER */
 .header{
-  width:100%;
-  background:#ffffff;
-  padding:15px 0;
+  background:#fff;
+  padding:12px;
   text-align:center;
   box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
 .header img{
-  height:70px; /* 🔥 LOGO SIZE */
+  height:60px;   /* 👈 logo size */
 }
 
-/* 📦 VOTING BOX */
-.box{
+/* PAGE CENTER */
+.container{
+  min-height:calc(100vh - 90px);
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  padding-top:30px;
+}
+
+/* CARD */
+.card{
   background:#fff;
-  margin-top:25px;
-  padding:22px;
   width:92%;
   max-width:360px;
+  padding:20px;
   border-radius:12px;
-  box-shadow:0 0 10px rgba(0,0,0,.2);
+  box-shadow:0 6px 14px rgba(0,0,0,.15);
   text-align:center;
 }
 
 h2{margin:5px 0}
-h3{margin:6px 0;color:#16a34a;font-size:15px}
+h3{margin:5px 0;color:#16a34a}
 
 .task{
-  margin:10px 0;
-  padding:10px;
   border:1px solid #ddd;
   border-radius:8px;
+  padding:10px;
+  margin:8px 0;
   text-align:left;
   font-size:14px;
 }
 
 .msg{
-  margin-top:12px;
-  padding:12px;
   background:#fef3c7;
   color:#92400e;
+  padding:12px;
   border-radius:8px;
   font-size:14px;
+  margin-top:10px;
 }
 
 button{
   width:100%;
   padding:12px;
   margin-top:10px;
-  font-size:16px;
   border:none;
   border-radius:6px;
+  font-size:15px;
   cursor:pointer;
 }
 .submit{background:#16a34a;color:#fff}
@@ -78,44 +81,43 @@ button{
 
 <body>
 
-<!-- 🔰 LOGO -->
+<!-- 🔰 HEADER LOGO -->
 <div class="header">
   <img src="logo.png" alt="Faith & Fitness">
 </div>
 
-<!-- 📦 VOTING CARD -->
-<div class="box">
-  <h2>WELCOME</h2>
-  <h3>FAITH & FITNESS</h3>
+<div class="container">
+  <div class="card">
 
-  <div id="userName">Hello</div>
-  <div id="userPoints">Total Points: 0</div>
+    <h2>WELCOME</h2>
+    <h3>FAITH & FITNESS</h3>
 
-  <div id="taskBox"></div>
-  <div id="message"></div>
+    <div id="userName">Hello</div>
+    <div id="userPoints">Total Points: 0</div>
 
-  <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
-  <button class="logout" onclick="logout()">Logout</button>
+    <div id="taskBox"></div>
+    <div id="message"></div>
+
+    <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
+    <button class="logout" onclick="logout()">Logout</button>
+
+  </div>
 </div>
 
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  getDocs,
-  query,
-  where,
-  addDoc
+  getFirestore, collection, getDocs,
+  query, where, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 Firebase */
+/* 🔥 FIREBASE */
 const app = initializeApp({
-  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
 });
 const db = getFirestore(app);
 
@@ -125,7 +127,17 @@ if(!phone){
   location.replace("index.html");
 }
 
-/* 👤 USER */
+/* 🕗 VOTING DATE (8 PM LOGIC) */
+function getVotingDate(){
+  const now = new Date();
+  const d = new Date(now);
+  if(now.getHours() < 20){
+    d.setDate(d.getDate() - 1);
+  }
+  return d.toISOString().split("T")[0];
+}
+
+/* 👤 LOAD USER */
 async function loadUser(){
   const snap = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
@@ -141,48 +153,32 @@ async function loadTotalPoints(){
   const snap = await getDocs(
     query(collection(db,"votes"), where("phone","==",phone))
   );
-  snap.forEach(d=>{
-    total += Number(d.data().points||0);
-  });
+  snap.forEach(d=> total += Number(d.data().points||0));
   userPoints.innerText = "Total Points: " + total;
 }
 
-/* 🕗 NEXT 8 PM LOGIC */
-function nextVotingTime(lastVote){
-  const d = new Date(lastVote);
-  d.setHours(20,0,0,0); // 8 PM
-  if(lastVote >= d.getTime()){
-    d.setDate(d.getDate()+1);
-  }
-  return d.getTime();
-}
-
-/* 🗳️ CHECK VOTED */
+/* ✅ CHECK ALREADY VOTED */
 async function checkVoted(){
+  const voteDate = getVotingDate();
+
   const snap = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
+    query(
+      collection(db,"votes"),
+      where("phone","==",phone),
+      where("date","==",voteDate)
+    )
   );
 
-  let lastVoteTime = 0;
-  snap.forEach(d=>{
-    if(d.data().voteTime && d.data().voteTime > lastVoteTime){
-      lastVoteTime = d.data().voteTime;
-    }
-  });
-
-  if(lastVoteTime){
-    const now = Date.now();
-    if(now < nextVotingTime(lastVoteTime)){
-      taskBox.innerHTML = "";
-      submitBtn.disabled = true;
-      submitBtn.classList.add("disabled");
-      message.innerHTML = `
-        <div class="msg">
-          You have done today’s voting ✅<br>
-          Next voting at <b>8 PM</b>
-        </div>`;
-      return true;
-    }
+  if(!snap.empty){
+    taskBox.innerHTML = "";
+    submitBtn.disabled = true;
+    submitBtn.classList.add("disabled");
+    message.innerHTML = `
+      <div class="msg">
+        You have done today's voting ✅<br>
+        Next voting is tomorrow at <b>8 PM</b>
+      </div>`;
+    return true;
   }
   return false;
 }
@@ -193,10 +189,10 @@ async function loadTasks(){
 
   const now = new Date();
   const snap = await getDocs(collection(db,"tasks"));
-  let any=false;
 
   taskBox.innerHTML="";
   message.innerHTML="";
+  let active=false;
 
   snap.forEach(d=>{
     const t=d.data();
@@ -204,40 +200,44 @@ async function loadTasks(){
     const end=new Date(t.end);
 
     if(now>=start && now<=end){
-      any=true;
+      active=true;
       taskBox.innerHTML+=`
         <div class="task">
           <label>
             <input type="checkbox" data-points="${t.points}">
-            ${t.text} (Points: ${t.points})
+            <b>${t.text}</b> (Points: ${t.points})
           </label>
         </div>`;
     }
   });
 
-  if(!any){
-    taskBox.innerHTML=`<div class="msg">No active tasks right now ❌</div>`;
+  if(!active){
+    taskBox.innerHTML =
+      `<div class="msg">No active tasks right now ❌</div>`;
     submitBtn.disabled=true;
     submitBtn.classList.add("disabled");
   }
 }
 
-/* 🗳️ SUBMIT */
-window.submitVote = async ()=>{
-  const checks=document.querySelectorAll("#taskBox input:checked");
-  if(checks.length===0){
+/* 🗳️ SUBMIT VOTE */
+window.submitVote = async()=>{
+  const checked = document.querySelectorAll(
+    "#taskBox input[type=checkbox]:checked"
+  );
+  if(checked.length===0){
     alert("At least one task select cheyyanam");
     return;
   }
 
   let points=0;
-  checks.forEach(c=>points+=Number(c.dataset.points));
+  checked.forEach(c=> points+=Number(c.dataset.points));
 
   await addDoc(collection(db,"votes"),{
     phone,
     points,
-    voteTime: Date.now(),
-    source:"user"
+    date:getVotingDate(),
+    source:"user",
+    createdAt:new Date().toISOString()
   });
 
   loadTotalPoints();
@@ -257,4 +257,4 @@ loadTasks();
 </script>
 
 </body>
-  </html>
+</html>
