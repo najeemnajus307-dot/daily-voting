@@ -75,7 +75,7 @@ button{
 </div>
 
 <div class="box">
-  <b>Date Filter</b><br><br>
+  <b>Date Filter (voteDay)</b><br><br>
   From:
   <input type="date" id="from" onchange="load()">
   To:
@@ -91,7 +91,8 @@ button{
   </label>
 
   <div class="note">
-    ℹ️ Date filter ON ആണെങ്കിൽ vote ചെയ്ത users മാത്രം കാണിക്കും
+    ✔ Date filter ON → voted users only  
+    ✔ Admin add + User vote → same logic
   </div>
 </div>
 
@@ -147,15 +148,16 @@ window.load = async ()=>{
 
   const isDateFilterOn = from.value !== "";
 
-  /* 🔢 BUILD VOTE MAP */
+  /* 🔢 BUILD VOTE MAP (voteDay ONLY) */
   const voteMap = {};
 
   votesSnap.forEach(d=>{
     const v = d.data();
 
     if(isDateFilterOn){
+      if(!v.voteDay) return; // old votes ignore
       const toDate = to.value || from.value;
-      if(v.date < from.value || v.date > toDate) return;
+      if(v.voteDay < from.value || v.voteDay > toDate) return;
     }
 
     if(!voteMap[v.phone]){
@@ -167,7 +169,7 @@ window.load = async ()=>{
 
   /* 🧱 BUILD ROWS */
   if(isDateFilterOn){
-    // 👉 ONLY users who voted
+    // 👉 ONLY users who voted in that date range
     for(const phone in voteMap){
       const u = usersSnap.docs.find(
         d => d.data().phone === phone
@@ -199,7 +201,7 @@ window.load = async ()=>{
     CURRENT_ROWS = CURRENT_ROWS.filter(r=>r.voted);
   }
 
-  /* ❌ EMPTY RESULT */
+  /* ❌ EMPTY */
   if(CURRENT_ROWS.length === 0){
     tbody.innerHTML =
       `<tr><td colspan="6">No voting data found</td></tr>`;
@@ -242,7 +244,7 @@ window.load = async ()=>{
 
 load();
 
-/* ➕ ADMIN ADD POINT */
+/* ➕ ADMIN ADD POINT (voteDay SAME AS USER) */
 window.addPoint = async(phone)=>{
   const v = Number(document.getElementById("p_"+phone).value);
   if(v<=0) return alert("Enter valid points");
@@ -250,8 +252,9 @@ window.addPoint = async(phone)=>{
   await addDoc(collection(db,"votes"),{
     phone,
     points:v,
-    date:new Date().toISOString().split("T")[0],
-    source:"admin"
+    voteDay: new Date().toISOString().split("T")[0],
+    source:"admin",
+    realDate: new Date().toISOString()
   });
 
   load();
