@@ -20,12 +20,12 @@ body{
   box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
 .header img{
-  height:180px; /* 👈 LOGO HEIGHT CONTROL */
+  height:140px;   /* 🔽 height kurakkan ivide change cheyyam */
 }
 
-/* PAGE CENTER */
+/* CENTER */
 .container{
-  min-height:calc(100vh - 70px);
+  min-height:calc(100vh - 80px);
   display:flex;
   justify-content:center;
   align-items:flex-start;
@@ -93,9 +93,9 @@ button{
 
 <body>
 
-<!-- 🔰 HEADER -->
+<!-- HEADER -->
 <div class="header">
-  <img src="logo..png" alt="Faith & Fitness">
+  <img src="logo.png" alt="Faith & Fitness">
 </div>
 
 <div class="container">
@@ -128,7 +128,7 @@ import {
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE */
+/* FIREBASE */
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -136,18 +136,17 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK */
+/* LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
 if(!phone){
   location.replace("index.html");
 }
 
-/* 📅 SHOW TODAY DATE */
+/* SHOW TODAY DATE */
 const now = new Date();
-todayDate.innerText =
-  "Date: " + now.toDateString();
+todayDate.innerText = "Date: " + now.toDateString();
 
-/* 🕗 VOTING DATE (8 PM LOGIC) */
+/* 🔥 MAIN FIX – VOTING DAY (8 PM LOGIC) */
 function getVotingDate(){
   const d = new Date();
   if(d.getHours() < 20){
@@ -156,25 +155,23 @@ function getVotingDate(){
   return d.toISOString().split("T")[0];
 }
 
-/* ⏳ NEXT VOTING TIMER */
+/* TIMER */
 function updateTimer(){
   const now = new Date();
   const next = new Date();
   next.setHours(20,0,0,0);
-  if(now >= next){
-    next.setDate(next.getDate()+1);
-  }
+  if(now >= next) next.setDate(next.getDate()+1);
+
   const diff = next - now;
   const h = Math.floor(diff/3600000);
   const m = Math.floor((diff%3600000)/60000);
   const s = Math.floor((diff%60000)/1000);
-  timer.innerText =
-    `Next voting in ${h}h ${m}m ${s}s`;
+  timer.innerText = `Next voting in ${h}h ${m}m ${s}s`;
 }
 setInterval(updateTimer,1000);
 updateTimer();
 
-/* 👤 USER */
+/* USER */
 async function loadUser(){
   const snap = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
@@ -184,7 +181,7 @@ async function loadUser(){
   });
 }
 
-/* ⭐ TOTAL POINTS */
+/* TOTAL POINTS */
 async function loadPoints(){
   let total = 0;
   const snap = await getDocs(
@@ -194,13 +191,13 @@ async function loadPoints(){
   userPoints.innerText = "Total Points: " + total;
 }
 
-/* ✅ ALREADY VOTED */
+/* CHECK ALREADY VOTED */
 async function checkVoted(){
   const snap = await getDocs(
     query(
       collection(db,"votes"),
       where("phone","==",phone),
-      where("date","==",getVotingDate())
+      where("voteDay","==",getVotingDate())   // ✅ FIX
     )
   );
 
@@ -218,7 +215,7 @@ async function checkVoted(){
   return false;
 }
 
-/* 📋 TASKS */
+/* TASKS */
 async function loadTasks(){
   if(await checkVoted()) return;
 
@@ -249,31 +246,30 @@ async function loadTasks(){
   }
 }
 
-/* 🗳️ SUBMIT */
+/* SUBMIT VOTE */
 window.submitVote = async()=>{
-  const checked=document.querySelectorAll(
-    "#taskBox input:checked"
-  );
+  const checked=document.querySelectorAll("#taskBox input:checked");
   if(!checked.length){
     alert("Task select cheyyanam");
     return;
   }
+
   let points=0;
   checked.forEach(c=>points+=Number(c.dataset.points));
 
   await addDoc(collection(db,"votes"),{
     phone,
     points,
-    date:getVotingDate(),
-    source:"user",
-    createdAt:new Date().toISOString()
+    voteDay: getVotingDate(),     // ✅ MAIN FIELD
+    realDate: new Date().toISOString(),
+    source:"user"
   });
 
   loadPoints();
   checkVoted();
 };
 
-/* 🚪 LOGOUT */
+/* LOGOUT */
 window.logout=()=>{
   localStorage.clear();
   location.replace("index.html");
@@ -286,8 +282,4 @@ loadTasks();
 </script>
 
 </body>
-  </html>
-
-
-
-
+</html>
