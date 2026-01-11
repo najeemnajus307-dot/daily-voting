@@ -2,33 +2,39 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin Dashboard – Faith & Fitness</title>
+<title>Faith & Fitness – Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
+  margin:0;
   font-family:Arial;
   background:#f1f5f9;
-  margin:0;
 }
+
+/* LAYOUT */
+.wrapper{display:flex;min-height:100vh}
+
+/* SIDEBAR */
 .sidebar{
-  width:220px;
+  width:230px;
   background:#0f172a;
   color:#fff;
-  height:100vh;
-  position:fixed;
-  padding:20px;
+  padding:20px 12px;
 }
 .sidebar h2{
   text-align:center;
   font-size:18px;
+  margin-bottom:25px;
 }
 .sidebar a{
   display:block;
-  padding:10px;
+  padding:10px 12px;
   color:#cbd5f5;
   text-decoration:none;
   border-radius:6px;
-  margin-top:5px;
+  margin-bottom:6px;
+  cursor:pointer;
 }
 .sidebar a.active,
 .sidebar a:hover{
@@ -36,63 +42,103 @@ body{
   color:#fff;
 }
 
+/* MAIN */
 .main{
-  margin-left:240px;
-  padding:20px;
+  flex:1;
+  padding:15px;
 }
-
 .card{
   background:#fff;
   padding:15px;
   border-radius:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,.15);
-  margin-bottom:20px;
+  box-shadow:0 4px 10px rgba(0,0,0,.1);
+  margin-bottom:15px;
 }
+.section{display:none}
 
+/* TABLE */
 table{
   width:100%;
   border-collapse:collapse;
+  margin-top:10px;
 }
 th,td{
   border:1px solid #ddd;
-  padding:8px;
+  padding:6px;
   text-align:center;
   font-size:14px;
 }
-th{
-  background:#2563eb;
-  color:#fff;
-}
-.delete{
-  background:#dc2626;
-  color:#fff;
+th{background:#2563eb;color:#fff}
+
+/* BUTTON */
+button{
+  padding:6px 10px;
   border:none;
-  padding:5px 10px;
   border-radius:5px;
   cursor:pointer;
 }
-select{
+.red{background:#dc2626;color:#fff}
+.green{background:#16a34a;color:#fff}
+
+/* INPUT */
+select,input{
   padding:6px;
+  margin-right:6px;
 }
 </style>
 </head>
 
 <body>
 
+<div class="wrapper">
+
+<!-- SIDEBAR -->
 <div class="sidebar">
   <h2>FAITH & FITNESS<br>ADMIN</h2>
-  <a class="active">User-wise Report</a>
+
+  <a id="m_dashboard" class="active" onclick="showSection('dashboard')">Dashboard</a>
+  <a id="m_taskwise" onclick="showSection('taskwise')">Task-wise Report</a>
+  <a id="m_userwise" onclick="showSection('userwise')">User-wise Report</a>
+  <a id="m_taskeditor" onclick="showSection('taskeditor')">Task Editor</a>
 </div>
 
+<!-- MAIN -->
 <div class="main">
 
-<div class="card">
-  <b>User:</b>
-  <select id="userSelect"></select>
-  <button onclick="loadUserVotes()">View</button>
+<!-- DASHBOARD -->
+<div class="card section" id="dashboard">
+  <h3>Dashboard</h3>
+  <p>Admin overview (users / votes summary)</p>
 </div>
 
-<div class="card">
+<!-- TASK WISE -->
+<div class="card section" id="taskwise">
+  <h3>Task-wise Report</h3>
+
+  Task:
+  <select id="taskSelect"></select>
+  <button onclick="loadTaskReport()">View</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Points</th>
+      </tr>
+    </thead>
+    <tbody id="taskBody"></tbody>
+  </table>
+</div>
+
+<!-- USER WISE -->
+<div class="card section" id="userwise">
+  <h3>User-wise Report</h3>
+
+  User:
+  <select id="userSelect"></select>
+  <button onclick="loadUserReport()">View</button>
+
   <table>
     <thead>
       <tr>
@@ -102,27 +148,46 @@ select{
         <th>Delete</th>
       </tr>
     </thead>
-    <tbody id="tbody"></tbody>
+    <tbody id="userBody"></tbody>
+  </table>
+</div>
+
+<!-- TASK EDITOR -->
+<div class="card section" id="taskeditor">
+  <h3>Task Editor</h3>
+  <input id="taskText" placeholder="Task text">
+  <input id="taskPoints" type="number" placeholder="Points">
+  <button class="green" onclick="addTask()">Add Task</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Task</th>
+        <th>Points</th>
+      </tr>
+    </thead>
+    <tbody id="taskList"></tbody>
   </table>
 </div>
 
 </div>
+</div>
 
+<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs,
-  query, where, deleteDoc, doc
+  getFirestore, collection, getDocs, addDoc, deleteDoc, doc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔐 ADMIN PASSWORD */
+/* PASSWORD */
 if(prompt("Admin password")!=="5"){
   location.replace("index.html");
 }
 
-/* 🔥 FIREBASE */
+/* FIREBASE CONFIG */
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -130,63 +195,89 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* 👤 LOAD USERS */
-async function loadUsers(){
-  const snap = await getDocs(collection(db,"users"));
-  userSelect.innerHTML="";
-  snap.forEach(d=>{
-    const o=document.createElement("option");
-    o.value=d.data().phone;
-    o.textContent=d.data().name;
-    userSelect.appendChild(o);
-  });
-}
-loadUsers();
+/* SECTION SWITCH */
+window.showSection = (id)=>{
+  document.querySelectorAll(".section").forEach(s=>s.style.display="none");
+  document.querySelectorAll(".sidebar a").forEach(a=>a.classList.remove("active"));
+  document.getElementById(id).style.display="block";
+  document.getElementById("m_"+id).classList.add("active");
+};
+showSection("dashboard");
 
-/* 📅 DATE FIX FUNCTION */
-function getSafeDate(v){
-  if(v.date) return v.date;
-  if(v.createdAt) return v.createdAt.split("T")[0];
-  return "Old Vote";
-}
+/* LOAD USERS */
+const users = {};
+const userSnap = await getDocs(collection(db,"users"));
+userSnap.forEach(d=>{
+  users[d.data().phone]=d.data().name;
+  userSelect.innerHTML+=
+    `<option value="${d.data().phone}">${d.data().name}</option>`;
+});
 
-/* 📋 LOAD USER VOTES */
-window.loadUserVotes = async()=>{
-  tbody.innerHTML="";
-  const phone = userSelect.value;
+/* LOAD TASKS */
+const tasks=[];
+const taskSnap = await getDocs(collection(db,"tasks"));
+taskSnap.forEach(d=>{
+  tasks.push(d.data());
+  taskSelect.innerHTML+=
+    `<option value="${d.data().text}">${d.data().text}</option>`;
+  taskList.innerHTML+=
+    `<tr><td>${d.data().text}</td><td>${d.data().points}</td></tr>`;
+});
 
-  const snap = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
-  );
-
-  if(snap.empty){
-    tbody.innerHTML =
-      `<tr><td colspan="4">No votes</td></tr>`;
-    return;
-  }
-
+/* USER REPORT */
+window.loadUserReport = async()=>{
+  userBody.innerHTML="";
+  const phone=userSelect.value;
+  const snap=await getDocs(collection(db,"votes"));
   snap.forEach(d=>{
     const v=d.data();
-    const tr=document.createElement("tr");
-
-    tr.innerHTML=`
-      <td>${getSafeDate(v)}</td>
-      <td>${v.points}</td>
-      <td>${v.source||"-"}</td>
-      <td>
-        <button class="delete"
-          onclick="deleteVote('${d.id}')">X</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
+    if(v.phone===phone){
+      userBody.innerHTML+=`
+        <tr>
+          <td>${v.date||"-"}</td>
+          <td>${v.points}</td>
+          <td>${v.source}</td>
+          <td><button class="red" onclick="delVote('${d.id}')">X</button></td>
+        </tr>`;
+    }
   });
 };
 
-/* ❌ DELETE VOTE */
-window.deleteVote = async(id)=>{
-  if(!confirm("Delete this vote?")) return;
-  await deleteDoc(doc(db,"votes",id));
-  loadUserVotes();
+/* DELETE VOTE */
+window.delVote = async(id)=>{
+  if(confirm("Delete vote?")){
+    await deleteDoc(doc(db,"votes",id));
+    loadUserReport();
+  }
+};
+
+/* TASK REPORT */
+window.loadTaskReport = async()=>{
+  taskBody.innerHTML="";
+  const snap=await getDocs(collection(db,"votes"));
+  const map={};
+  snap.forEach(d=>{
+    const v=d.data();
+    map[v.phone]=(map[v.phone]||0)+Number(v.points||0);
+  });
+  for(const p in map){
+    taskBody.innerHTML+=`
+      <tr>
+        <td>${users[p]||"-"}</td>
+        <td>${p}</td>
+        <td>${map[p]}</td>
+      </tr>`;
+  }
+};
+
+/* ADD TASK */
+window.addTask = async()=>{
+  if(!taskText.value||!taskPoints.value) return;
+  await addDoc(collection(db,"tasks"),{
+    text:taskText.value,
+    points:Number(taskPoints.value)
+  });
+  location.reload();
 };
 </script>
 
