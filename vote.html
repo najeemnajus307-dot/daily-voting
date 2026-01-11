@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Faith & Fitness – Voting</title>
+<title>Faith & Fitness – Vote</title>
 
 <style>
 body{
@@ -11,71 +11,42 @@ body{
   font-family:Arial, sans-serif;
   background:#f1f5f9;
 }
-
-/* HEADER */
 .header{
   background:#fff;
-  padding:6px 0;
   text-align:center;
+  padding:10px;
   box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
-.header img{
-  height:180px;   /* 🔽 height kurakkan ivide change cheyyam */
-}
+.header img{height:140px}
 
-/* CENTER */
 .container{
-  min-height:calc(100vh - 80px);
   display:flex;
   justify-content:center;
-  align-items:flex-start;
-  padding-top:25px;
+  padding:20px;
 }
-
-/* CARD */
 .card{
   background:#fff;
-  width:92%;
-  max-width:360px;
+  width:100%;
+  max-width:380px;
   padding:20px;
-  border-radius:14px;
+  border-radius:12px;
   box-shadow:0 6px 14px rgba(0,0,0,.15);
   text-align:center;
 }
-
-h2{margin:5px 0}
-h3{margin:5px 0;color:#16a34a}
-
-.date{
-  font-size:13px;
-  color:#475569;
-  margin-bottom:6px;
-}
-
 .task{
   border:1px solid #ddd;
-  border-radius:8px;
   padding:10px;
+  border-radius:8px;
   margin:8px 0;
   text-align:left;
-  font-size:14px;
 }
-
 .msg{
   background:#fef3c7;
-  color:#92400e;
-  padding:12px;
+  padding:10px;
   border-radius:8px;
-  font-size:14px;
   margin-top:10px;
+  font-size:14px;
 }
-
-.timer{
-  font-size:13px;
-  color:#2563eb;
-  margin-top:6px;
-}
-
 button{
   width:100%;
   padding:12px;
@@ -83,52 +54,48 @@ button{
   border:none;
   border-radius:6px;
   font-size:15px;
-  cursor:pointer;
 }
 .submit{background:#16a34a;color:#fff}
+.disabled{background:#9ca3af}
 .logout{background:#dc2626;color:#fff}
-.disabled{background:#9ca3af;cursor:not-allowed}
+.timer{color:#2563eb;font-size:13px;margin-top:6px}
 </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
-  <img src="logo..png" alt="Faith & Fitness">
+  <img src="logo.png">
 </div>
 
 <div class="container">
-  <div class="card">
+<div class="card">
 
-    <h2>WELCOME</h2>
-    <h3>FAITH & FITNESS</h3>
+<h2>WELCOME</h2>
+<h3 style="color:#16a34a">FAITH & FITNESS</h3>
 
-    <div class="date" id="todayDate"></div>
+<div id="todayDate"></div>
+<div id="userName"></div>
+<div id="userPoints"></div>
 
-    <div id="userName">Hello</div>
-    <div id="userPoints">Total Points: 0</div>
+<div id="taskBox"></div>
+<div id="message"></div>
+<div class="timer" id="timer"></div>
 
-    <div id="taskBox"></div>
-    <div id="message"></div>
-    <div class="timer" id="timer"></div>
+<button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
+<button class="logout" onclick="logout()">Logout</button>
 
-    <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
-    <button class="logout" onclick="logout()">Logout</button>
-
-  </div>
+</div>
 </div>
 
 <script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs,
   query, where, addDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE */
+/* 🔥 FIREBASE */
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -136,18 +103,16 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* LOGIN CHECK */
+/* 🔐 LOGIN */
 const phone = localStorage.getItem("userPhone");
-if(!phone){
-  location.replace("index.html");
-}
+if(!phone) location.replace("index.html");
 
-/* SHOW TODAY DATE */
+/* 📅 SHOW DATE */
 const now = new Date();
-todayDate.innerText = "Date: " + now.toDateString();
+todayDate.innerText = "Today: " + now.toDateString();
 
-/* 🔥 MAIN FIX – VOTING DAY (8 PM LOGIC) */
-function getVotingDate(){
+/* ✅ CORRECT VOTING DATE (8 PM RULE) */
+function getVoteDate(){
   const d = new Date();
   if(d.getHours() < 20){
     d.setDate(d.getDate() - 1);
@@ -155,13 +120,12 @@ function getVotingDate(){
   return d.toISOString().split("T")[0];
 }
 
-/* TIMER */
+/* ⏰ TIMER */
 function updateTimer(){
   const now = new Date();
   const next = new Date();
   next.setHours(20,0,0,0);
   if(now >= next) next.setDate(next.getDate()+1);
-
   const diff = next - now;
   const h = Math.floor(diff/3600000);
   const m = Math.floor((diff%3600000)/60000);
@@ -171,51 +135,45 @@ function updateTimer(){
 setInterval(updateTimer,1000);
 updateTimer();
 
-/* USER */
+/* 👤 USER */
 async function loadUser(){
-  const snap = await getDocs(
-    query(collection(db,"users"), where("phone","==",phone))
-  );
+  const q = query(collection(db,"users"), where("phone","==",phone));
+  const snap = await getDocs(q);
   snap.forEach(d=>{
     userName.innerText = "Hello, " + d.data().name;
   });
 }
 
-/* TOTAL POINTS */
+/* ⭐ POINTS */
 async function loadPoints(){
   let total = 0;
-  const snap = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
-  );
+  const snap = await getDocs(query(collection(db,"votes"), where("phone","==",phone)));
   snap.forEach(d=> total += Number(d.data().points||0));
   userPoints.innerText = "Total Points: " + total;
 }
 
-/* CHECK ALREADY VOTED */
+/* 🔁 CHECK ALREADY VOTED */
 async function checkVoted(){
-  const snap = await getDocs(
-    query(
-      collection(db,"votes"),
-      where("phone","==",phone),
-      where("voteDay","==",getVotingDate())   // ✅ FIX
-    )
-  );
+  const snap = await getDocs(query(
+    collection(db,"votes"),
+    where("phone","==",phone),
+    where("date","==",getVoteDate())
+  ));
 
   if(!snap.empty){
-    taskBox.innerHTML="";
-    submitBtn.disabled=true;
+    submitBtn.disabled = true;
     submitBtn.classList.add("disabled");
-    message.innerHTML=`
+    message.innerHTML = `
       <div class="msg">
         You have done today's voting ✅<br>
-        Next voting is at <b>8 PM</b>
+        Next voting at <b>8 PM</b>
       </div>`;
     return true;
   }
   return false;
 }
 
-/* TASKS */
+/* 📋 TASKS */
 async function loadTasks(){
   if(await checkVoted()) return;
 
@@ -226,51 +184,50 @@ async function loadTasks(){
 
   snap.forEach(d=>{
     const t=d.data();
-    if(now>=new Date(t.start) && now<=new Date(t.end)){
+    if(now >= new Date(t.start) && now <= new Date(t.end)){
       active=true;
-      taskBox.innerHTML+=`
+      taskBox.innerHTML += `
         <div class="task">
           <label>
             <input type="checkbox" data-points="${t.points}">
-            ${t.text} (Points: ${t.points})
+            ${t.text} ( ${t.points} pts )
           </label>
         </div>`;
     }
   });
 
   if(!active){
-    taskBox.innerHTML=
-      `<div class="msg">No active tasks ❌</div>`;
     submitBtn.disabled=true;
     submitBtn.classList.add("disabled");
+    taskBox.innerHTML=`<div class="msg">No active tasks</div>`;
   }
 }
 
-/* SUBMIT VOTE */
-window.submitVote = async()=>{
-  const checked=document.querySelectorAll("#taskBox input:checked");
+/* 🗳️ SUBMIT */
+window.submitVote = async ()=>{
+  const checked = document.querySelectorAll("#taskBox input:checked");
   if(!checked.length){
     alert("Task select cheyyanam");
     return;
   }
 
-  let points=0;
-  checked.forEach(c=>points+=Number(c.dataset.points));
+  let points = 0;
+  checked.forEach(c=> points += Number(c.dataset.points));
 
   await addDoc(collection(db,"votes"),{
     phone,
     points,
-    voteDay: getVotingDate(),     // ✅ MAIN FIELD
-    realDate: new Date().toISOString(),
-    source:"user"
+    date: getVoteDate(),        // ✅ FIXED
+    source: "user",
+    createdAt: new Date().toISOString()
   });
 
   loadPoints();
   checkVoted();
 };
 
-/* LOGOUT */
-window.logout=()=>{
+/* 🚪 LOGOUT */
+window.logout = ()=>{
   localStorage.clear();
   location.replace("index.html");
 };
@@ -283,4 +240,3 @@ loadTasks();
 
 </body>
 </html>
-
