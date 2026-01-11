@@ -2,27 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness – Admin</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Dashboard – Faith & Fitness</title>
 
 <style>
 body{
   margin:0;
-  font-family:Arial, sans-serif;
+  font-family:Arial;
   background:#f1f5f9;
+  display:flex;
 }
-.wrapper{display:flex;min-height:100vh}
 
 /* SIDEBAR */
 .sidebar{
-  width:230px;
+  width:220px;
   background:#0f172a;
   color:#fff;
+  min-height:100vh;
   padding:15px;
 }
 .sidebar h2{
-  font-size:16px;
   text-align:center;
+  font-size:16px;
   margin-bottom:20px;
 }
 .sidebar a{
@@ -40,117 +40,96 @@ body{
 }
 
 /* MAIN */
-.main{flex:1;padding:15px}
+.main{
+  flex:1;
+  padding:20px;
+}
+
 .card{
   background:#fff;
   padding:15px;
   border-radius:10px;
-  box-shadow:0 4px 10px rgba(0,0,0,.1);
-  margin-bottom:15px;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
 }
-.hide{display:none}
-
-/* DASHBOARD BOX */
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-  gap:10px;
-}
-.box{
-  background:#e5e7eb;
-  padding:15px;
-  border-radius:8px;
-  text-align:center;
-}
-.box b{font-size:20px}
 
 /* TABLE */
-table{width:100%;border-collapse:collapse}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
 th,td{
   border:1px solid #ddd;
   padding:6px;
   text-align:center;
   font-size:14px;
 }
-th{background:#2563eb;color:#fff}
-button{
-  padding:5px 8px;
+th{
+  background:#2563eb;
+  color:#fff;
+}
+.rank1{background:#fde047}
+.rank2{background:#e5e7eb}
+.rank3{background:#fecaca}
+
+.addBtn{
+  background:#16a34a;
+  color:#fff;
   border:none;
+  padding:4px 8px;
   border-radius:4px;
   cursor:pointer;
 }
-.del{background:#dc2626;color:#fff}
+input[type=number]{
+  width:60px;
+  padding:4px;
+}
 </style>
 </head>
 
 <body>
 
-<div class="wrapper">
-
 <!-- SIDEBAR -->
 <div class="sidebar">
   <h2>FAITH & FITNESS<br>ADMIN</h2>
-  <a href="#" class="active" onclick="show('dash')">Dashboard</a>
-  <a href="#" onclick="show('task')">Task-wise Report</a>
-  <a href="#" onclick="show('user')">User-wise Report</a>
+  <a class="active">Dashboard</a>
 </div>
 
 <!-- MAIN -->
 <div class="main">
+  <div class="card">
+    <h3>All Users – Ranking</h3>
 
-<!-- DASHBOARD -->
-<div id="dash" class="card">
-  <h3>Dashboard</h3>
-  <div class="grid">
-    <div class="box">Users<br><b id="d_users">0</b></div>
-    <div class="box">Total Votes<br><b id="d_votes">0</b></div>
-    <div class="box">Today Votes<br><b id="d_today">0</b></div>
-    <div class="box">Total Points<br><b id="d_points">0</b></div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>SL</th>
+            <th>Rank</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Total Points</th>
+            <th>Add Points</th>
+          </tr>
+        </thead>
+        <tbody id="rankBody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
-<!-- TASK WISE -->
-<div id="task" class="card hide">
-  <h3>Task-wise Report</h3>
-  <select id="taskSel"></select>
-  <button onclick="loadTask()">View</button>
-  <br><br>
-  <table>
-    <thead>
-      <tr><th>Name</th><th>Phone</th><th>Points</th><th>Date</th></tr>
-    </thead>
-    <tbody id="taskBody"></tbody>
-  </table>
-</div>
-
-<!-- USER WISE -->
-<div id="user" class="card hide">
-  <h3>User-wise Report</h3>
-  <select id="userSel"></select>
-  <button onclick="loadUser()">View</button>
-  <br><br>
-  <table>
-    <thead>
-      <tr><th>Date</th><th>Points</th><th>Source</th><th>Delete</th></tr>
-    </thead>
-    <tbody id="userBody"></tbody>
-  </table>
-</div>
-
-</div>
-</div>
-
-<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, query, where, deleteDoc, doc
+  getFirestore, collection, getDocs, addDoc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* PASSWORD */
-if(prompt("Admin password")!=="5") location.replace("index.html");
+/* ADMIN PASSWORD */
+if(prompt("Admin password")!=="5"){
+  location.replace("index.html");
+}
 
 /* FIREBASE */
 const app = initializeApp({
@@ -160,90 +139,74 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* NAV */
-window.show = id=>{
-  ["dash","task","user"].forEach(s=>{
-    document.getElementById(s).classList.add("hide");
-  });
-  document.getElementById(id).classList.remove("hide");
-  document.querySelectorAll(".sidebar a").forEach(a=>a.classList.remove("active"));
-  event.target.classList.add("active");
-};
-
-/* DASHBOARD LOAD */
+/* LOAD DASHBOARD */
 async function loadDashboard(){
-  const users = await getDocs(collection(db,"users"));
-  const votes = await getDocs(collection(db,"votes"));
+  const usersSnap = await getDocs(collection(db,"users"));
+  const votesSnap = await getDocs(collection(db,"votes"));
 
-  let today = new Date().toISOString().split("T")[0];
-  let todayVotes=0, totalPoints=0;
-
-  votes.forEach(v=>{
-    totalPoints += Number(v.data().points||0);
-    if(v.data().date===today) todayVotes++;
+  const voteMap = {};
+  votesSnap.forEach(v=>{
+    const d=v.data();
+    if(!voteMap[d.phone]) voteMap[d.phone]=0;
+    voteMap[d.phone]+=Number(d.points||0);
   });
 
-  d_users.innerText = users.size;
-  d_votes.innerText = votes.size;
-  d_today.innerText = todayVotes;
-  d_points.innerText = totalPoints;
+  let rows=[];
+  usersSnap.forEach(u=>{
+    const phone=u.data().phone;
+    rows.push({
+      name:u.data().name,
+      phone,
+      total:voteMap[phone]||0
+    });
+  });
+
+  rows.sort((a,b)=>b.total-a.total);
+
+  rankBody.innerHTML="";
+  let rank=0,prev=null;
+
+  rows.forEach((r,i)=>{
+    if(prev===null || r.total<prev) rank++;
+    prev=r.total;
+
+    const tr=document.createElement("tr");
+    tr.className =
+      rank===1?"rank1":
+      rank===2?"rank2":
+      rank===3?"rank3":"";
+
+    tr.innerHTML=`
+      <td>${i+1}</td>
+      <td>${rank}</td>
+      <td>${r.name}</td>
+      <td>${r.phone}</td>
+      <td>${r.total}</td>
+      <td>
+        <input type="number" id="p_${r.phone}">
+        <button class="addBtn" onclick="addPoint('${r.phone}')">+</button>
+      </td>
+    `;
+    rankBody.appendChild(tr);
+  });
 }
+
+/* ADD POINT */
+window.addPoint = async(phone)=>{
+  const val = Number(document.getElementById("p_"+phone).value);
+  if(val<=0) return alert("Valid points enter cheyyu");
+
+  await addDoc(collection(db,"votes"),{
+    phone,
+    points:val,
+    date:new Date().toISOString().split("T")[0],
+    source:"admin"
+  });
+
+  loadDashboard();
+};
+
 loadDashboard();
-
-/* TASK LIST */
-const taskSnap = await getDocs(collection(db,"tasks"));
-taskSnap.forEach(t=>{
-  taskSel.innerHTML+=`<option value="${t.id}">${t.data().text}</option>`;
-});
-
-/* USER LIST */
-const userSnap = await getDocs(collection(db,"users"));
-userSnap.forEach(u=>{
-  userSel.innerHTML+=`<option value="${u.data().phone}">${u.data().name}</option>`;
-});
-
-/* TASK REPORT */
-window.loadTask = async()=>{
-  taskBody.innerHTML="";
-  const id = taskSel.value;
-  const votes = await getDocs(query(collection(db,"votes"),where("taskId","==",id)));
-  votes.forEach(v=>{
-    const d=v.data();
-    taskBody.innerHTML+=`
-      <tr>
-        <td>${d.name||""}</td>
-        <td>${d.phone}</td>
-        <td>${d.points}</td>
-        <td>${d.date||""}</td>
-      </tr>`;
-  });
-};
-
-/* USER REPORT */
-window.loadUser = async()=>{
-  userBody.innerHTML="";
-  const phone = userSel.value;
-  const votes = await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
-  votes.forEach(v=>{
-    const d=v.data();
-    userBody.innerHTML+=`
-      <tr>
-        <td>${d.date||"old"}</td>
-        <td>${d.points}</td>
-        <td>${d.source||"user"}</td>
-        <td><button class="del" onclick="delVote('${v.id}')">X</button></td>
-      </tr>`;
-  });
-};
-
-/* DELETE */
-window.delVote = async(id)=>{
-  if(confirm("Delete vote?")){
-    await deleteDoc(doc(db,"votes",id));
-    loadUser();
-    loadDashboard();
-  }
-};
 </script>
 
 </body>
