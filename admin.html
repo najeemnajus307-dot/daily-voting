@@ -1,146 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Admin Dashboard – Faith & Fitness</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Faith & Fitness – Admin Panel</title>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#f1f5f9;
-  display:flex;
+:root{
+  --bg:#f1f5f9; --card:#fff; --pri:#2563eb; --ok:#16a34a; --bad:#dc2626;
 }
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:var(--bg)}
+.wrap{display:flex;min-height:100vh}
+
+/* SIDEBAR */
 .sidebar{
-  width:220px;
-  background:#0f172a;
-  color:#fff;
-  min-height:100vh;
-  padding:15px;
+  width:220px;background:#0f172a;color:#fff;padding:12px;
 }
-.sidebar h3{margin-top:0}
-.sidebar a{
-  display:block;
-  color:#fff;
-  text-decoration:none;
-  padding:8px;
-  border-radius:6px;
-  margin-bottom:6px;
-  background:#1e293b;
+.brand{font-weight:bold;text-align:center;margin:8px 0 16px}
+.nav a{
+  display:block;color:#cbd5f5;text-decoration:none;
+  padding:10px;border-radius:6px;margin:4px 0;cursor:pointer
 }
-.sidebar a.active{background:#2563eb}
+.nav a.active,.nav a:hover{background:#1e293b;color:#fff}
 
-.main{
-  flex:1;
-  padding:15px;
+/* MAIN */
+.main{flex:1;padding:16px}
+.hrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.card{
+  background:var(--card);padding:12px;border-radius:10px;
+  box-shadow:0 0 8px rgba(0,0,0,.12)
 }
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:14px}
+th{background:var(--pri);color:#fff}
+.rank1{background:#fde047}
+.rank2{background:#e5e7eb}
+.rank3{background:#fecaca}
+.btn{border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
+.add{background:var(--ok);color:#fff}
+.del{background:var(--bad);color:#fff}
+.muted{color:#64748b}
+.hidden{display:none}
+input,select{padding:6px}
 
-.box{
-  background:#fff;
-  padding:12px;
-  border-radius:8px;
-  margin-bottom:15px;
-  box-shadow:0 2px 6px rgba(0,0,0,.1);
+/* RESPONSIVE */
+@media(max-width:900px){
+  .sidebar{width:180px}
 }
-
-table{
-  width:100%;
-  border-collapse:collapse;
-  background:#fff;
+@media(max-width:700px){
+  .wrap{flex-direction:column}
+  .sidebar{width:100%}
 }
-th,td{
-  border:1px solid #ddd;
-  padding:6px;
-  font-size:13px;
-  text-align:center;
-}
-th{background:#2563eb;color:#fff}
-
-button{
-  padding:4px 8px;
-  border:none;
-  border-radius:4px;
-  cursor:pointer;
-}
-.delete{background:#dc2626;color:#fff}
-.add{background:#16a34a;color:#fff}
 </style>
 </head>
 
 <body>
+<div class="wrap">
 
-<div class="sidebar">
-  <h3>FAITH & FITNESS<br>ADMIN</h3>
-  <a class="active">Dashboard</a>
-</div>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">FAITH & FITNESS<br>ADMIN</div>
+    <div class="nav">
+      <a data-page="dash" class="active">Dashboard</a>
+      <a data-page="task">Task-wise Report</a>
+      <a data-page="user">User-wise Report</a>
+      <a onclick="location.href='task-editor.html'">Task Editor</a>
+    </div>
+  </aside>
 
-<div class="main">
+  <!-- MAIN -->
+  <main class="main">
 
-<h2>Admin Dashboard</h2>
+    <!-- DASHBOARD -->
+    <section id="page-dash">
+      <div class="hrow">
+        <div class="card">Total Users: <b id="d_users">0</b></div>
+        <div class="card">Shown Users: <b id="d_shown">0</b></div>
+        <div class="card">
+          Date:
+          <input type="date" id="d_from">
+          <input type="date" id="d_to">
+          <button class="btn" onclick="dashLoad()">Apply</button>
+          <button class="btn" onclick="dashClear()">Clear</button>
+        </div>
+        <div class="card">
+          <label><input type="checkbox" id="d_hide0" onchange="dashLoad()"> Hide zero</label>
+        </div>
+      </div>
 
-<div class="box">
-  <b>Filters</b><br><br>
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>SL</th><th>Rank</th><th>Name</th><th>Phone</th><th>Total Points</th><th>Add</th></tr>
+          </thead>
+          <tbody id="dashBody"></tbody>
+        </table>
+      </div>
+    </section>
 
-  Date:
-  <input type="date" id="from">
-  to
-  <input type="date" id="to">
+    <!-- TASK REPORT -->
+    <section id="page-task" class="hidden">
+      <div class="hrow">
+        <div class="card">
+          Task:
+          <select id="t_task"></select>
+          <button class="btn" onclick="taskLoad()">View</button>
+        </div>
+      </div>
 
-  Task:
-  <select id="taskSelect"></select>
+      <div class="card">
+        <h3>Voted Users</h3>
+        <table>
+          <thead><tr><th>Name</th><th>Phone</th><th>Points</th><th>Action</th></tr></thead>
+          <tbody id="t_voted"></tbody>
+        </table>
+      </div>
 
-  <button onclick="load()">Apply</button>
-  <button onclick="clearFilters()">Clear</button>
-</div>
+      <div class="card" style="margin-top:10px">
+        <h3>Not Voted Users</h3>
+        <table>
+          <thead><tr><th>Name</th><th>Phone</th><th>Add Vote</th></tr></thead>
+          <tbody id="t_not"></tbody>
+        </table>
+      </div>
+    </section>
 
-<div class="box">
-  <h3>Voted Users</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Task</th>
-        <th>Points</th>
-        <th>Date</th>
-        <th>Delete</th>
-      </tr>
-    </thead>
-    <tbody id="votedBody"></tbody>
-  </table>
-</div>
+    <!-- USER REPORT -->
+    <section id="page-user" class="hidden">
+      <div class="hrow">
+        <div class="card">
+          User:
+          <select id="u_user"></select>
+          <button class="btn" onclick="userLoad()">View</button>
+        </div>
+      </div>
 
-<div class="box">
-  <h3>Not Voted Users</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Add Vote</th>
-      </tr>
-    </thead>
-    <tbody id="notVotedBody"></tbody>
-  </table>
-</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Date</th><th>Points</th><th>Source</th><th>Delete</th></tr></thead>
+          <tbody id="u_body"></tbody>
+        </table>
+      </div>
+    </section>
 
+  </main>
 </div>
 
 <script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, collection, getDocs,
-  addDoc, deleteDoc, doc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-/* 🔐 ADMIN PASSWORD */
-if(prompt("Admin password")!=="5"){
-  location.replace("index.html");
-}
+/* 🔐 ADMIN */
+if(prompt("Admin password")!=="5") location.replace("index.html");
 
 /* 🔥 FIREBASE */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, addDoc, deleteDoc, doc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -148,112 +164,134 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-const votedBody=document.getElementById("votedBody");
-const notVotedBody=document.getElementById("notVotedBody");
-const taskSelect=document.getElementById("taskSelect");
+/* ---------- NAV ---------- */
+document.querySelectorAll(".nav a[data-page]").forEach(a=>{
+  a.onclick=()=>{
+    document.querySelectorAll(".nav a").forEach(x=>x.classList.remove("active"));
+    a.classList.add("active");
+    document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
+    document.getElementById("page-"+a.dataset.page).classList.remove("hidden");
+  }
+});
 
-/* LOAD TASKS IN SELECT */
-async function loadTasks(){
-  taskSelect.innerHTML=`<option value="">All Tasks</option>`;
-  const snap=await getDocs(collection(db,"tasks"));
-  snap.forEach(d=>{
-    const t=d.data();
-    taskSelect.innerHTML+=
-      `<option value="${t.text}">${t.text}</option>`;
+/* ---------- HELPERS ---------- */
+const today=()=>new Date().toISOString().split("T")[0];
+
+/* ---------- DASHBOARD ---------- */
+async function dashLoad(){
+  const users = await getDocs(collection(db,"users"));
+  const votes = await getDocs(collection(db,"votes"));
+  d_users.textContent = users.size;
+
+  const from=d_from.value, to=d_to.value||d_from.value;
+  const map={};
+
+  votes.forEach(v=>{
+    const x=v.data();
+    if(from && (x.date<from || x.date>to)) return;
+    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+  });
+
+  let rows=[];
+  users.forEach(u=>{
+    const p=u.data().phone;
+    rows.push({name:u.data().name, phone:p, total:map[p]||0});
+  });
+
+  if(d_hide0.checked) rows=rows.filter(r=>r.total>0);
+  rows.sort((a,b)=>b.total-a.total);
+
+  let rank=0,prev=null,sl=0;
+  dashBody.innerHTML="";
+  rows.forEach(r=>{
+    if(prev===null||r.total<prev) rank++;
+    prev=r.total; sl++;
+    const tr=document.createElement("tr");
+    tr.className=rank===1?"rank1":rank===2?"rank2":rank===3?"rank3":"";
+    tr.innerHTML=`<td>${sl}</td><td>${rank}</td><td>${r.name}</td><td>${r.phone}</td>
+      <td>${r.total}</td>
+      <td><input id="p_${r.phone}" type="number" style="width:60px">
+      <button class="btn add" onclick="addPoint('${r.phone}')">+</button></td>`;
+    dashBody.appendChild(tr);
+  });
+  d_shown.textContent=sl;
+}
+window.dashLoad=dashLoad;
+window.dashClear=()=>{d_from.value="";d_to.value="";dashLoad();}
+
+window.addPoint=async(phone)=>{
+  const v=Number(document.getElementById("p_"+phone).value);
+  if(v<=0) return alert("Enter points");
+  await addDoc(collection(db,"votes"),{phone,points:v,date:today(),source:"admin"});
+  dashLoad();
+};
+
+/* ---------- TASK REPORT ---------- */
+async function taskInit(){
+  const sel=document.getElementById("t_task");
+  sel.innerHTML="";
+  (await getDocs(collection(db,"tasks"))).forEach(d=>{
+    const o=document.createElement("option");
+    o.value=d.id; o.textContent=d.data().text;
+    sel.appendChild(o);
   });
 }
-loadTasks();
+async function taskLoad(){
+  const taskId=t_task.value;
+  const users=await getDocs(collection(db,"users"));
+  const votes=await getDocs(collection(db,"votes"));
 
-/* MAIN LOAD */
-window.load = async ()=>{
-  votedBody.innerHTML="";
-  notVotedBody.innerHTML="";
-
-  const usersSnap=await getDocs(collection(db,"users"));
-  const votesSnap=await getDocs(collection(db,"votes"));
-
-  const from=fromInput.value;
-  const to=toInput.value || from;
-  const task=taskSelect.value;
-
-  const votedPhones=new Set();
-
-  votesSnap.forEach(v=>{
-    const d=v.data();
-
-    if(from && (d.date<from || d.date>to)) return;
-    if(task && d.task!==task) return;
-
-    votedPhones.add(d.phone);
-
-    votedBody.innerHTML+=`
-      <tr>
-        <td>${d.name||""}</td>
-        <td>${d.phone}</td>
-        <td>${d.task||"-"}</td>
-        <td>${d.points}</td>
-        <td>${d.date}</td>
-        <td>
-          <button class="delete"
-            onclick="deleteVote('${v.id}')">X</button>
-        </td>
-      </tr>`;
-  });
-
-  usersSnap.forEach(u=>{
-    const user=u.data();
-    if(!votedPhones.has(user.phone)){
-      notVotedBody.innerHTML+=`
-        <tr>
-          <td>${user.name}</td>
-          <td>${user.phone}</td>
-          <td>
-            <button class="add"
-              onclick="addVote('${user.phone}','${user.name}')">
-              Add
-            </button>
-          </td>
-        </tr>`;
+  const voted={};
+  votes.forEach(v=>{
+    const x=v.data();
+    if(x.taskId===taskId || !x.taskId){ /* backward safe */
+      voted[x.phone]=(voted[x.phone]||0)+Number(x.points||0);
     }
   });
-};
 
-load();
-
-/* DELETE VOTE */
-window.deleteVote = async(id)=>{
-  if(confirm("Delete this vote?")){
-    await deleteDoc(doc(db,"votes",id));
-    load();
-  }
-};
-
-/* ADD VOTE */
-window.addVote = async(phone,name)=>{
-  const points=prompt("Points?");
-  if(!points) return;
-
-  await addDoc(collection(db,"votes"),{
-    phone,
-    name,
-    points:Number(points),
-    date:new Date().toISOString().split("T")[0],
-    source:"admin"
+  t_voted.innerHTML=""; t_not.innerHTML="";
+  users.forEach(u=>{
+    const p=u.data().phone, n=u.data().name;
+    if(voted[p]){
+      t_voted.innerHTML+=`<tr><td>${n}</td><td>${p}</td><td>${voted[p]}</td>
+        <td class="muted">—</td></tr>`;
+    }else{
+      t_not.innerHTML+=`<tr><td>${n}</td><td>${p}</td>
+        <td><button class="btn add" onclick="addPoint('${p}')">Add</button></td></tr>`;
+    }
   });
-  load();
-};
+}
+window.taskLoad=taskLoad;
 
-/* CLEAR */
-window.clearFilters=()=>{
-  fromInput.value="";
-  toInput.value="";
-  taskSelect.value="";
-  load();
-};
+/* ---------- USER REPORT ---------- */
+async function userInit(){
+  const sel=document.getElementById("u_user");
+  sel.innerHTML="";
+  (await getDocs(collection(db,"users"))).forEach(d=>{
+    const o=document.createElement("option");
+    o.value=d.data().phone; o.textContent=d.data().name;
+    sel.appendChild(o);
+  });
+}
+async function userLoad(){
+  const phone=u_user.value;
+  const votes=await getDocs(collection(db,"votes"));
+  u_body.innerHTML="";
+  votes.forEach(v=>{
+    const x=v.data();
+    if(x.phone===phone){
+      u_body.innerHTML+=`<tr>
+        <td>${x.date}</td><td>${x.points}</td><td>${x.source||'user'}</td>
+        <td><button class="btn del" onclick="delVote('${v.id}')">X</button></td>
+      </tr>`;
+    }
+  });
+}
+window.userLoad=userLoad;
+window.delVote=async(id)=>{await deleteDoc(doc(db,"votes",id)); userLoad(); dashLoad();}
 
-const fromInput=document.getElementById("from");
-const toInput=document.getElementById("to");
+/* INIT */
+dashLoad(); taskInit(); userInit();
 </script>
-
 </body>
 </html>
