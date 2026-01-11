@@ -1,69 +1,146 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Faith & Fitness – Admin</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Faith & Fitness – Admin Panel</title>
 
 <style>
 :root{
-  --bg:#f1f5f9; --card:#fff; --pri:#2563eb;
-  --ok:#16a34a; --bad:#dc2626;
+  --bg:#f1f5f9; 
+  --card:#ffffff; 
+  --pri:#2563eb; 
+  --ok:#16a34a; 
+  --bad:#dc2626;
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial;background:var(--bg)}
-.wrap{display:flex;min-height:100vh}
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:var(--bg);
+}
+.wrap{
+  display:flex;
+  min-height:100vh;
+}
 
-/* SIDEBAR */
+/* ===== SIDEBAR ===== */
 .sidebar{
-  width:220px;background:#0f172a;color:#fff;padding:12px
+  width:220px;
+  background:#0f172a;
+  color:#fff;
+  padding:14px;
 }
-.brand{text-align:center;font-weight:bold;margin:10px 0 20px}
+.brand{
+  text-align:center;
+  font-weight:bold;
+  margin-bottom:16px;
+}
 .nav a{
-  display:block;color:#cbd5f5;padding:10px;
-  text-decoration:none;border-radius:6px;margin:4px 0;
+  display:block;
+  color:#cbd5f5;
+  text-decoration:none;
+  padding:10px;
+  border-radius:6px;
+  margin-bottom:6px;
+  cursor:pointer;
 }
-.nav a.active,.nav a:hover{background:#1e293b;color:#fff}
+.nav a.active,
+.nav a:hover{
+  background:#1e293b;
+  color:#fff;
+}
 
-/* MAIN */
-.main{flex:1;padding:16px}
-.hidden{display:none}
-.card{
-  background:var(--card);padding:12px;border-radius:10px;
-  box-shadow:0 0 8px rgba(0,0,0,.12);margin-bottom:12px
+/* ===== MAIN ===== */
+.main{
+  flex:1;
+  padding:16px;
 }
-.hrow{display:flex;gap:10px;flex-wrap:wrap}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:14px}
-th{background:var(--pri);color:#fff}
+.card{
+  background:var(--card);
+  padding:12px;
+  border-radius:10px;
+  box-shadow:0 0 8px rgba(0,0,0,.12);
+  margin-bottom:12px;
+}
+.hrow{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+
+/* ===== TABLE ===== */
+.table-wrap{
+  width:100%;
+  overflow-x:auto;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:720px;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:6px;
+  text-align:center;
+  font-size:14px;
+  white-space:nowrap;
+}
+th{
+  background:var(--pri);
+  color:#fff;
+}
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
 .rank3{background:#fecaca}
-.btn{border:none;padding:6px 10px;border-radius:6px;cursor:pointer}
+
+/* ===== BUTTONS ===== */
+.btn{
+  border:none;
+  border-radius:6px;
+  padding:6px 10px;
+  cursor:pointer;
+}
 .add{background:var(--ok);color:#fff}
 .del{background:var(--bad);color:#fff}
-input,select{padding:6px}
+
+/* ===== INPUT ===== */
+input,select{
+  padding:6px;
+}
+input[type=number]{width:60px}
+
+/* ===== HIDE ===== */
+.hidden{display:none}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:768px){
+  .wrap{flex-direction:column}
+  .sidebar{width:100%}
+  table{font-size:13px}
+}
 </style>
 </head>
 
 <body>
 <div class="wrap">
 
-<!-- SIDEBAR -->
+<!-- ===== SIDEBAR ===== -->
 <aside class="sidebar">
   <div class="brand">FAITH & FITNESS<br>ADMIN</div>
   <div class="nav">
-    <a data-page="dash" class="active">Dashboard</a>
+    <a class="active" data-page="dash">Dashboard</a>
     <a data-page="task">Task-wise Report</a>
     <a data-page="user">User-wise Report</a>
     <a onclick="location.href='task-editor.html'">Task Editor</a>
   </div>
 </aside>
 
-<!-- MAIN -->
+<!-- ===== MAIN ===== -->
 <main class="main">
 
-<!-- DASHBOARD -->
+<!-- ===== DASHBOARD ===== -->
 <section id="page-dash">
   <div class="hrow">
     <div class="card">Users: <b id="d_users">0</b></div>
@@ -76,16 +153,22 @@ input,select{padding:6px}
       <button class="btn" onclick="dashClear()">Clear</button>
     </div>
     <div class="card">
-      <label><input type="checkbox" id="d_hide0" onchange="dashLoad()"> Hide zero</label>
+      <label>
+        <input type="checkbox" id="d_hide0" onchange="dashLoad()"> Hide zero
+      </label>
     </div>
   </div>
 
-  <div class="card">
+  <div class="card table-wrap">
     <table>
       <thead>
         <tr>
-          <th>SL</th><th>Rank</th><th>Name</th>
-          <th>Phone</th><th>Total Points</th><th>Add</th>
+          <th>SL</th>
+          <th>Rank</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Total Points</th>
+          <th>Add</th>
         </tr>
       </thead>
       <tbody id="dashBody"></tbody>
@@ -93,35 +176,36 @@ input,select{padding:6px}
   </div>
 </section>
 
-<!-- TASK REPORT -->
+<!-- ===== TASK REPORT ===== -->
 <section id="page-task" class="hidden">
   <div class="card">
     Task:
     <select id="t_task"></select>
-    Date:
-    <input type="date" id="t_from">
-    <input type="date" id="t_to">
     <button class="btn" onclick="taskLoad()">View</button>
   </div>
 
-  <div class="card">
+  <div class="card table-wrap">
     <h3>Voted Users</h3>
     <table>
-      <thead><tr><th>Name</th><th>Phone</th><th>Points</th></tr></thead>
+      <thead>
+        <tr><th>Name</th><th>Phone</th><th>Points</th></tr>
+      </thead>
       <tbody id="t_voted"></tbody>
     </table>
   </div>
 
-  <div class="card">
+  <div class="card table-wrap">
     <h3>Not Voted Users</h3>
     <table>
-      <thead><tr><th>Name</th><th>Phone</th><th>Add</th></tr></thead>
+      <thead>
+        <tr><th>Name</th><th>Phone</th><th>Add</th></tr>
+      </thead>
       <tbody id="t_not"></tbody>
     </table>
   </div>
 </section>
 
-<!-- USER REPORT -->
+<!-- ===== USER REPORT ===== -->
 <section id="page-user" class="hidden">
   <div class="card">
     User:
@@ -129,10 +213,15 @@ input,select{padding:6px}
     <button class="btn" onclick="userLoad()">View</button>
   </div>
 
-  <div class="card">
+  <div class="card table-wrap">
     <table>
       <thead>
-        <tr><th>Date</th><th>Points</th><th>Source</th><th>Delete</th></tr>
+        <tr>
+          <th>Date</th>
+          <th>Points</th>
+          <th>Source</th>
+          <th>Delete</th>
+        </tr>
       </thead>
       <tbody id="u_body"></tbody>
     </table>
@@ -143,13 +232,18 @@ input,select{padding:6px}
 </div>
 
 <script type="module">
-if(prompt("Admin password")!=="5") location.replace("index.html");
+/* ===== ADMIN AUTH ===== */
+if(prompt("Admin password")!=="5"){
+  location.replace("index.html");
+}
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+/* ===== FIREBASE ===== */
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs,
-  addDoc, deleteDoc, doc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+  getFirestore, collection, getDocs, addDoc, deleteDoc, doc
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
@@ -158,6 +252,7 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
+/* ===== NAV ===== */
 document.querySelectorAll(".nav a[data-page]").forEach(a=>{
   a.onclick=()=>{
     document.querySelectorAll(".nav a").forEach(x=>x.classList.remove("active"));
@@ -169,17 +264,19 @@ document.querySelectorAll(".nav a[data-page]").forEach(a=>{
 
 const today=()=>new Date().toISOString().split("T")[0];
 
-/* DASHBOARD */
+/* ===== DASHBOARD ===== */
 async function dashLoad(){
   const users=await getDocs(collection(db,"users"));
   const votes=await getDocs(collection(db,"votes"));
-  d_users.textContent=users.size;
+  d_users.innerText=users.size;
 
-  const from=d_from.value,to=d_to.value||d_from.value;
+  const from=d_from.value;
+  const to=d_to.value||from;
   const map={};
+
   votes.forEach(v=>{
     const x=v.data();
-    if(from && x.date && (x.date<from||x.date>to)) return;
+    if(from && (x.date<from || x.date>to)) return;
     map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
   });
 
@@ -192,23 +289,26 @@ async function dashLoad(){
   if(d_hide0.checked) rows=rows.filter(r=>r.total>0);
   rows.sort((a,b)=>b.total-a.total);
 
-  dashBody.innerHTML="";
   let rank=0,prev=null,sl=0;
+  dashBody.innerHTML="";
   rows.forEach(r=>{
     if(prev===null||r.total<prev) rank++;
     prev=r.total; sl++;
     const tr=document.createElement("tr");
     tr.className=rank===1?"rank1":rank===2?"rank2":rank===3?"rank3":"";
     tr.innerHTML=`
-      <td>${sl}</td><td>${rank}</td><td>${r.name}</td>
-      <td>${r.phone}</td><td>${r.total}</td>
+      <td>${sl}</td>
+      <td>${rank}</td>
+      <td>${r.name}</td>
+      <td>${r.phone}</td>
+      <td>${r.total}</td>
       <td>
-        <input id="p_${r.phone}" type="number" style="width:60px">
+        <input id="p_${r.phone}" type="number">
         <button class="btn add" onclick="addPoint('${r.phone}')">+</button>
       </td>`;
     dashBody.appendChild(tr);
   });
-  d_shown.textContent=sl;
+  d_shown.innerText=sl;
 }
 window.dashLoad=dashLoad;
 window.dashClear=()=>{d_from.value="";d_to.value="";dashLoad();}
@@ -222,52 +322,54 @@ window.addPoint=async(phone)=>{
   dashLoad();
 };
 
-/* TASK REPORT */
+/* ===== TASK REPORT ===== */
 async function taskInit(){
   t_task.innerHTML="";
-  const all=document.createElement("option");
-  all.value="ALL"; all.textContent="All Tasks";
-  t_task.appendChild(all);
-
   (await getDocs(collection(db,"tasks"))).forEach(d=>{
     const o=document.createElement("option");
-    o.value=d.id; o.textContent=d.data().text;
+    o.value=d.id;
+    o.textContent=d.data().text;
     t_task.appendChild(o);
   });
 }
 async function taskLoad(){
   const taskId=t_task.value;
-  const from=t_from.value,to=t_to.value||from;
   const users=await getDocs(collection(db,"users"));
   const votes=await getDocs(collection(db,"votes"));
 
   const voted={};
   votes.forEach(v=>{
     const x=v.data();
-    if(taskId!=="ALL" && x.taskId!==taskId) return;
-    if(from && x.date && (x.date<from||x.date>to)) return;
-    voted[x.phone]=(voted[x.phone]||0)+Number(x.points||0);
+    if(x.taskId===taskId || !x.taskId){
+      voted[x.phone]=(voted[x.phone]||0)+Number(x.points||0);
+    }
   });
 
-  t_voted.innerHTML=""; t_not.innerHTML="";
+  t_voted.innerHTML="";
+  t_not.innerHTML="";
   users.forEach(u=>{
-    const p=u.data().phone,n=u.data().name;
+    const p=u.data().phone;
+    const n=u.data().name;
     if(voted[p]){
       t_voted.innerHTML+=`<tr><td>${n}</td><td>${p}</td><td>${voted[p]}</td></tr>`;
     }else{
-      t_not.innerHTML+=`<tr><td>${n}</td><td>${p}</td>
-        <td><button class="btn add" onclick="addPoint('${p}')">Add</button></td></tr>`;
+      t_not.innerHTML+=`<tr>
+        <td>${n}</td>
+        <td>${p}</td>
+        <td><button class="btn add" onclick="addPoint('${p}')">Add</button></td>
+      </tr>`;
     }
   });
 }
 window.taskLoad=taskLoad;
 
-/* USER REPORT */
+/* ===== USER REPORT ===== */
 async function userInit(){
   u_user.innerHTML="";
   (await getDocs(collection(db,"users"))).forEach(d=>{
     const o=document.createElement("option");
-    o.value=d.data().phone; o.textContent=d.data().name;
+    o.value=d.data().phone;
+    o.textContent=d.data().name;
     u_user.appendChild(o);
   });
 }
@@ -279,22 +381,26 @@ async function userLoad(){
     const x=v.data();
     if(x.phone===phone){
       u_body.innerHTML+=`
-        <tr>
-          <td>${x.date || "—"}</td>
-          <td>${x.points}</td>
-          <td>${x.source||"user"}</td>
-          <td><button class="btn del" onclick="delVote('${v.id}')">X</button></td>
-        </tr>`;
+      <tr>
+        <td>${x.date||"-"}</td>
+        <td>${x.points}</td>
+        <td>${x.source||"user"}</td>
+        <td><button class="btn del" onclick="delVote('${v.id}')">X</button></td>
+      </tr>`;
     }
   });
 }
 window.userLoad=userLoad;
 window.delVote=async(id)=>{
   await deleteDoc(doc(db,"votes",id));
-  userLoad(); dashLoad();
+  userLoad();
+  dashLoad();
 };
 
-dashLoad(); taskInit(); userInit();
+/* INIT */
+dashLoad();
+taskInit();
+userInit();
 </script>
 </body>
-</html>
+  </html>
