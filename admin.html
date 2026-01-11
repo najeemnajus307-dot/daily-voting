@@ -2,48 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Task-wise Report – Faith & Fitness</title>
+<title>User-wise Report – Faith & Fitness</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body{
-  margin:0;
   font-family:Arial;
   background:#f1f5f9;
-}
-.sidebar{
-  width:220px;
-  background:#0f172a;
-  color:#fff;
-  height:100vh;
-  position:fixed;
-  padding:20px;
-}
-.sidebar h3{margin-top:0}
-.sidebar a{
-  display:block;
-  color:#cbd5f5;
-  padding:10px;
-  text-decoration:none;
-  border-radius:6px;
-  margin-bottom:6px;
-}
-.sidebar a.active,
-.sidebar a:hover{
-  background:#1e293b;
-  color:#fff;
-}
-
-.main{
-  margin-left:240px;
-  padding:20px;
-}
-
-.box{
-  background:#fff;
   padding:15px;
-  border-radius:10px;
-  box-shadow:0 0 8px rgba(0,0,0,.1);
+}
+
+h2{
+  text-align:center;
+  margin-bottom:10px;
+}
+
+.filters{
+  background:#fff;
+  padding:12px;
+  border-radius:8px;
   margin-bottom:15px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+}
+
+.filters input{
+  padding:6px;
 }
 
 table{
@@ -51,101 +37,71 @@ table{
   border-collapse:collapse;
   background:#fff;
 }
+
 th,td{
   border:1px solid #ddd;
-  padding:8px;
-  font-size:14px;
+  padding:7px;
   text-align:center;
+  font-size:14px;
 }
+
 th{
   background:#2563eb;
   color:#fff;
 }
 
-button{
-  padding:6px 10px;
-  border:none;
-  border-radius:5px;
-  cursor:pointer;
+.note{
+  font-size:12px;
+  color:#555;
+  margin-bottom:8px;
 }
-.view{background:#2563eb;color:#fff}
-.clear{background:#6b7280;color:#fff}
-.del{background:#dc2626;color:#fff}
 </style>
 </head>
 
 <body>
 
-<!-- SIDEBAR -->
-<div class="sidebar">
-  <h3>FAITH & FITNESS<br>ADMIN</h3>
-  <a href="admin.html">Dashboard</a>
-  <a class="active">Task-wise Report</a>
-  <a href="user-report.html">User-wise Report</a>
-  <a href="task-editor.html">Task Editor</a>
+<h2>User-wise Report</h2>
+
+<div class="filters">
+  <label>From:
+    <input type="date" id="from">
+  </label>
+
+  <label>To:
+    <input type="date" id="to">
+  </label>
+
+  <label>Search:
+    <input type="text" id="search" placeholder="Name / Phone">
+  </label>
+
+  <button onclick="load()">Apply</button>
+  <button onclick="clearAll()">Clear</button>
 </div>
 
-<!-- MAIN -->
-<div class="main">
-
-  <h2>Task-wise Report</h2>
-
-  <!-- FILTERS -->
-  <div class="box">
-    <b>Filters</b><br><br>
-
-    From:
-    <input type="date" id="fromDate">
-
-    To:
-    <input type="date" id="toDate">
-
-    Task:
-    <select id="taskSelect"></select>
-
-    Search:
-    <input type="text" id="searchInput"
-           placeholder="Name / Phone">
-
-    <button class="view" onclick="loadReport()">View</button>
-    <button class="clear" onclick="clearFilters()">Clear</button>
-  </div>
-
-  <!-- TABLE -->
-  <div class="box">
-    <h3>Voted Users</h3>
-    <div style="overflow-x:auto">
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Phone</th>
-          <th>Task</th>
-          <th>Points</th>
-          <th>Date</th>
-          <th>Delete</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
-    </div>
-  </div>
-
+<div class="note">
+ℹ️ Date select ചെയ്താൽ ആ date range-il vote ചെയ്ത points മാത്രം കാണിക്കും
 </div>
+
+<table>
+<thead>
+<tr>
+  <th>SL</th>
+  <th>Name</th>
+  <th>Phone</th>
+  <th>Total Points</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
 
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs,
-  deleteDoc, doc
+  getFirestore, collection, getDocs
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-/* 🔐 SIMPLE ADMIN CHECK */
-if(prompt("Admin password")!=="5"){
-  location.replace("index.html");
-}
 
 /* 🔥 FIREBASE */
 const app = initializeApp({
@@ -155,86 +111,69 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* LOAD TASKS */
-async function loadTasks(){
-  const snap = await getDocs(collection(db,"tasks"));
-  taskSelect.innerHTML =
-    `<option value="ALL">All Tasks</option>`;
-  snap.forEach(d=>{
-    const t=d.data();
-    taskSelect.innerHTML +=
-      `<option value="${t.text}">${t.text}</option>`;
-  });
-}
-loadTasks();
-
-/* LOAD REPORT */
-window.loadReport = async ()=>{
+window.load = async()=>{
   tbody.innerHTML="";
 
-  const from   = fromDate.value;
-  const to     = toDate.value;
-  const task   = taskSelect.value;
-  const search = searchInput.value.toLowerCase();
+  const from = document.getElementById("from").value;
+  const to   = document.getElementById("to").value || from;
+  const search = document.getElementById("search").value.toLowerCase();
 
-  const votesSnap = await getDocs(collection(db,"votes"));
   const usersSnap = await getDocs(collection(db,"users"));
+  const votesSnap = await getDocs(collection(db,"votes"));
 
-  const userMap = {};
-  usersSnap.forEach(u=>{
-    userMap[u.data().phone] = u.data().name;
+  /* 🔢 BUILD VOTE MAP */
+  const voteMap = {};
+
+  votesSnap.forEach(v=>{
+    const d = v.data();
+
+    if(from){
+      if(!d.date) return;
+      if(d.date < from || d.date > to) return;
+    }
+
+    voteMap[d.phone] =
+      (voteMap[d.phone] || 0) + Number(d.points || 0);
   });
 
-  votesSnap.forEach(vd=>{
-    const v = vd.data();
+  let sl = 1;
 
-    if(from && v.date < from) return;
-    if(to && v.date > to) return;
-    if(task!=="ALL" && v.task!==task) return;
+  usersSnap.forEach(u=>{
+    const name  = u.data().name;
+    const phone = u.data().phone;
+    const total = voteMap[phone] || 0;
 
-    const name = (userMap[v.phone]||"").toLowerCase();
-    const phone = v.phone.toString();
-    if(search &&
-      !name.includes(search) &&
-      !phone.includes(search)) return;
+    if(search){
+      if(
+        !name.toLowerCase().includes(search) &&
+        !phone.includes(search)
+      ) return;
+    }
 
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td>${userMap[v.phone]||"-"}</td>
-      <td>${v.phone}</td>
-      <td>${v.task||"-"}</td>
-      <td>${v.points}</td>
-      <td>${v.date||"-"}</td>
-      <td>
-        <button class="del"
-        onclick="deleteVote('${vd.id}')">X</button>
-      </td>
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${sl++}</td>
+      <td>${name}</td>
+      <td>${phone}</td>
+      <td>${total}</td>
     `;
     tbody.appendChild(tr);
   });
 
-  if(!tbody.innerHTML){
-    tbody.innerHTML=
-      `<tr><td colspan="6">No data found</td></tr>`;
+  if(sl===1){
+    tbody.innerHTML =
+      `<tr><td colspan="4">No data found</td></tr>`;
   }
 };
 
-/* DELETE VOTE */
-window.deleteVote = async(id)=>{
-  if(!confirm("Delete this vote?")) return;
-  await deleteDoc(doc(db,"votes",id));
-  loadReport();
+window.clearAll = ()=>{
+  from.value="";
+  to.value="";
+  search.value="";
+  load();
 };
 
-/* CLEAR */
-window.clearFilters = ()=>{
-  fromDate.value="";
-  toDate.value="";
-  taskSelect.value="ALL";
-  searchInput.value="";
-  loadReport();
-};
-
+load();
 </script>
 
 </body>
