@@ -2,211 +2,325 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin Dashboard – Faith & Fitness</title>
+<title>Faith & Fitness – Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
   margin:0;
   font-family:Arial;
   background:#f1f5f9;
-  display:flex;
 }
+.wrapper{display:flex;min-height:100vh}
 
 /* SIDEBAR */
 .sidebar{
   width:220px;
   background:#0f172a;
   color:#fff;
-  min-height:100vh;
   padding:15px;
 }
 .sidebar h2{
   text-align:center;
-  font-size:16px;
-  margin-bottom:20px;
+  font-size:18px;
 }
-.sidebar a{
-  display:block;
-  padding:10px;
+.menu button{
+  width:100%;
+  background:none;
+  border:none;
   color:#cbd5f5;
-  text-decoration:none;
+  padding:10px;
+  text-align:left;
+  cursor:pointer;
   border-radius:6px;
-  margin-bottom:6px;
+  margin-bottom:4px;
 }
-.sidebar a.active,
-.sidebar a:hover{
+.menu button.active,
+.menu button:hover{
   background:#1e293b;
   color:#fff;
 }
 
-/* MAIN */
-.main{
+/* CONTENT */
+.content{
   flex:1;
-  padding:20px;
+  padding:15px;
 }
-
 .card{
   background:#fff;
   padding:15px;
   border-radius:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,.15);
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+  margin-bottom:15px;
 }
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:10px;
+}
+.stat{
+  background:#e5e7eb;
+  padding:15px;
+  border-radius:8px;
+  text-align:center;
+}
+.stat b{font-size:20px}
 
 /* TABLE */
 table{
   width:100%;
   border-collapse:collapse;
-  margin-top:10px;
 }
 th,td{
   border:1px solid #ddd;
   padding:6px;
   text-align:center;
-  font-size:14px;
+  font-size:13px;
 }
-th{
-  background:#2563eb;
-  color:#fff;
-}
+th{background:#2563eb;color:#fff}
+
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
 .rank3{background:#fecaca}
 
-.addBtn{
-  background:#16a34a;
-  color:#fff;
-  border:none;
-  padding:4px 8px;
-  border-radius:4px;
-  cursor:pointer;
+input,select{
+  padding:6px;
+  margin:3px;
 }
-input[type=number]{
-  width:60px;
-  padding:4px;
-}
+.add{background:#16a34a;color:#fff;border:none;padding:5px 8px;border-radius:4px}
+.del{background:#dc2626;color:#fff;border:none;padding:5px 8px;border-radius:4px}
 </style>
 </head>
 
 <body>
 
+<script>
+if(prompt("Admin password")!=="5"){
+  location.replace("index.html");
+}
+</script>
+
+<div class="wrapper">
+
 <!-- SIDEBAR -->
 <div class="sidebar">
   <h2>FAITH & FITNESS<br>ADMIN</h2>
-  <a class="active">Dashboard</a>
-</div>
-
-<!-- MAIN -->
-<div class="main">
-  <div class="card">
-    <h3>All Users – Ranking</h3>
-
-    <div style="overflow-x:auto">
-      <table>
-        <thead>
-          <tr>
-            <th>SL</th>
-            <th>Rank</th>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Total Points</th>
-            <th>Add Points</th>
-          </tr>
-        </thead>
-        <tbody id="rankBody"></tbody>
-      </table>
-    </div>
+  <div class="menu">
+    <button onclick="show('dash')" class="active">Dashboard</button>
+    <button onclick="show('rank')">All Users – Ranking</button>
+    <button onclick="show('task')">Task-wise Report</button>
+    <button onclick="show('user')">User-wise Report</button>
+    <button onclick="show('editor')">Task Editor</button>
   </div>
 </div>
 
+<!-- CONTENT -->
+<div class="content">
+
+<!-- DASHBOARD -->
+<div id="dash" class="card">
+  <h3>Dashboard</h3>
+  <div class="grid">
+    <div class="stat">Users<br><b id="d_users">0</b></div>
+    <div class="stat">Total Votes<br><b id="d_votes">0</b></div>
+    <div class="stat">Today Votes<br><b id="d_today">0</b></div>
+    <div class="stat">Total Points<br><b id="d_points">0</b></div>
+  </div>
+</div>
+
+<!-- RANKING -->
+<div id="rank" class="card" style="display:none">
+  <h3>All Users – Ranking</h3>
+  Search:
+  <input id="search" placeholder="Name / Phone" oninput="loadRank()">
+  <br><br>
+  <table>
+    <thead>
+      <tr>
+        <th>SL</th><th>Rank</th><th>Name</th><th>Phone</th><th>Points</th><th>Add</th>
+      </tr>
+    </thead>
+    <tbody id="rankBody"></tbody>
+  </table>
+</div>
+
+<!-- TASK REPORT -->
+<div id="task" class="card" style="display:none">
+  <h3>Task-wise Report</h3>
+  <select id="taskSelect"></select>
+  <button onclick="loadTask()">View</button>
+  <div id="taskResult"></div>
+</div>
+
+<!-- USER REPORT -->
+<div id="user" class="card" style="display:none">
+  <h3>User-wise Report</h3>
+  <select id="userSelect"></select>
+  <button onclick="loadUser()">View</button>
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Points</th><th>Source</th><th>Delete</th></tr>
+    </thead>
+    <tbody id="userBody"></tbody>
+  </table>
+</div>
+
+<!-- TASK EDITOR -->
+<div id="editor" class="card" style="display:none">
+  <h3>Task Editor</h3>
+  <input id="t_text" placeholder="Task text">
+  <input id="t_points" type="number" placeholder="Points">
+  <input id="t_start" type="date">
+  <input id="t_end" type="date">
+  <button onclick="addTask()" class="add">Add Task</button>
+  <ul id="taskList"></ul>
+</div>
+
+</div>
+</div>
+
+<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, addDoc
+ getFirestore, collection, getDocs,
+ addDoc, deleteDoc, doc
 } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* ADMIN PASSWORD */
-if(prompt("Admin password")!=="5"){
-  location.replace("index.html");
-}
-
-/* FIREBASE */
 const app = initializeApp({
-  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
-  authDomain:"daily-voting-793ee.firebaseapp.com",
-  projectId:"daily-voting-793ee"
+ apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+ authDomain:"daily-voting-793ee.firebaseapp.com",
+ projectId:"daily-voting-793ee"
 });
 const db = getFirestore(app);
 
-/* LOAD DASHBOARD */
-async function loadDashboard(){
-  const usersSnap = await getDocs(collection(db,"users"));
-  const votesSnap = await getDocs(collection(db,"votes"));
+/* MENU */
+window.show=id=>{
+ document.querySelectorAll('.card').forEach(c=>c.style.display='none');
+ document.getElementById(id).style.display='block';
+ document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
+ event.target.classList.add('active');
+}
 
-  const voteMap = {};
-  votesSnap.forEach(v=>{
-    const d=v.data();
-    if(!voteMap[d.phone]) voteMap[d.phone]=0;
-    voteMap[d.phone]+=Number(d.points||0);
-  });
+/* DASHBOARD */
+async function dashboard(){
+ const u=await getDocs(collection(db,"users"));
+ const v=await getDocs(collection(db,"votes"));
+ d_users.innerText=u.size;
+ d_votes.innerText=v.size;
+ let p=0,today=0;
+ const d=new Date().toISOString().split("T")[0];
+ v.forEach(x=>{
+   p+=Number(x.data().points||0);
+   if(x.data().date===d) today++;
+ });
+ d_points.innerText=p;
+ d_today.innerText=today;
+}
 
-  let rows=[];
-  usersSnap.forEach(u=>{
-    const phone=u.data().phone;
-    rows.push({
-      name:u.data().name,
-      phone,
-      total:voteMap[phone]||0
-    });
-  });
-
-  rows.sort((a,b)=>b.total-a.total);
-
-  rankBody.innerHTML="";
-  let rank=0,prev=null;
-
-  rows.forEach((r,i)=>{
-    if(prev===null || r.total<prev) rank++;
-    prev=r.total;
-
-    const tr=document.createElement("tr");
-    tr.className =
-      rank===1?"rank1":
-      rank===2?"rank2":
-      rank===3?"rank3":"";
-
-    tr.innerHTML=`
-      <td>${i+1}</td>
-      <td>${rank}</td>
-      <td>${r.name}</td>
-      <td>${r.phone}</td>
-      <td>${r.total}</td>
-      <td>
-        <input type="number" id="p_${r.phone}">
-        <button class="addBtn" onclick="addPoint('${r.phone}')">+</button>
-      </td>
-    `;
-    rankBody.appendChild(tr);
-  });
+/* RANKING */
+async function loadRank(){
+ const users=await getDocs(collection(db,"users"));
+ const votes=await getDocs(collection(db,"votes"));
+ let map={};
+ votes.forEach(v=>{
+   const d=v.data();
+   map[d.phone]=(map[d.phone]||0)+Number(d.points||0);
+ });
+ let rows=[];
+ users.forEach(u=>{
+   rows.push({
+    name:u.data().name,
+    phone:u.data().phone,
+    total:map[u.data().phone]||0
+   });
+ });
+ const q=search.value.toLowerCase();
+ rows=rows.filter(r=>r.name.toLowerCase().includes(q)||r.phone.includes(q));
+ rows.sort((a,b)=>b.total-a.total);
+ rankBody.innerHTML="";
+ let rank=0,prev=null;
+ rows.forEach((r,i)=>{
+   if(prev===null||r.total<prev) rank++;
+   prev=r.total;
+   rankBody.innerHTML+=`
+   <tr class="${rank==1?'rank1':rank==2?'rank2':rank==3?'rank3':''}">
+    <td>${i+1}</td><td>${rank}</td><td>${r.name}</td><td>${r.phone}</td>
+    <td>${r.total}</td>
+    <td><input id="p_${r.phone}" type="number">
+    <button class="add" onclick="addPoint('${r.phone}')">+</button></td>
+   </tr>`;
+ });
 }
 
 /* ADD POINT */
-window.addPoint = async(phone)=>{
-  const val = Number(document.getElementById("p_"+phone).value);
-  if(val<=0) return alert("Valid points enter cheyyu");
+window.addPoint=async(phone)=>{
+ const v=Number(document.getElementById("p_"+phone).value);
+ if(v<=0)return;
+ await addDoc(collection(db,"votes"),{
+  phone,points:v,date:new Date().toISOString().split("T")[0],source:"admin"
+ });
+ dashboard();loadRank();
+}
 
-  await addDoc(collection(db,"votes"),{
-    phone,
-    points:val,
-    date:new Date().toISOString().split("T")[0],
-    source:"admin"
-  });
+/* USER REPORT */
+async function loadUsers(){
+ const u=await getDocs(collection(db,"users"));
+ userSelect.innerHTML="";
+ u.forEach(x=>{
+  userSelect.innerHTML+=`<option value="${x.data().phone}">${x.data().name}</option>`;
+ });
+}
+window.loadUser=async()=>{
+ const phone=userSelect.value;
+ const v=await getDocs(collection(db,"votes"));
+ userBody.innerHTML="";
+ v.forEach(x=>{
+  if(x.data().phone===phone){
+   userBody.innerHTML+=`
+   <tr>
+    <td>${x.data().date||"undefined"}</td>
+    <td>${x.data().points}</td>
+    <td>${x.data().source}</td>
+    <td><button class="del" onclick="del('${x.id}')">X</button></td>
+   </tr>`;
+  }
+ });
+}
+window.del=async(id)=>{
+ if(confirm("Delete vote?")){
+  await deleteDoc(doc(db,"votes",id));
+  loadUser();dashboard();loadRank();
+ }
+}
 
-  loadDashboard();
-};
+/* TASKS */
+async function loadTasks(){
+ const t=await getDocs(collection(db,"tasks"));
+ taskSelect.innerHTML=`<option>All</option>`;
+ taskList.innerHTML="";
+ t.forEach(x=>{
+  taskSelect.innerHTML+=`<option>${x.data().text}</option>`;
+  taskList.innerHTML+=`<li>${x.data().text}</li>`;
+ });
+}
+window.addTask=async()=>{
+ await addDoc(collection(db,"tasks"),{
+  text:t_text.value,
+  points:Number(t_points.value),
+  start:t_start.value,
+  end:t_end.value
+ });
+ loadTasks();
+}
 
-loadDashboard();
+/* INIT */
+dashboard();
+loadRank();
+loadUsers();
+loadTasks();
 </script>
 
 </body>
