@@ -15,7 +15,6 @@ h2{text-align:center}
 .top{
   display:flex;
   justify-content:space-between;
-  flex-wrap:wrap;
   gap:10px;
   margin-bottom:15px;
 }
@@ -37,16 +36,12 @@ th,td{
   text-align:center;
   font-size:14px;
 }
-th{
-  background:#2563eb;
-  color:#fff;
-}
+th{background:#2563eb;color:#fff}
 
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
 .rank3{background:#fecaca}
 
-input[type=number]{width:60px;padding:4px}
 button{
   padding:5px 8px;
   border:none;
@@ -56,12 +51,6 @@ button{
 .add{background:#16a34a;color:#fff}
 .clear{background:#6b7280;color:#fff}
 .export{background:#0284c7;color:#fff}
-
-.note{
-  font-size:12px;
-  color:#b91c1c;
-  margin-top:6px;
-}
 </style>
 </head>
 
@@ -75,7 +64,7 @@ button{
 </div>
 
 <div class="box">
-  <b>Date Filter (voteDay)</b><br><br>
+  <b>Date Filter (Voting Day)</b><br><br>
   From:
   <input type="date" id="from" onchange="load()">
   To:
@@ -89,16 +78,10 @@ button{
     <input type="checkbox" id="hideZero" onchange="load()">
     Hide users with NO VOTE
   </label>
-
-  <div class="note">
-    ✔ Date filter ON → voted users only  
-    ✔ Admin add + User vote → same logic
-  </div>
 </div>
 
 <br>
 
-<div style="overflow-x:auto">
 <table>
 <thead>
 <tr>
@@ -112,7 +95,6 @@ button{
 </thead>
 <tbody id="tbody"></tbody>
 </table>
-</div>
 
 <script type="module">
 import { initializeApp } from
@@ -123,7 +105,7 @@ import {
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* 🔐 ADMIN PASSWORD */
-if(prompt("Admin password")!=="5"){
+if(prompt("Admin password") !== "5"){
   location.replace("index.html");
 }
 
@@ -134,6 +116,15 @@ const app = initializeApp({
   projectId:"daily-voting-793ee"
 });
 const db = getFirestore(app);
+
+/* 🕗 SAME VOTING DATE LOGIC (IMPORTANT) */
+function getVotingDate(d=new Date()){
+  const x = new Date(d);
+  if(x.getHours() < 20){
+    x.setDate(x.getDate() - 1);
+  }
+  return x.toISOString().split("T")[0];
+}
 
 let CURRENT_ROWS = [];
 
@@ -146,81 +137,70 @@ window.load = async ()=>{
 
   totalUsers.innerText = usersSnap.size;
 
-  const isDateFilterOn = from.value !== "";
-
-  /* 🔢 BUILD VOTE MAP (voteDay ONLY) */
+  const dateFilterOn = from.value !== "";
   const voteMap = {};
 
+  /* 🔢 COLLECT VOTES */
   votesSnap.forEach(d=>{
     const v = d.data();
+    const voteDay = v.date;
 
-    if(isDateFilterOn){
-      if(!v.voteDay) return; // old votes ignore
+    if(dateFilterOn){
       const toDate = to.value || from.value;
-      if(v.voteDay < from.value || v.voteDay > toDate) return;
+      if(voteDay < from.value || voteDay > toDate) return;
     }
 
     if(!voteMap[v.phone]){
-      voteMap[v.phone] = { points:0, count:0 };
+      voteMap[v.phone] = {points:0, voted:true};
     }
-    voteMap[v.phone].points += Number(v.points||0);
-    voteMap[v.phone].count  += 1;
+    voteMap[v.phone].points += Number(v.points || 0);
   });
 
   /* 🧱 BUILD ROWS */
-  if(isDateFilterOn){
-    // 👉 ONLY users who voted in that date range
+  if(dateFilterOn){
     for(const phone in voteMap){
-      const u = usersSnap.docs.find(
-        d => d.data().phone === phone
-      );
+      const u = usersSnap.docs.find(x=>x.data().phone===phone);
       if(!u) continue;
-
       CURRENT_ROWS.push({
-        name: u.data().name,
+        name:u.data().name,
         phone,
-        total: voteMap[phone].points,
+        total:voteMap[phone].points,
         voted:true
       });
     }
   }else{
-    // 👉 ALL users
     usersSnap.forEach(u=>{
       const p = u.data().phone;
       CURRENT_ROWS.push({
-        name: u.data().name,
+        name:u.data().name,
         phone:p,
-        total: voteMap[p]?.points || 0,
-        voted: voteMap[p]?.count > 0
+        total:voteMap[p]?.points || 0,
+        voted:!!voteMap[p]
       });
     });
   }
 
-  /* 🚫 HIDE NO-VOTE USERS */
   if(hideZero.checked){
     CURRENT_ROWS = CURRENT_ROWS.filter(r=>r.voted);
   }
 
-  /* ❌ EMPTY */
-  if(CURRENT_ROWS.length === 0){
-    tbody.innerHTML =
-      `<tr><td colspan="6">No voting data found</td></tr>`;
-    shownUsers.innerText = 0;
+  if(CURRENT_ROWS.length===0){
+    tbody.innerHTML="<tr><td colspan='6'>No data</td></tr>";
+    shownUsers.innerText=0;
     return;
   }
 
-  /* 🔽 SORT */
-  CURRENT_ROWS.sort((a,b)=>b.total - a.total);
+  CURRENT_ROWS.sort((a,b)=>b.total-a.total);
 
-  let rank=0, prev=null, shown=0;
+  let rank=0,prev=null,shown=0;
 
-  CURRENT_ROWS.forEach((r,i)=>{
-    if(prev===null || r.total < prev) rank++;
-    prev = r.total;
+  CURRENT_ROWS.forEach(r=>{
+    if(prev===null || r.total<prev) rank++;
+    prev=r.total;
     shown++;
 
     const tr=document.createElement("tr");
-    tr.className =
+    tr.className=
       rank===1?"rank1":
       rank===2?"rank2":
       rank===3?"rank3":"";
@@ -232,19 +212,19 @@ window.load = async ()=>{
       <td>${r.phone}</td>
       <td>${r.total}</td>
       <td>
-        <input type="number" id="p_${r.phone}">
+        <input type="number" id="p_${r.phone}" style="width:60px">
         <button class="add" onclick="addPoint('${r.phone}')">+</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
 
-  shownUsers.innerText = shown;
+  shownUsers.innerText=shown;
 };
 
 load();
 
-/* ➕ ADMIN ADD POINT (voteDay SAME AS USER) */
+/* ➕ ADMIN ADD (same voting date) */
 window.addPoint = async(phone)=>{
   const v = Number(document.getElementById("p_"+phone).value);
   if(v<=0) return alert("Enter valid points");
@@ -252,40 +232,28 @@ window.addPoint = async(phone)=>{
   await addDoc(collection(db,"votes"),{
     phone,
     points:v,
-    voteDay: new Date().toISOString().split("T")[0],
-    source:"admin",
-    realDate: new Date().toISOString()
+    date:getVotingDate(),
+    source:"admin"
   });
 
   load();
 };
 
-/* 🧹 CLEAR */
-window.clearFilter = ()=>{
-  from.value="";
-  to.value="";
-  load();
+window.clearFilter=()=>{
+  from.value=""; to.value=""; load();
 };
 
-/* 📤 EXPORT CSV */
-window.exportCSV = ()=>{
-  if(CURRENT_ROWS.length===0){
-    alert("No data to export");
-    return;
-  }
-
+window.exportCSV=()=>{
   let csv="SL,Rank,Name,Phone,Points\n";
-  let rank=0, prev=null;
-
-  CURRENT_ROWS.forEach((r,i)=>{
-    if(prev===null || r.total < prev) rank++;
-    prev=r.total;
-    csv+=`${i+1},${rank},"${r.name}",${r.phone},${r.total}\n`;
+  let r=0,p=null;
+  CURRENT_ROWS.forEach((x,i)=>{
+    if(p===null||x.total<p) r++;
+    p=x.total;
+    csv+=`${i+1},${r},"${x.name}",${x.phone},${x.total}\n`;
   });
-
-  const blob=new Blob([csv],{type:"text/csv"});
+  const b=new Blob([csv],{type:"text/csv"});
   const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
+  a.href=URL.createObjectURL(b);
   a.download="faith_fitness_report.csv";
   a.click();
 };
