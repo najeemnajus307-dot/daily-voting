@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faith & Fitness – Voting</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#f1f5f9;
+}
+
+/* HEADER */
+.header{
+  background:#fff;
+  padding:6px 0;
+  text-align:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+.header img{
+  height:180px;   /* 🔽 height kurakkan ivide change cheyyam */
+}
+
+/* CENTER */
+.container{
+  min-height:calc(100vh - 80px);
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  padding-top:25px;
+}
+
+/* CARD */
+.card{
+  background:#fff;
+  width:92%;
+  max-width:360px;
+  padding:20px;
+  border-radius:14px;
+  box-shadow:0 6px 14px rgba(0,0,0,.15);
+  text-align:center;
+}
+
+h2{margin:5px 0}
+h3{margin:5px 0;color:#16a34a}
+
+.date{
+  font-size:13px;
+  color:#475569;
+  margin-bottom:6px;
+}
+
+.task{
+  border:1px solid #ddd;
+  border-radius:8px;
+  padding:10px;
+  margin:8px 0;
+  text-align:left;
+  font-size:14px;
+}
+
+.msg{
+  background:#fef3c7;
+  color:#92400e;
+  padding:12px;
+  border-radius:8px;
+  font-size:14px;
+  margin-top:10px;
+}
+
+.timer{
+  font-size:13px;
+  color:#2563eb;
+  margin-top:6px;
+}
+
+button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:6px;
+  font-size:15px;
+  cursor:pointer;
+}
+.submit{background:#16a34a;color:#fff}
+.logout{background:#dc2626;color:#fff}
+.disabled{background:#9ca3af;cursor:not-allowed}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <img src="logo..png" alt="Faith & Fitness">
+</div>
+
+<div class="container">
+  <div class="card">
+
+    <h2>WELCOME</h2>
+    <h3>FAITH & FITNESS</h3>
+
+    <div class="date" id="todayDate"></div>
+
+    <div id="userName">Hello</div>
+    <div id="userPoints">Total Points: 0</div>
+
+    <div id="taskBox"></div>
+    <div id="message"></div>
+    <div class="timer" id="timer"></div>
+
+    <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
+    <button class="logout" onclick="logout()">Logout</button>
+
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where, addDoc
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+/* FIREBASE */
+const app = initializeApp({
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
+const db = getFirestore(app);
+
+/* LOGIN CHECK */
+const phone = localStorage.getItem("userPhone");
+if(!phone){
+  location.replace("index.html");
+}
+
+/* SHOW TODAY DATE */
+const now = new Date();
+todayDate.innerText = "Date: " + now.toDateString();
+
+/* 🔥 MAIN FIX – VOTING DAY (8 PM LOGIC) */
+function getVotingDate(){
+  const d = new Date();
+  if(d.getHours() < 20){
+    d.setDate(d.getDate() - 1);
+  }
+  return d.toISOString().split("T")[0];
+}
+
+/* TIMER */
+function updateTimer(){
+  const now = new Date();
+  const next = new Date();
+  next.setHours(20,0,0,0);
+  if(now >= next) next.setDate(next.getDate()+1);
+
+  const diff = next - now;
+  const h = Math.floor(diff/3600000);
+  const m = Math.floor((diff%3600000)/60000);
+  const s = Math.floor((diff%60000)/1000);
+  timer.innerText = `Next voting in ${h}h ${m}m ${s}s`;
+}
+setInterval(updateTimer,1000);
+updateTimer();
+
+/* USER */
+async function loadUser(){
+  const snap = await getDocs(
+    query(collection(db,"users"), where("phone","==",phone))
+  );
+  snap.forEach(d=>{
+    userName.innerText = "Hello, " + d.data().name;
+  });
+}
+
+/* TOTAL POINTS */
+async function loadPoints(){
+  let total = 0;
+  const snap = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
+  snap.forEach(d=> total += Number(d.data().points||0));
+  userPoints.innerText = "Total Points: " + total;
+}
+
+/* CHECK ALREADY VOTED */
+async function checkVoted(){
+  const snap = await getDocs(
+    query(
+      collection(db,"votes"),
+      where("phone","==",phone),
+      where("voteDay","==",getVotingDate())   // ✅ FIX
+    )
+  );
+
+  if(!snap.empty){
+    taskBox.innerHTML="";
+    submitBtn.disabled=true;
+    submitBtn.classList.add("disabled");
+    message.innerHTML=`
+      <div class="msg">
+        You have done today's voting ✅<br>
+        Next voting is at <b>8 PM</b>
+      </div>`;
+    return true;
+  }
+  return false;
+}
+
+/* TASKS */
+async function loadTasks(){
+  if(await checkVoted()) return;
+
+  const now = new Date();
+  const snap = await getDocs(collection(db,"tasks"));
+  taskBox.innerHTML="";
+  let active=false;
+
+  snap.forEach(d=>{
+    const t=d.data();
+    if(now>=new Date(t.start) && now<=new Date(t.end)){
+      active=true;
+      taskBox.innerHTML+=`
+        <div class="task">
+          <label>
+            <input type="checkbox" data-points="${t.points}">
+            ${t.text} (Points: ${t.points})
+          </label>
+        </div>`;
+    }
+  });
+
+  if(!active){
+    taskBox.innerHTML=
+      `<div class="msg">No active tasks ❌</div>`;
+    submitBtn.disabled=true;
+    submitBtn.classList.add("disabled");
+  }
+}
+
+/* SUBMIT VOTE */
+window.submitVote = async()=>{
+  const checked=document.querySelectorAll("#taskBox input:checked");
+  if(!checked.length){
+    alert("Task select cheyyanam");
+    return;
+  }
+
+  let points=0;
+  checked.forEach(c=>points+=Number(c.dataset.points));
+
+  await addDoc(collection(db,"votes"),{
+    phone,
+    points,
+    voteDay: getVotingDate(),     // ✅ MAIN FIELD
+    realDate: new Date().toISOString(),
+    source:"user"
+  });
+
+  loadPoints();
+  checkVoted();
+};
+
+/* LOGOUT */
+window.logout=()=>{
+  localStorage.clear();
+  location.replace("index.html");
+};
+
+/* INIT */
+loadUser();
+loadPoints();
+loadTasks();
+</script>
+
+</body>
+</html>
