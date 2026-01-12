@@ -2,41 +2,100 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Faith & Fitness – Vote</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body{font-family:Arial;background:#f1f5f9;margin:0}
-.card{max-width:400px;margin:30px auto;background:#fff;
-padding:20px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,.15)}
-button{width:100%;padding:12px;margin-top:10px;border:0;border-radius:6px}
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#f1f5f9;
+}
+.header{
+  background:#fff;
+  text-align:center;
+  padding:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+.header img{height:120px}
+
+.container{
+  display:flex;
+  justify-content:center;
+  padding:20px;
+}
+.card{
+  background:#fff;
+  width:100%;
+  max-width:380px;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 6px 14px rgba(0,0,0,.15);
+  text-align:center;
+}
+.task{
+  border:1px solid #ddd;
+  padding:10px;
+  border-radius:8px;
+  margin:8px 0;
+  text-align:left;
+}
+.msg{
+  background:#fef3c7;
+  padding:10px;
+  border-radius:8px;
+  margin-top:10px;
+  font-size:14px;
+}
+button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:6px;
+  font-size:15px;
+}
 .submit{background:#16a34a;color:#fff}
 .disabled{background:#9ca3af}
-.msg{background:#fef3c7;padding:10px;border-radius:6px;margin-top:10px}
+.logout{background:#dc2626;color:#fff}
+.timer{color:#2563eb;font-size:13px;margin-top:6px}
 </style>
 </head>
 
 <body>
+
+<div class="header">
+  <img src="logo.png">
+</div>
+
+<div class="container">
 <div class="card">
-<h2>FAITH & FITNESS</h2>
 
-<div id="user"></div>
-<div id="points"></div>
+<h2>WELCOME</h2>
+<h3 style="color:#16a34a">FAITH & FITNESS</h3>
+
+<div id="todayDate"></div>
+<div id="userName"></div>
+<div id="userPoints"></div>
+
 <div id="taskBox"></div>
-<div id="msg"></div>
+<div id="message"></div>
+<div class="timer" id="timer"></div>
 
-<button id="voteBtn" class="submit">Submit Vote</button>
+<button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
+<button class="logout" onclick="logout()">Logout</button>
+
+</div>
 </div>
 
 <script type="module">
-/* 🔥 Firebase */
+/* ---------------- FIREBASE ---------------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import {
-  getFirestore, collection, addDoc,
-  getDocs, query, where
+import { 
+  getFirestore, collection, getDocs, addDoc, query, where 
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-import {
-  getMessaging, getToken, onMessage
+import { 
+  getMessaging, getToken, onMessage 
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging.js";
 
 const firebaseConfig = {
@@ -44,113 +103,137 @@ const firebaseConfig = {
   authDomain: "daily-voting-793ee.firebaseapp.com",
   projectId: "daily-voting-793ee",
   messagingSenderId: "106550006876",
-  appId: "1:106550006876:web:xxxxxxxx"
+  appId: "1:106550006876:web:XXXXXXXX"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const messaging = getMessaging(app);
 
-/* 🔐 Login */
+/* ---------------- LOGIN CHECK ---------------- */
 const phone = localStorage.getItem("userPhone");
-if(!phone) location.href="index.html";
+if(!phone) location.replace("index.html");
 
-/* 📅 Voting Date (8PM rule) */
-function voteDate(){
-  const d=new Date();
-  if(d.getHours()<20) d.setDate(d.getDate()-1);
+/* ---------------- DATE ---------------- */
+const now = new Date();
+todayDate.innerText = "Today : " + now.toDateString();
+
+function getVoteDate(){
+  const d = new Date();
+  if(d.getHours() < 20) d.setDate(d.getDate()-1);
   return d.toISOString().split("T")[0];
 }
 
-/* 👤 Load user */
+/* ---------------- TIMER ---------------- */
+function updateTimer(){
+  const now = new Date();
+  const next = new Date();
+  next.setHours(20,0,0,0);
+  if(now >= next) next.setDate(next.getDate()+1);
+  const diff = next-now;
+  const h=Math.floor(diff/3600000);
+  const m=Math.floor((diff%3600000)/60000);
+  const s=Math.floor((diff%60000)/1000);
+  timer.innerText=`Next voting in ${h}h ${m}m ${s}s`;
+}
+setInterval(updateTimer,1000);
+updateTimer();
+
+/* ---------------- USER ---------------- */
 async function loadUser(){
-  const q=query(collection(db,"users"),where("phone","==",phone));
-  const s=await getDocs(q);
-  s.forEach(d=>user.innerText="Hello "+d.data().name);
+  const snap = await getDocs(query(collection(db,"users"),where("phone","==",phone)));
+  snap.forEach(d=> userName.innerText="Hello, "+d.data().name);
 }
 
-/* ⭐ Points */
+/* ---------------- POINTS ---------------- */
 async function loadPoints(){
   let total=0;
-  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
-  s.forEach(d=>total+=Number(d.data().points));
-  points.innerText="Total Points: "+total;
+  const snap=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
+  snap.forEach(d=> total+=Number(d.data().points||0));
+  userPoints.innerText="Total Points: "+total;
 }
 
-/* 🗳️ Already voted? */
-async function alreadyVoted(){
-  const s=await getDocs(query(
+/* ---------------- CHECK VOTED ---------------- */
+async function checkVoted(){
+  const snap = await getDocs(query(
     collection(db,"votes"),
     where("phone","==",phone),
-    where("date","==",voteDate())
+    where("date","==",getVoteDate())
   ));
-  if(!s.empty){
-    voteBtn.disabled=true;
-    voteBtn.classList.add("disabled");
-    msg.innerHTML="<div class='msg'>Today's vote completed ✅</div>";
+  if(!snap.empty){
+    submitBtn.disabled=true;
+    submitBtn.classList.add("disabled");
+    message.innerHTML=`<div class="msg">You already voted today ✅</div>`;
     return true;
   }
   return false;
 }
 
-/* 📋 Tasks */
+/* ---------------- TASKS ---------------- */
 async function loadTasks(){
-  if(await alreadyVoted()) return;
-  const s=await getDocs(collection(db,"tasks"));
+  if(await checkVoted()) return;
+  const snap=await getDocs(collection(db,"tasks"));
   taskBox.innerHTML="";
-  s.forEach(d=>{
+  snap.forEach(d=>{
+    const t=d.data();
     taskBox.innerHTML+=`
-      <label>
-        <input type="checkbox" value="${d.data().points}">
-        ${d.data().text} (${d.data().points} pts)
-      </label><br>`;
+      <div class="task">
+        <label>
+          <input type="checkbox" data-points="${t.points}">
+          ${t.text} (${t.points} pts)
+        </label>
+      </div>`;
   });
 }
 
-/* 🗳️ Submit */
-voteBtn.onclick=async()=>{
-  const checks=document.querySelectorAll("input:checked");
-  if(!checks.length) return alert("Select task");
-
-  let pts=0;
-  checks.forEach(c=>pts+=Number(c.value));
+/* ---------------- SUBMIT ---------------- */
+window.submitVote=async()=>{
+  const checked=document.querySelectorAll("#taskBox input:checked");
+  if(!checked.length) return alert("Task select cheyyanam");
+  let points=0;
+  checked.forEach(c=>points+=Number(c.dataset.points));
 
   await addDoc(collection(db,"votes"),{
     phone,
-    points:pts,
-    date:voteDate(),
-    source:"user",
-    time:new Date().toISOString()
+    points,
+    date:getVoteDate(),
+    source:"user"
   });
 
   loadPoints();
-  alreadyVoted();
+  checkVoted();
 };
 
-/* 🔔 PUSH NOTIFICATION */
-async function enablePush(){
-  const perm=await Notification.requestPermission();
-  if(perm!=="granted") return;
+/* ---------------- LOGOUT ---------------- */
+window.logout=()=>{
+  localStorage.clear();
+  location.replace("index.html");
+};
 
-  const token=await getToken(messaging,{
-    vapidKey:"YOUR_PUBLIC_VAPID_KEY"
+/* ---------------- 🔔 PUSH NOTIFICATION ---------------- */
+navigator.serviceWorker.register("/daily-voting/firebase-messaging-sw.js")
+.then(reg=>{
+  Notification.requestPermission().then(permission=>{
+    if(permission==="granted"){
+      getToken(messaging,{
+        vapidKey:"🔥 YOUR VAPID KEY HERE 🔥",
+        serviceWorkerRegistration:reg
+      }).then(token=>{
+        console.log("FCM TOKEN:",token);
+      });
+    }
   });
-
-  await addDoc(collection(db,"tokens"),{
-    phone,
-    token
-  });
-}
+});
 
 onMessage(messaging,payload=>{
   alert(payload.notification.title+"\n"+payload.notification.body);
 });
 
-/* INIT */
+/* ---------------- INIT ---------------- */
 loadUser();
 loadPoints();
 loadTasks();
-enablePush();
 </script>
+
 </body>
 </html>
