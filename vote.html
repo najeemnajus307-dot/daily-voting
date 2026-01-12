@@ -66,7 +66,7 @@ button{
 <body>
 
 <div class="header">
-  <img src="logo..png" alt="Faith & Fitness">
+  <img src="logo.png" alt="Faith & Fitness">
 </div>
 
 <div class="container">
@@ -89,6 +89,22 @@ button{
 </div>
 </div>
 
+<!-- 🔔 SERVICE WORKER REGISTER (FCM REQUIRED) -->
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/daily-voting/firebase-messaging-sw.js")
+      .then(reg => {
+        console.log("Service Worker registered:", reg.scope);
+      })
+      .catch(err => {
+        console.error("Service Worker registration failed:", err);
+      });
+  });
+}
+</script>
+
 <script type="module">
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
@@ -110,11 +126,11 @@ const db = getFirestore(app);
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
-/* 📅 SHOW TODAY (DISPLAY ONLY) */
+/* 📅 TODAY DISPLAY */
 const now = new Date();
 todayDate.innerText = "Today: " + now.toDateString();
 
-/* ✅ CORRECT VOTING DATE (8 PM RULE) */
+/* ✅ VOTING DATE (8 PM RULE) */
 function getVoteDate(){
   const d = new Date();
   if(d.getHours() < 20){
@@ -123,7 +139,7 @@ function getVoteDate(){
   return d.toISOString().split("T")[0];
 }
 
-/* ⏰ NEXT VOTING TIMER */
+/* ⏰ TIMER */
 function updateTimer(){
   const now = new Date();
   const next = new Date();
@@ -140,7 +156,7 @@ function updateTimer(){
 setInterval(updateTimer,1000);
 updateTimer();
 
-/* 👤 LOAD USER */
+/* 👤 USER */
 async function loadUser(){
   const q = query(collection(db,"users"), where("phone","==",phone));
   const snap = await getDocs(q);
@@ -149,7 +165,7 @@ async function loadUser(){
   });
 }
 
-/* ⭐ LOAD TOTAL POINTS */
+/* ⭐ POINTS */
 async function loadPoints(){
   let total = 0;
   const snap = await getDocs(
@@ -159,7 +175,7 @@ async function loadPoints(){
   userPoints.innerText = "Total Points: " + total;
 }
 
-/* 🔁 CHECK ALREADY VOTED */
+/* 🔁 ALREADY VOTED CHECK */
 async function checkVoted(){
   const snap = await getDocs(
     query(
@@ -182,7 +198,7 @@ async function checkVoted(){
   return false;
 }
 
-/* 📋 LOAD TASKS */
+/* 📋 TASKS */
 async function loadTasks(){
   if(await checkVoted()) return;
 
@@ -212,7 +228,7 @@ async function loadTasks(){
   }
 }
 
-/* 🗳️ SUBMIT VOTE (FINAL SAFE) */
+/* 🗳️ SUBMIT */
 window.submitVote = async ()=>{
   const checked = document.querySelectorAll("#taskBox input:checked");
   if(!checked.length){
@@ -220,7 +236,6 @@ window.submitVote = async ()=>{
     return;
   }
 
-  // 🔒 FINAL DUPLICATE CHECK
   const today = getVoteDate();
   const q = query(
     collection(db,"votes"),
@@ -241,8 +256,8 @@ window.submitVote = async ()=>{
   await addDoc(collection(db,"votes"),{
     phone,
     points,
-    date: today,                         // ✅ correct date
-    time: new Date().toLocaleTimeString(),// 🕒 stored time
+    date: today,
+    time: new Date().toLocaleTimeString(),
     source: "user",
     createdAt: new Date().toISOString()
   });
@@ -264,4 +279,4 @@ loadTasks();
 </script>
 
 </body>
-</html>+
+</html>
