@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Faith & Fitness – Admin</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Faith & Fitness – Admin Panel</title>
 
 <style>
 :root{
-  --bg:#f1f5f9;--dark:#0f172a;--pri:#2563eb;
-  --ok:#16a34a;--bad:#dc2626;--card:#fff;
+  --bg:#f1f5f9; --card:#fff; --pri:#2563eb; --ok:#16a34a; --bad:#dc2626;
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial;background:var(--bg)}
@@ -16,35 +15,37 @@ body{margin:0;font-family:Arial;background:var(--bg)}
 
 /* SIDEBAR */
 .sidebar{
-  width:230px;background:var(--dark);color:#fff;padding:12px
+  width:220px;background:#0f172a;color:#fff;padding:12px;
 }
-.brand{text-align:center;font-weight:bold;margin:10px 0 20px}
+.brand{font-weight:bold;text-align:center;margin:8px 0 16px}
 .nav a{
-  display:block;padding:10px;border-radius:6px;
-  color:#cbd5f5;text-decoration:none;margin:4px 0;cursor:pointer
+  display:block;color:#cbd5f5;text-decoration:none;
+  padding:10px;border-radius:6px;margin:4px 0;cursor:pointer
 }
-.nav a:hover,.nav a.active{background:#1e293b;color:#fff}
+.nav a.active,.nav a:hover{background:#1e293b;color:#fff}
 
 /* MAIN */
 .main{flex:1;padding:16px}
-.hidden{display:none}
+.hrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .card{
-  background:var(--card);padding:14px;border-radius:12px;
-  box-shadow:0 4px 12px rgba(0,0,0,.12);margin-bottom:14px
+  background:var(--card);padding:12px;border-radius:10px;
+  box-shadow:0 0 8px rgba(0,0,0,.12)
 }
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ddd;padding:6px;text-align:center}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:14px}
 th{background:var(--pri);color:#fff}
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
 .rank3{background:#fecaca}
-
 .btn{border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .add{background:var(--ok);color:#fff}
 .del{background:var(--bad);color:#fff}
-input,select,textarea{padding:6px;width:100%}
+.muted{color:#64748b}
+.hidden{display:none}
+input,select{padding:6px}
 
-@media(max-width:800px){
+@media(max-width:900px){ .sidebar{width:180px} }
+@media(max-width:700px){
   .wrap{flex-direction:column}
   .sidebar{width:100%}
 }
@@ -61,7 +62,6 @@ input,select,textarea{padding:6px;width:100%}
     <a data-page="dash" class="active">Dashboard</a>
     <a data-page="task">Task-wise Report</a>
     <a data-page="user">User-wise Report</a>
-    <a data-page="notify">🔔 Notifications</a>
     <a onclick="location.href='task-editor.html'">Task Editor</a>
   </div>
 </aside>
@@ -71,13 +71,27 @@ input,select,textarea{padding:6px;width:100%}
 
 <!-- DASHBOARD -->
 <section id="page-dash">
+  <div class="hrow">
+    <div class="card">Users: <b id="d_users">0</b></div>
+    <div class="card">Shown: <b id="d_shown">0</b></div>
+    <div class="card">
+      Date:
+      <input type="date" id="d_from">
+      <input type="date" id="d_to">
+      <button class="btn" onclick="dashLoad()">Apply</button>
+      <button class="btn" onclick="dashClear()">Clear</button>
+    </div>
+    <div class="card">
+      <label><input type="checkbox" id="d_hide0" onchange="dashLoad()"> Hide zero</label>
+    </div>
+  </div>
+
   <div class="card">
-    <h3>User Points Dashboard</h3>
     <table>
       <thead>
         <tr>
-          <th>SL</th><th>Rank</th><th>Name</th>
-          <th>Phone</th><th>Total</th><th>Add</th>
+          <th>SL</th><th>Rank</th><th>Name</th><th>Phone</th>
+          <th>Total Points</th><th>Add</th>
         </tr>
       </thead>
       <tbody id="dashBody"></tbody>
@@ -85,24 +99,26 @@ input,select,textarea{padding:6px;width:100%}
   </div>
 </section>
 
-<!-- TASK WISE -->
+<!-- TASK REPORT -->
 <section id="page-task" class="hidden">
-  <div class="card">
-    <h3>Task-wise Report</h3>
-    <select id="t_task"></select>
-    <button class="btn add" onclick="taskLoad()">View</button>
+  <div class="hrow">
+    <div class="card">
+      Task:
+      <select id="t_task"></select>
+      <button class="btn" onclick="taskLoad()">View</button>
+    </div>
   </div>
 
   <div class="card">
-    <h4>Voted Users</h4>
+    <h3>Voted Users</h3>
     <table>
       <thead><tr><th>Name</th><th>Phone</th><th>Points</th></tr></thead>
       <tbody id="t_voted"></tbody>
     </table>
   </div>
 
-  <div class="card">
-    <h4>Not Voted Users</h4>
+  <div class="card" style="margin-top:10px">
+    <h3>Not Voted Users</h3>
     <table>
       <thead><tr><th>Name</th><th>Phone</th><th>Add</th></tr></thead>
       <tbody id="t_not"></tbody>
@@ -110,52 +126,21 @@ input,select,textarea{padding:6px;width:100%}
   </div>
 </section>
 
-<!-- USER WISE -->
+<!-- USER REPORT -->
 <section id="page-user" class="hidden">
-  <div class="card">
-    <h3>User-wise Report</h3>
-    <select id="u_user" onchange="userLoad()"></select>
+  <div class="hrow">
+    <div class="card">
+      User:
+      <select id="u_user"></select>
+      <button class="btn" onclick="userLoad()">View</button>
+    </div>
   </div>
 
   <div class="card">
     <table>
-      <thead>
-        <tr><th>Date</th><th>Points</th><th>Source</th><th>Delete</th></tr>
-      </thead>
+      <thead><tr><th>Date</th><th>Points</th><th>Source</th><th>Delete</th></tr></thead>
       <tbody id="u_body"></tbody>
     </table>
-  </div>
-</section>
-
-<!-- NOTIFICATION -->
-<section id="page-notify" class="hidden">
-  <div class="card">
-    <h3>🔔 Notification Settings</h3>
-
-    <label>
-      <input type="checkbox" id="n_enable">
-      Enable Voting Reminders
-    </label>
-
-    <br><br>
-
-    <label>Reminder Message</label>
-    <textarea id="n_msg" rows="3">
-You haven't voted yet. Please vote now 🙏
-    </textarea>
-
-    <br><br>
-
-    <label>Reminder Gap (hours)</label>
-    <select id="n_gap">
-      <option value="2">Every 2 hours</option>
-      <option value="4">Every 4 hours</option>
-      <option value="6">Every 6 hours</option>
-    </select>
-
-    <br><br>
-    <button class="btn add" onclick="saveNotify()">Save Settings</button>
-    <div id="n_status"></div>
   </div>
 </section>
 
@@ -163,14 +148,13 @@ You haven't voted yet. Please vote now 🙏
 </div>
 
 <script type="module">
-/* PASSWORD */
+/* ADMIN PASSWORD */
 if(prompt("Admin password")!=="5") location.replace("index.html");
 
 /* FIREBASE */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs,
-  addDoc, deleteDoc, doc, setDoc
+  getFirestore, collection, getDocs, addDoc, deleteDoc, doc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const app = initializeApp({
@@ -187,57 +171,71 @@ document.querySelectorAll(".nav a[data-page]").forEach(a=>{
     a.classList.add("active");
     document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
     document.getElementById("page-"+a.dataset.page).classList.remove("hidden");
-
-    if(a.dataset.page==="task"){taskInit()}
-    if(a.dataset.page==="user"){userInit()}
   }
 });
 
-/* DASHBOARD */
+const today = ()=> new Date().toISOString().split("T")[0];
+
+/* DASHBOARD (FIXED DATE LOGIC) */
 async function dashLoad(){
-  const users=await getDocs(collection(db,"users"));
-  const votes=await getDocs(collection(db,"votes"));
-  const map={};
+  const users = await getDocs(collection(db,"users"));
+  const votes = await getDocs(collection(db,"votes"));
+
+  d_users.textContent = users.size;
+
+  const from = d_from.value;
+  const to   = d_to.value || from;
+  const useDate = !!from;
+
+  const map = {};
 
   votes.forEach(v=>{
     const x=v.data();
+    if(useDate){
+      if(!x.date) return;
+      if(x.date<from || x.date>to) return;
+    }
     map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
   });
 
-  const rows=[];
+  let rows=[];
   users.forEach(u=>{
-    rows.push({
-      name:u.data().name,
-      phone:u.data().phone,
-      total:map[u.data().phone]||0
-    });
+    const p=u.data().phone;
+    rows.push({name:u.data().name, phone:p, total:map[p]||0});
   });
 
+  if(d_hide0.checked) rows=rows.filter(r=>r.total>0);
   rows.sort((a,b)=>b.total-a.total);
+
   dashBody.innerHTML="";
   let rank=0,prev=null,sl=0;
 
   rows.forEach(r=>{
     if(prev===null||r.total<prev) rank++;
     prev=r.total; sl++;
+
     const tr=document.createElement("tr");
     tr.className=rank===1?"rank1":rank===2?"rank2":rank===3?"rank3":"";
     tr.innerHTML=`
-      <td>${sl}</td><td>${rank}</td>
-      <td>${r.name}</td><td>${r.phone}</td>
-      <td>${r.total}</td>
+      <td>${sl}</td><td>${rank}</td><td>${r.name}</td>
+      <td>${r.phone}</td><td>${r.total}</td>
       <td>
         <input id="p_${r.phone}" type="number" style="width:60px">
         <button class="btn add" onclick="addPoint('${r.phone}')">+</button>
       </td>`;
     dashBody.appendChild(tr);
   });
+
+  d_shown.textContent=sl;
 }
+window.dashLoad=dashLoad;
+window.dashClear=()=>{d_from.value="";d_to.value="";dashLoad();};
+
 window.addPoint=async(phone)=>{
   const v=Number(document.getElementById("p_"+phone).value);
-  if(v<=0) return;
+  if(v<=0) return alert("Enter points");
   await addDoc(collection(db,"votes"),{
-    phone,points:v,date:new Date().toISOString().split("T")[0],source:"admin"
+    phone, points:v, date:today(), source:"admin"
   });
   dashLoad();
 };
@@ -250,24 +248,23 @@ async function taskInit(){
   });
 }
 window.taskLoad=async()=>{
-  const taskId=t_task.value;
   const users=await getDocs(collection(db,"users"));
   const votes=await getDocs(collection(db,"votes"));
   const map={};
 
   votes.forEach(v=>{
     const x=v.data();
-    if(x.taskId===taskId) map[x.phone]=x.points;
+    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
   });
 
-  t_voted.innerHTML="";t_not.innerHTML="";
+  t_voted.innerHTML=""; t_not.innerHTML="";
   users.forEach(u=>{
-    const p=u.data().phone,n=u.data().name;
+    const p=u.data().phone, n=u.data().name;
     if(map[p]){
       t_voted.innerHTML+=`<tr><td>${n}</td><td>${p}</td><td>${map[p]}</td></tr>`;
     }else{
       t_not.innerHTML+=`<tr><td>${n}</td><td>${p}</td>
-      <td><button class="btn add" onclick="addPoint('${p}')">Add</button></td></tr>`;
+        <td><button class="btn add" onclick="addPoint('${p}')">Add</button></td></tr>`;
     }
   });
 };
@@ -287,33 +284,22 @@ window.userLoad=async()=>{
     const x=v.data();
     if(x.phone===phone){
       u_body.innerHTML+=`
-      <tr>
-        <td>${x.date||"-"}</td>
-        <td>${x.points}</td>
-        <td>${x.source}</td>
-        <td><button class="btn del" onclick="delVote('${v.id}')">X</button></td>
-      </tr>`;
+        <tr>
+          <td>${x.date||"-"}</td>
+          <td>${x.points}</td>
+          <td>${x.source||"user"}</td>
+          <td><button class="btn del" onclick="delVote('${v.id}')">X</button></td>
+        </tr>`;
     }
   });
 };
 window.delVote=async(id)=>{
   await deleteDoc(doc(db,"votes",id));
-  userLoad();dashLoad();
-};
-
-/* NOTIFICATION SAVE */
-window.saveNotify=async()=>{
-  await setDoc(doc(db,"settings","notification"),{
-    enabled:n_enable.checked,
-    message:n_msg.value,
-    gap:Number(n_gap.value),
-    updatedAt:new Date().toISOString()
-  });
-  n_status.innerHTML="✅ Saved successfully";
+  userLoad(); dashLoad();
 };
 
 /* INIT */
-dashLoad();
+dashLoad(); taskInit(); userInit();
 </script>
 </body>
 </html>
