@@ -70,14 +70,14 @@ input,select,textarea{padding:6px;width:100%}
 
 <!-- DASHBOARD -->
 <section id="page-dash">
-  <!-- unchanged -->
+  <div class="hrow">
+    <div class="card">Users: <b id="d_users">0</b></div>
+    <div class="card">Shown: <b id="d_shown">0</b></div>
+  </div>
   <div class="card">
     <table>
       <thead>
-        <tr>
-          <th>SL</th><th>Rank</th><th>Name</th><th>Phone</th>
-          <th>Total Points</th><th>Add</th>
-        </tr>
+        <tr><th>SL</th><th>Rank</th><th>Name</th><th>Phone</th><th>Total</th><th>Add</th></tr>
       </thead>
       <tbody id="dashBody"></tbody>
     </table>
@@ -87,24 +87,13 @@ input,select,textarea{padding:6px;width:100%}
 <!-- TASK REPORT -->
 <section id="page-task" class="hidden">
   <div class="card">
-    Task:
     <select id="t_task"></select>
-    <button class="btn" onclick="taskLoad()">View</button>
+    <button class="btn add" onclick="taskLoad()">View</button>
   </div>
-
   <div class="card">
-    <h3>Voted Users</h3>
     <table>
       <thead><tr><th>Name</th><th>Phone</th><th>Points</th></tr></thead>
       <tbody id="t_voted"></tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h3>Not Voted Users</h3>
-    <table>
-      <thead><tr><th>Name</th><th>Phone</th><th>Add</th></tr></thead>
-      <tbody id="t_not"></tbody>
     </table>
   </div>
 </section>
@@ -112,11 +101,9 @@ input,select,textarea{padding:6px;width:100%}
 <!-- USER REPORT -->
 <section id="page-user" class="hidden">
   <div class="card">
-    User:
     <select id="u_user"></select>
-    <button class="btn" onclick="userLoad()">View</button>
+    <button class="btn add" onclick="userLoad()">View</button>
   </div>
-
   <div class="card">
     <table>
       <thead><tr><th>Date</th><th>Points</th><th>Source</th><th>Delete</th></tr></thead>
@@ -131,28 +118,27 @@ input,select,textarea{padding:6px;width:100%}
     <h3>🔔 Notification Settings</h3>
 
     <label>
-      <input type="checkbox" id="n_enable">
-      Enable Voting Reminder
+      <input type="checkbox" id="n_enable"> Enable Reminder
     </label>
 
     <br><br>
 
-    <label>Reminder Message</label>
+    <label>Message</label>
     <textarea id="n_message" rows="3">
 You haven't voted yet. Please vote now 🙏
     </textarea>
 
     <br><br>
 
-    <label>Reminder Gap (hours)</label>
+    <label>Reminder Gap</label>
     <select id="n_gap">
-      <option value="2">Every 2 hours</option>
-      <option value="4">Every 4 hours</option>
-      <option value="6">Every 6 hours</option>
+      <option value="2">Every 2 Hours</option>
+      <option value="4">Every 4 Hours</option>
+      <option value="6">Every 6 Hours</option>
     </select>
 
     <br><br>
-    <button class="btn add" onclick="saveNotification()">Save Settings</button>
+    <button class="btn add" onclick="saveNotification()">Save</button>
     <div id="n_status"></div>
   </div>
 </section>
@@ -161,14 +147,14 @@ You haven't voted yet. Please vote now 🙏
 </div>
 
 <script type="module">
-/* PASSWORD */
+/* ADMIN PASSWORD */
 if(prompt("Admin password")!=="5") location.replace("index.html");
 
 /* FIREBASE */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs,
-  addDoc, deleteDoc, doc, setDoc
+  getFirestore, collection, getDocs, addDoc,
+  deleteDoc, doc, setDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const app = initializeApp({
@@ -188,16 +174,62 @@ document.querySelectorAll(".nav a[data-page]").forEach(a=>{
   }
 });
 
-/* 🔔 SAVE NOTIFICATION */
-window.saveNotification = async ()=>{
-  await setDoc(doc(db,"settings","notification"),{
-    enabled: n_enable.checked,
-    message: n_message.value,
-    gap: Number(n_gap.value),
-    updatedAt: new Date().toISOString()
+/* DASHBOARD */
+async function dashLoad(){
+  const users=await getDocs(collection(db,"users"));
+  const votes=await getDocs(collection(db,"votes"));
+  d_users.textContent=users.size;
+
+  const map={};
+  votes.forEach(v=>{
+    const x=v.data();
+    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
   });
-  n_status.innerHTML = "✅ Saved successfully";
+
+  let rows=[];
+  users.forEach(u=>{
+    rows.push({name:u.data().name, phone:u.data().phone, total:map[u.data().phone]||0});
+  });
+
+  rows.sort((a,b)=>b.total-a.total);
+  dashBody.innerHTML="";
+  let rank=0,prev=null,sl=0;
+
+  rows.forEach(r=>{
+    if(prev===null||r.total<prev) rank++;
+    prev=r.total; sl++;
+    dashBody.innerHTML+=`
+      <tr>
+        <td>${sl}</td><td>${rank}</td><td>${r.name}</td>
+        <td>${r.phone}</td><td>${r.total}</td>
+        <td><input id="p_${r.phone}" type="number" style="width:60px">
+        <button class="btn add" onclick="addPoint('${r.phone}')">+</button></td>
+      </tr>`;
+  });
+  d_shown.textContent=sl;
+}
+window.addPoint=async(phone)=>{
+  const v=Number(document.getElementById("p_"+phone).value);
+  if(v<=0) return;
+  await addDoc(collection(db,"votes"),{
+    phone, points:v, date:new Date().toISOString().split("T")[0], source:"admin"
+  });
+  dashLoad();
 };
+
+/* NOTIFICATION SAVE */
+window.saveNotification=async()=>{
+  await setDoc(doc(db,"settings","notification"),{
+    enabled:n_enable.checked,
+    message:n_message.value,
+    gap:Number(n_gap.value),
+    updatedAt:new Date().toISOString()
+  });
+  n_status.innerHTML="✅ Saved successfully";
+};
+
+/* INIT */
+dashLoad();
 </script>
 </body>
 </html>
