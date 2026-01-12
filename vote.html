@@ -14,10 +14,10 @@ body{
 .header{
   background:#fff;
   text-align:center;
-  padding:10px;
+  padding:8px;
   box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
-.header img{height:140px}
+.header img{height:120px}
 
 .container{
   display:flex;
@@ -57,7 +57,7 @@ button{
   cursor:pointer;
 }
 .submit{background:#16a34a;color:#fff}
-.disabled{background:#9ca3af}
+.disabled{background:#9ca3af;cursor:not-allowed}
 .logout{background:#dc2626;color:#fff}
 .timer{color:#2563eb;font-size:13px;margin-top:6px}
 </style>
@@ -65,8 +65,9 @@ button{
 
 <body>
 
+<!-- HEADER -->
 <div class="header">
-  <img src="logo..png" alt="Faith & Fitness">
+  <img src="logo.png" alt="Faith & Fitness">
 </div>
 
 <div class="container">
@@ -89,32 +90,15 @@ button{
 </div>
 </div>
 
-<!-- 🔔 SERVICE WORKER REGISTER (FCM REQUIRED) -->
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/daily-voting/firebase-messaging-sw.js")
-      .then(reg => {
-        console.log("Service Worker registered:", reg.scope);
-      })
-      .catch(err => {
-        console.error("Service Worker registration failed:", err);
-      });
-  });
-}
-</script>
-
+<!-- 🔥 FIREBASE + LOGIC -->
 <script type="module">
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs,
   query, where, addDoc
-} from
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE */
+/* 🔥 FIREBASE CONFIG */
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -126,11 +110,10 @@ const db = getFirestore(app);
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
-/* 📅 TODAY DISPLAY */
-const now = new Date();
-todayDate.innerText = "Today: " + now.toDateString();
+/* 📅 DISPLAY DATE (INFO ONLY) */
+todayDate.innerText = "Today: " + new Date().toDateString();
 
-/* ✅ VOTING DATE (8 PM RULE) */
+/* 🕗 CORRECT VOTING DATE (8 PM RULE) */
 function getVoteDate(){
   const d = new Date();
   if(d.getHours() < 20){
@@ -139,7 +122,7 @@ function getVoteDate(){
   return d.toISOString().split("T")[0];
 }
 
-/* ⏰ TIMER */
+/* ⏰ NEXT VOTING TIMER */
 function updateTimer(){
   const now = new Date();
   const next = new Date();
@@ -150,22 +133,22 @@ function updateTimer(){
   const h = Math.floor(diff/3600000);
   const m = Math.floor((diff%3600000)/60000);
   const s = Math.floor((diff%60000)/1000);
-
   timer.innerText = `Next voting in ${h}h ${m}m ${s}s`;
 }
 setInterval(updateTimer,1000);
 updateTimer();
 
-/* 👤 USER */
+/* 👤 LOAD USER */
 async function loadUser(){
-  const q = query(collection(db,"users"), where("phone","==",phone));
-  const snap = await getDocs(q);
+  const snap = await getDocs(
+    query(collection(db,"users"), where("phone","==",phone))
+  );
   snap.forEach(d=>{
     userName.innerText = "Hello, " + d.data().name;
   });
 }
 
-/* ⭐ POINTS */
+/* ⭐ LOAD TOTAL POINTS */
 async function loadPoints(){
   let total = 0;
   const snap = await getDocs(
@@ -175,7 +158,7 @@ async function loadPoints(){
   userPoints.innerText = "Total Points: " + total;
 }
 
-/* 🔁 ALREADY VOTED CHECK */
+/* 🔁 CHECK ALREADY VOTED */
 async function checkVoted(){
   const snap = await getDocs(
     query(
@@ -198,7 +181,7 @@ async function checkVoted(){
   return false;
 }
 
-/* 📋 TASKS */
+/* 📋 LOAD ACTIVE TASKS */
 async function loadTasks(){
   if(await checkVoted()) return;
 
@@ -228,7 +211,7 @@ async function loadTasks(){
   }
 }
 
-/* 🗳️ SUBMIT */
+/* 🗳️ SUBMIT VOTE */
 window.submitVote = async ()=>{
   const checked = document.querySelectorAll("#taskBox input:checked");
   if(!checked.length){
@@ -236,11 +219,11 @@ window.submitVote = async ()=>{
     return;
   }
 
-  const today = getVoteDate();
+  // FINAL DUPLICATE CHECK
   const q = query(
     collection(db,"votes"),
     where("phone","==",phone),
-    where("date","==",today)
+    where("date","==",getVoteDate())
   );
   const already = await getDocs(q);
   if(!already.empty){
@@ -256,8 +239,7 @@ window.submitVote = async ()=>{
   await addDoc(collection(db,"votes"),{
     phone,
     points,
-    date: today,
-    time: new Date().toLocaleTimeString(),
+    date: getVoteDate(),
     source: "user",
     createdAt: new Date().toISOString()
   });
@@ -278,6 +260,29 @@ loadPoints();
 loadTasks();
 </script>
 
+<!-- 🔔 VANILLA NOTIFICATION PERMISSION -->
+<script>
+function askNotificationPermission(){
+  if(!("Notification" in window)) return;
+
+  if(Notification.permission === "granted") return;
+
+  if(Notification.permission === "denied"){
+    alert("Notification blocked.\nBrowser settings il allow cheyyanam");
+    return;
+  }
+
+  Notification.requestPermission().then(p=>{
+    if(p==="granted"){
+      new Notification("Faith & Fitness",{
+        body:"Notifications enabled successfully 🎉",
+        icon:"logo.png"
+      });
+    }
+  });
+}
+window.onload = askNotificationPermission;
+</script>
+
 </body>
 </html>
-
