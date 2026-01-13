@@ -3,120 +3,63 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Faith & Fitness</title>
+<title>Faith & Fitness – Vote</title>
 
 <style>
-*{box-sizing:border-box}
 body{
   margin:0;
-  font-family:Arial,Helvetica,sans-serif;
-  background:#020617;
-  color:#fff;
-  padding-bottom:80px;
+  font-family:Arial, sans-serif;
+  background:#f1f5f9;
 }
-.page{display:none}
-.page.active{display:block}
-
-/* HEADER */
 .header{
-  background:#0f172a;
-  padding:12px 16px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  border-bottom:1px solid #1e293b;
-}
-.header img{height:32px}
-.logout{color:#ef4444;cursor:pointer;font-size:14px}
-
-/* TODAY CARD */
-.today-white{
-  max-width:360px;
-  margin:40px auto;
   background:#fff;
-  border-radius:18px;
-  padding:22px;
   text-align:center;
-  color:#000;
-  box-shadow:0 12px 30px rgba(0,0,0,.25);
+  padding:8px;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
-.today-white img{
-  width:140px;
-  margin-bottom:10px;
+.header img{height:120px}
+
+.container{
+  display:flex;
+  justify-content:center;
+  padding:20px;
 }
-.today-white h2{margin:6px 0}
-.today-white h3{margin:4px 0;color:#16a34a}
-.today-white p{margin:4px 0;font-size:14px}
-.msg-yellow{
+.card{
+  background:#fff;
+  width:100%;
+  max-width:380px;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 6px 14px rgba(0,0,0,.15);
+  text-align:center;
+}
+.task{
+  border:1px solid #ddd;
+  padding:10px;
+  border-radius:8px;
+  margin:8px 0;
+  text-align:left;
+}
+.msg{
   background:#fef3c7;
   padding:10px;
-  border-radius:10px;
-  margin:14px 0;
-  font-size:13px;
-}
-.today-white button{
-  width:100%;
-  padding:12px;
-  border:none;
   border-radius:8px;
-  font-size:15px;
-  background:#16a34a;
-  color:#fff;
-}
-
-/* DARK PAGES */
-.container{max-width:420px;margin:auto;padding:16px}
-.card{
-  background:#0f172a;
-  border:1px solid #1e293b;
-  border-radius:14px;
-  padding:16px;
-  margin-top:16px;
-}
-.item{
-  background:#020617;
-  border:1px solid #1e293b;
-  padding:12px;
-  border-radius:10px;
-  margin-top:8px;
-  display:flex;
-  justify-content:space-between;
+  margin-top:10px;
   font-size:14px;
 }
-.sub{color:#94a3b8;font-size:13px}
-
-/* ADMIN */
-.card input,.card button{
+button{
   width:100%;
-  padding:10px;
-  margin-top:8px;
-  border-radius:8px;
+  padding:12px;
+  margin-top:10px;
   border:none;
-}
-.card button{background:#2563eb;color:#fff}
-
-/* BOTTOM NAV */
-.bottom-nav{
-  position:fixed;
-  bottom:0;left:0;right:0;
-  height:70px;
-  background:#0f172a;
-  border-top:1px solid #1e293b;
-  display:flex;
-  justify-content:space-around;
-  align-items:center;
-}
-.bottom-nav a{
-  color:#94a3b8;
-  text-decoration:none;
-  font-size:12px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
+  border-radius:6px;
+  font-size:15px;
   cursor:pointer;
 }
-.bottom-nav a span{font-size:22px}
-.bottom-nav a.active{color:#3b82f6}
+.submit{background:#16a34a;color:#fff}
+.disabled{background:#9ca3af;cursor:not-allowed}
+.logout{background:#dc2626;color:#fff}
+.timer{color:#2563eb;font-size:13px;margin-top:6px}
 </style>
 </head>
 
@@ -125,141 +68,221 @@ body{
 <!-- HEADER -->
 <div class="header">
   <img src="logo..png" alt="Faith & Fitness">
-  <div class="logout" onclick="logout()">Logout</div>
 </div>
 
-<!-- TODAY -->
-<section id="today" class="page active">
-  <div class="today-white">
-    <img src="logo.png" alt="Faith & Fitness Logo">
-    <h2>WELCOME</h2>
-    <h3>FAITH & FITNESS</h3>
-    <p id="userName">Hello</p>
-    <p id="userPoints">Total Points: 0</p>
-    <div class="msg-yellow" id="voteMsg">
-      You can vote today ⏳
-    </div>
-    <button onclick="submitVote()">Submit Vote</button>
-  </div>
-</section>
+<div class="container">
+<div class="card">
 
-<!-- LEADERBOARD -->
-<section id="leaderboard" class="page">
-  <div class="container">
-    <h2>Leaderboard</h2>
-    <div class="item"><span>najeemnajus</span><span>50 pts</span></div>
-  </div>
-</section>
+<h2>WELCOME</h2>
+<h3 style="color:#16a34a">FAITH & FITNESS</h3>
 
-<!-- CALENDAR -->
-<section id="calendar" class="page">
-  <div class="container">
-    <h2>Calendar</h2>
-    <div class="sub">Coming soon</div>
-  </div>
-</section>
+<div id="todayDate"></div>
+<div id="userName"></div>
+<div id="userPoints"></div>
 
-<!-- HISTORY -->
-<section id="history" class="page">
-  <div class="container">
-    <h2>Your Journey</h2>
-    <div class="card" style="text-align:center">
-      <h1>1 🔥</h1>
-      <div class="sub">Day Streak</div>
-    </div>
-  </div>
-</section>
+<div id="taskBox"></div>
+<div id="message"></div>
+<div class="timer" id="timer"></div>
 
-<!-- RESOURCES -->
-<section id="resources" class="page">
-  <div class="container">
-    <h2>Resources</h2>
-    <div class="item">📖 Daily Devotionals</div>
-    <div class="item">💪 Workout Guides</div>
-  </div>
-</section>
+<button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
+<button class="logout" onclick="logout()">Logout</button>
 
-<!-- SETTINGS -->
-<section id="settings" class="page">
-  <div class="container">
-    <h2>Settings</h2>
-    <div class="item" onclick="logout()">Logout</div>
-  </div>
-</section>
+</div>
+</div>
 
-<!-- ADMIN -->
-<section id="admin" class="page">
-  <div class="container">
-    <h2>Admin Dashboard</h2>
-    <div class="card">
-      <h3>⏰ Voting Time</h3>
-      <input type="time">
-      <input type="time">
-      <button>Save Time</button>
-    </div>
-  </div>
-</section>
-
-<!-- BOTTOM NAV -->
-<nav class="bottom-nav">
-  <a class="active" onclick="showPage('today',this)"><span>🏠</span>Today</a>
-  <a onclick="showPage('calendar',this)"><span>📅</span>Calendar</a>
-  <a onclick="showPage('leaderboard',this)"><span>🏆</span>Leaderboard</a>
-  <a onclick="showPage('history',this)"><span>📖</span>History</a>
-  <a onclick="showPage('resources',this)"><span>📚</span>Resources</a>
-  <a onclick="showPage('settings',this)"><span>⚙️</span>Settings</a>
-  <a id="adminTab" style="display:none" onclick="showPage('admin',this)">
-    <span>🛠️</span>Admin
-  </a>
-</nav>
-
+<!-- 🔥 FIREBASE + LOGIC -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where, addDoc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+/* 🔥 FIREBASE CONFIG */
 const app = initializeApp({
-  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
 });
 const db = getFirestore(app);
 
+/* 🔐 LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
-if(!phone) location.href="index.html";
+if(!phone) location.replace("index.html");
 
-const snap = await getDocs(
-  query(collection(db,"users"), where("phone","==",phone))
-);
-snap.forEach(u=>{
-  userName.innerText = "Hello, " + u.data().name;
-  userPoints.innerText = "Total Points: " + (u.data().points || 0);
-  if(u.data().role === "admin"){
-    adminTab.style.display="flex";
-    localStorage.setItem("isAdmin","yes");
+/* 📅 DISPLAY DATE (INFO ONLY) */
+todayDate.innerText = "Today: " + new Date().toDateString();
+
+/* 🕗 CORRECT VOTING DATE (8 PM RULE) */
+function getVoteDate(){
+  const d = new Date();
+  if(d.getHours() < 20){
+    d.setDate(d.getDate() - 1);
   }
-});
+  return d.toISOString().split("T")[0];
+}
 
-window.showPage=(id,el)=>{
-  if(id==="admin" && localStorage.getItem("isAdmin")!=="yes"){
-    alert("Admin only");
+/* ⏰ NEXT VOTING TIMER */
+function updateTimer(){
+  const now = new Date();
+  const next = new Date();
+  next.setHours(20,0,0,0);
+  if(now >= next) next.setDate(next.getDate()+1);
+
+  const diff = next - now;
+  const h = Math.floor(diff/3600000);
+  const m = Math.floor((diff%3600000)/60000);
+  const s = Math.floor((diff%60000)/1000);
+  timer.innerText = `Next voting in ${h}h ${m}m ${s}s`;
+}
+setInterval(updateTimer,1000);
+updateTimer();
+
+/* 👤 LOAD USER */
+async function loadUser(){
+  const snap = await getDocs(
+    query(collection(db,"users"), where("phone","==",phone))
+  );
+  snap.forEach(d=>{
+    userName.innerText = "Hello, " + d.data().name;
+  });
+}
+
+/* ⭐ LOAD TOTAL POINTS */
+async function loadPoints(){
+  let total = 0;
+  const snap = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
+  snap.forEach(d=> total += Number(d.data().points||0));
+  userPoints.innerText = "Total Points: " + total;
+}
+
+/* 🔁 CHECK ALREADY VOTED */
+async function checkVoted(){
+  const snap = await getDocs(
+    query(
+      collection(db,"votes"),
+      where("phone","==",phone),
+      where("date","==",getVoteDate())
+    )
+  );
+
+  if(!snap.empty){
+    submitBtn.disabled = true;
+    submitBtn.classList.add("disabled");
+    message.innerHTML = `
+      <div class="msg">
+        You have already voted today ✅<br>
+        Next voting at <b>8 PM</b>
+      </div>`;
+    return true;
+  }
+  return false;
+}
+
+/* 📋 LOAD ACTIVE TASKS */
+async function loadTasks(){
+  if(await checkVoted()) return;
+
+  const now = new Date();
+  const snap = await getDocs(collection(db,"tasks"));
+  taskBox.innerHTML="";
+  let active=false;
+
+  snap.forEach(d=>{
+    const t=d.data();
+    if(now >= new Date(t.start) && now <= new Date(t.end)){
+      active=true;
+      taskBox.innerHTML += `
+        <div class="task">
+          <label>
+            <input type="checkbox" data-points="${t.points}">
+            ${t.text} ( ${t.points} pts )
+          </label>
+        </div>`;
+    }
+  });
+
+  if(!active){
+    submitBtn.disabled=true;
+    submitBtn.classList.add("disabled");
+    taskBox.innerHTML=`<div class="msg">No active tasks ❌</div>`;
+  }
+}
+
+/* 🗳️ SUBMIT VOTE */
+window.submitVote = async ()=>{
+  const checked = document.querySelectorAll("#taskBox input:checked");
+  if(!checked.length){
+    alert("Task select cheyyanam");
     return;
   }
-  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-  document.querySelectorAll(".bottom-nav a").forEach(a=>a.classList.remove("active"));
-  el.classList.add("active");
+
+  // FINAL DUPLICATE CHECK
+  const q = query(
+    collection(db,"votes"),
+    where("phone","==",phone),
+    where("date","==",getVoteDate())
+  );
+  const already = await getDocs(q);
+  if(!already.empty){
+    alert("You already voted today");
+    submitBtn.disabled=true;
+    submitBtn.classList.add("disabled");
+    return;
+  }
+
+  let points = 0;
+  checked.forEach(c=> points += Number(c.dataset.points));
+
+  await addDoc(collection(db,"votes"),{
+    phone,
+    points,
+    date: getVoteDate(),
+    source: "user",
+    createdAt: new Date().toISOString()
+  });
+
+  loadPoints();
+  checkVoted();
 };
 
-window.submitVote=()=>{
-  alert("Vote submitted (demo)");
-};
-
-window.logout=()=>{
+/* 🚪 LOGOUT */
+window.logout = ()=>{
   localStorage.clear();
-  location.href="index.html";
+  location.replace("index.html");
 };
+
+/* INIT */
+loadUser();
+loadPoints();
+loadTasks();
+</script>
+
+<!-- 🔔 VANILLA NOTIFICATION PERMISSION -->
+<script>
+function askNotificationPermission(){
+  if(!("Notification" in window)) return;
+
+  if(Notification.permission === "granted") return;
+
+  if(Notification.permission === "denied"){
+    alert("Notification blocked.\nBrowser settings il allow cheyyanam");
+    return;
+  }
+
+  Notification.requestPermission().then(p=>{
+    if(p==="granted"){
+      new Notification("Faith & Fitness",{
+        body:"Notifications enabled successfully 🎉",
+        icon:"logo.png"
+      });
+    }
+  });
+}
+window.onload = askNotificationPermission;
 </script>
 
 </body>
 </html>
-
