@@ -3,285 +3,136 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Faith & Fitness – Vote</title>
+<title>Bottom Nav Animation</title>
 
 <style>
 body{
   margin:0;
   font-family:Arial, sans-serif;
-  background:#f1f5f9;
+  background:#0f172a;
+  height:100vh;
 }
-.header{
-  background:#fff;
-  text-align:center;
-  padding:8px;
-  box-shadow:0 2px 6px rgba(0,0,0,.1);
-}
-.header img{height:120px}
 
-.container{
+/* NAV BAR */
+.bottom-nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  background:#020617;
   display:flex;
-  justify-content:center;
-  padding:20px;
+  justify-content:space-around;
+  padding:10px 0;
+  box-shadow:0 -4px 10px rgba(0,0,0,.4);
 }
-.card{
-  background:#fff;
-  width:100%;
-  max-width:380px;
-  padding:20px;
-  border-radius:12px;
-  box-shadow:0 6px 14px rgba(0,0,0,.15);
+
+/* NAV ITEM */
+.nav-item{
+  color:#94a3b8;
   text-align:center;
-}
-.task{
-  border:1px solid #ddd;
-  padding:10px;
-  border-radius:8px;
-  margin:8px 0;
-  text-align:left;
-}
-.msg{
-  background:#fef3c7;
-  padding:10px;
-  border-radius:8px;
-  margin-top:10px;
-  font-size:14px;
-}
-button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:6px;
-  font-size:15px;
+  font-size:12px;
   cursor:pointer;
+  position:relative;
+  transition:all .3s ease;
 }
-.submit{background:#16a34a;color:#fff}
-.disabled{background:#9ca3af;cursor:not-allowed}
-.logout{background:#dc2626;color:#fff}
-.timer{color:#2563eb;font-size:13px;margin-top:6px}
+
+.nav-item img{
+  width:26px;
+  display:block;
+  margin:0 auto 4px;
+  transition:all .3s ease;
+}
+
+/* ACTIVE STATE */
+.nav-item.active{
+  color:#3b82f6;
+  transform:translateY(-6px);
+}
+
+.nav-item.active img{
+  animation:bounce .4s;
+}
+
+/* BOUNCE */
+@keyframes bounce{
+  0%{transform:scale(1)}
+  50%{transform:scale(1.3)}
+  100%{transform:scale(1)}
+}
+
+/* UNDERLINE */
+.indicator{
+  position:absolute;
+  bottom:0;
+  left:0;
+  height:3px;
+  width:0;
+  background:#3b82f6;
+  border-radius:3px;
+  transition:.3s;
+}
 </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
-<div class="header">
-  <img src="logo..png" alt="Faith & Fitness">
+<!-- CONTENT (demo) -->
+<div style="color:white;text-align:center;padding-top:40px">
+  <h2 id="pageTitle">Today</h2>
 </div>
 
-<div class="container">
-<div class="card">
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="indicator" id="indicator"></div>
 
-<h2>WELCOME</h2>
-<h3 style="color:#16a34a">FAITH & FITNESS</h3>
+  <div class="nav-item active" onclick="setActive(this,'Today')">
+    <img src="https://cdn-icons-png.flaticon.com/512/1946/1946436.png">
+    Today
+  </div>
 
-<div id="todayDate"></div>
-<div id="userName"></div>
-<div id="userPoints"></div>
+  <div class="nav-item" onclick="setActive(this,'Calendar')">
+    <img src="https://cdn-icons-png.flaticon.com/512/747/747310.png">
+    Calendar
+  </div>
 
-<div id="taskBox"></div>
-<div id="message"></div>
-<div class="timer" id="timer"></div>
+  <div class="nav-item" onclick="setActive(this,'Leaderboard')">
+    <img src="https://cdn-icons-png.flaticon.com/512/2583/2583344.png">
+    Leaderboard
+  </div>
 
-<button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
-<button class="logout" onclick="logout()">Logout</button>
+  <div class="nav-item" onclick="setActive(this,'History')">
+    <img src="https://cdn-icons-png.flaticon.com/512/747/747968.png">
+    History
+  </div>
 
+  <div class="nav-item" onclick="setActive(this,'Settings')">
+    <img src="https://cdn-icons-png.flaticon.com/512/2099/2099058.png">
+    Settings
+  </div>
 </div>
-</div>
 
-<!-- 🔥 FIREBASE + LOGIC -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, collection, getDocs,
-  query, where, addDoc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-/* 🔥 FIREBASE CONFIG */
-const app = initializeApp({
-  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
-  authDomain:"daily-voting-793ee.firebaseapp.com",
-  projectId:"daily-voting-793ee"
-});
-const db = getFirestore(app);
-
-/* 🔐 LOGIN CHECK */
-const phone = localStorage.getItem("userPhone");
-if(!phone) location.replace("index.html");
-
-/* 📅 DISPLAY DATE (INFO ONLY) */
-todayDate.innerText = "Today: " + new Date().toDateString();
-
-/* 🕗 CORRECT VOTING DATE (8 PM RULE) */
-function getVoteDate(){
-  const d = new Date();
-  if(d.getHours() < 20){
-    d.setDate(d.getDate() - 1);
-  }
-  return d.toISOString().split("T")[0];
-}
-
-/* ⏰ NEXT VOTING TIMER */
-function updateTimer(){
-  const now = new Date();
-  const next = new Date();
-  next.setHours(20,0,0,0);
-  if(now >= next) next.setDate(next.getDate()+1);
-
-  const diff = next - now;
-  const h = Math.floor(diff/3600000);
-  const m = Math.floor((diff%3600000)/60000);
-  const s = Math.floor((diff%60000)/1000);
-  timer.innerText = `Next voting in ${h}h ${m}m ${s}s`;
-}
-setInterval(updateTimer,1000);
-updateTimer();
-
-/* 👤 LOAD USER */
-async function loadUser(){
-  const snap = await getDocs(
-    query(collection(db,"users"), where("phone","==",phone))
-  );
-  snap.forEach(d=>{
-    userName.innerText = "Hello, " + d.data().name;
-  });
-}
-
-/* ⭐ LOAD TOTAL POINTS */
-async function loadPoints(){
-  let total = 0;
-  const snap = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
-  );
-  snap.forEach(d=> total += Number(d.data().points||0));
-  userPoints.innerText = "Total Points: " + total;
-}
-
-/* 🔁 CHECK ALREADY VOTED */
-async function checkVoted(){
-  const snap = await getDocs(
-    query(
-      collection(db,"votes"),
-      where("phone","==",phone),
-      where("date","==",getVoteDate())
-    )
-  );
-
-  if(!snap.empty){
-    submitBtn.disabled = true;
-    submitBtn.classList.add("disabled");
-    message.innerHTML = `
-      <div class="msg">
-        You have already voted today ✅<br>
-        Next voting at <b>8 PM</b>
-      </div>`;
-    return true;
-  }
-  return false;
-}
-
-/* 📋 LOAD ACTIVE TASKS */
-async function loadTasks(){
-  if(await checkVoted()) return;
-
-  const now = new Date();
-  const snap = await getDocs(collection(db,"tasks"));
-  taskBox.innerHTML="";
-  let active=false;
-
-  snap.forEach(d=>{
-    const t=d.data();
-    if(now >= new Date(t.start) && now <= new Date(t.end)){
-      active=true;
-      taskBox.innerHTML += `
-        <div class="task">
-          <label>
-            <input type="checkbox" data-points="${t.points}">
-            ${t.text} ( ${t.points} pts )
-          </label>
-        </div>`;
-    }
-  });
-
-  if(!active){
-    submitBtn.disabled=true;
-    submitBtn.classList.add("disabled");
-    taskBox.innerHTML=`<div class="msg">No active tasks ❌</div>`;
-  }
-}
-
-/* 🗳️ SUBMIT VOTE */
-window.submitVote = async ()=>{
-  const checked = document.querySelectorAll("#taskBox input:checked");
-  if(!checked.length){
-    alert("Task select cheyyanam");
-    return;
-  }
-
-  // FINAL DUPLICATE CHECK
-  const q = query(
-    collection(db,"votes"),
-    where("phone","==",phone),
-    where("date","==",getVoteDate())
-  );
-  const already = await getDocs(q);
-  if(!already.empty){
-    alert("You already voted today");
-    submitBtn.disabled=true;
-    submitBtn.classList.add("disabled");
-    return;
-  }
-
-  let points = 0;
-  checked.forEach(c=> points += Number(c.dataset.points));
-
-  await addDoc(collection(db,"votes"),{
-    phone,
-    points,
-    date: getVoteDate(),
-    source: "user",
-    createdAt: new Date().toISOString()
-  });
-
-  loadPoints();
-  checkVoted();
-};
-
-/* 🚪 LOGOUT */
-window.logout = ()=>{
-  localStorage.clear();
-  location.replace("index.html");
-};
-
-/* INIT */
-loadUser();
-loadPoints();
-loadTasks();
-</script>
-
-<!-- 🔔 VANILLA NOTIFICATION PERMISSION -->
 <script>
-function askNotificationPermission(){
-  if(!("Notification" in window)) return;
+const indicator = document.getElementById("indicator");
+const items = document.querySelectorAll(".nav-item");
 
-  if(Notification.permission === "granted") return;
+function setActive(el,page){
+  items.forEach(i=>i.classList.remove("active"));
+  el.classList.add("active");
 
-  if(Notification.permission === "denied"){
-    alert("Notification blocked.\nBrowser settings il allow cheyyanam");
-    return;
-  }
+  document.getElementById("pageTitle").innerText = page;
 
-  Notification.requestPermission().then(p=>{
-    if(p==="granted"){
-      new Notification("Faith & Fitness",{
-        body:"Notifications enabled successfully 🎉",
-        icon:"logo.png"
-      });
-    }
-  });
+  // move underline
+  const rect = el.getBoundingClientRect();
+  const parentRect = el.parentElement.getBoundingClientRect();
+  indicator.style.width = rect.width + "px";
+  indicator.style.left = (rect.left - parentRect.left) + "px";
 }
-window.onload = askNotificationPermission;
+
+// INIT underline
+window.onload = ()=>{
+  const active = document.querySelector(".nav-item.active");
+  setActive(active,"Today");
+};
 </script>
 
 </body>
