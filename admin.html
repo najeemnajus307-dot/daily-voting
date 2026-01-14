@@ -20,7 +20,6 @@ body{margin:0;font-family:Arial;background:var(--bg)}
   box-shadow:0 0 8px rgba(0,0,0,.12);
   margin-bottom:10px
 }
-.hrow{display:flex;gap:10px;flex-wrap:wrap}
 table{width:100%;border-collapse:collapse}
 th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:14px}
 th{background:var(--pri);color:#fff}
@@ -65,7 +64,7 @@ input,select{padding:6px}
 <div class="card">
   From <input type="date" id="d_from">
   To <input type="date" id="d_to">
-  <button class="btn primary" onclick="dashLoad()">View</button>
+  <button type="button" class="btn primary" onclick="dashLoad()">View</button>
 </div>
 
 <div class="card">
@@ -100,7 +99,7 @@ input,select{padding:6px}
 <div class="card">
 Task <select id="t_task"></select>
 Date <input type="date" id="t_date">
-<button class="btn primary" onclick="taskLoad()">View</button>
+<button type="button" class="btn primary" onclick="taskLoad()">View</button>
 </div>
 
 <div class="card">
@@ -127,10 +126,10 @@ Date <input type="date" id="t_date">
 </div>
 
 <div class="card" style="background:#fff3f3">
-<button class="btn warn" style="width:100%" onclick="clearHistory()">
+<button type="button" class="btn warn" style="width:100%" onclick="clearHistory()">
 Clear History Only
 </button>
-<button class="btn del" style="width:100%;margin-top:6px" onclick="resetAll()">
+<button type="button" class="btn del" style="width:100%;margin-top:6px" onclick="resetAll()">
 Reset EVERYTHING
 </button>
 </div>
@@ -140,24 +139,22 @@ Reset EVERYTHING
 
 <!-- NAV -->
 <div class="bottom-nav">
-<button class="active" data-page="dash">Dashboard</button>
-<button data-page="task">Task</button>
-<button data-page="user">Users</button>
-<button onclick="location.href='task-editor.html'">Task Editor</button>
+<button class="active" data-page="dash" type="button">Dashboard</button>
+<button data-page="task" type="button">Task</button>
+<button data-page="user" type="button">Users</button>
+<button type="button" onclick="location.href='task-editor.html'">Task Editor</button>
 </div>
 
 <script type="module">
-/* ===== ADMIN PASSWORD ===== */
+/* ADMIN PASSWORD */
 if(prompt("Admin password")!=="5") location.replace("index.html");
 
-/* ===== FIREBASE ===== */
+/* FIREBASE */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs,
   addDoc, updateDoc, deleteDoc, doc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-import { getAuth, sendPasswordResetEmail }
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
@@ -165,20 +162,12 @@ const app = initializeApp({
   projectId:"daily-voting-793ee"
 });
 const db = getFirestore(app);
-const auth = getAuth(app);
 
-/* ===== DATE NORMALIZE ===== */
-function normalizeDate(d){
-  if(!d) return "";
-  if(d.includes("-")) return d;     // yyyy-mm-dd
-  const p=d.split("/");
-  if(p.length!==3) return "";
-  return `${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;
-}
-
+/* DATE */
 const today=()=>new Date().toISOString().split("T")[0];
+const norm=d=>!d?"":(d.includes("-")?d:(()=>{const p=d.split("/");return`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`})());
 
-/* ===== DASHBOARD (🔥 FIXED) ===== */
+/* DASHBOARD */
 async function dashLoad(){
   const users=await getDocs(collection(db,"users"));
   const votes=await getDocs(collection(db,"votes"));
@@ -186,24 +175,16 @@ async function dashLoad(){
   d_users.textContent=users.size;
 
   if(d_from.value && !d_to.value) d_to.value=d_from.value;
-
-  const from=normalizeDate(d_from.value);
-  const to=normalizeDate(d_to.value);
+  const from=norm(d_from.value), to=norm(d_to.value);
   const useDate=!!from;
 
   const totalMap={}, votedMap={};
 
   votes.forEach(v=>{
-    const x=v.data();
-    const vd=normalizeDate(x.date);
-
-    // ✅ DATE FILTER FIRST
+    const x=v.data(), vd=norm(x.date);
     if(useDate){
-      if(!vd) return;
-      if(vd<from || vd>to) return;
+      if(!vd||vd<from||vd>to) return;
     }
-
-    // count ONLY filtered votes
     totalMap[x.phone]=(totalMap[x.phone]||0)+Number(x.points||0);
     votedMap[x.phone]=true;
   });
@@ -224,9 +205,9 @@ async function dashLoad(){
   }
 
   rows.sort((a,b)=>b.total-a.total);
-
   dashBody.innerHTML="";
   let sl=0,rank=0,prev=null;
+
   rows.forEach(r=>{
     if(prev===null||r.total<prev) rank++;
     prev=r.total; sl++;
@@ -237,7 +218,7 @@ async function dashLoad(){
       <td>${r.total}</td>
       <td>
         <input id="p_${r.phone}" type="number" style="width:60px">
-        <button class="btn add" onclick="addPoint('${r.phone}')">+</button>
+        <button type="button" class="btn add" onclick="addPoint('${r.phone}')">+</button>
       </td>
     </tr>`;
   });
@@ -247,13 +228,11 @@ async function dashLoad(){
 window.addPoint=async(phone)=>{
   const v=Number(document.getElementById("p_"+phone).value);
   if(v<=0) return alert("Enter points");
-  await addDoc(collection(db,"votes"),{
-    phone,points:v,date:today(),source:"admin"
-  });
+  await addDoc(collection(db,"votes"),{phone,points:v,date:today(),source:"admin"});
   dashLoad();
 };
 
-/* ===== TASK ===== */
+/* TASK */
 async function taskInit(){
   t_task.innerHTML="";
   (await getDocs(collection(db,"tasks"))).forEach(t=>{
@@ -262,15 +241,14 @@ async function taskInit(){
 }
 async function taskLoad(){
   if(!t_date.value) return alert("Select date");
-  const dateN=normalizeDate(t_date.value);
-
+  const d=norm(t_date.value);
   const users=await getDocs(collection(db,"users"));
   const votes=await getDocs(collection(db,"votes"));
   const map={};
 
   votes.forEach(v=>{
     const x=v.data();
-    if(x.taskId===t_task.value && normalizeDate(x.date)===dateN){
+    if(x.taskId===t_task.value && norm(x.date)===d){
       map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
     }
   });
@@ -285,7 +263,7 @@ async function taskLoad(){
       <td>${map[p]||0}</td>
       <td>
         <input id="tp_${p}" type="number" style="width:60px">
-        <button class="btn add" onclick="addTaskPoint('${p}')">+</button>
+        <button type="button" class="btn add" onclick="addTaskPoint('${p}')">+</button>
       </td>
     </tr>`;
   });
@@ -295,13 +273,13 @@ window.addTaskPoint=async(phone)=>{
   const v=Number(document.getElementById("tp_"+phone).value);
   if(v<=0) return alert("Enter points");
   await addDoc(collection(db,"votes"),{
-    phone,points:v,date:normalizeDate(t_date.value),
+    phone,points:v,date:norm(t_date.value),
     taskId:t_task.value,source:"task-admin"
   });
   taskLoad();dashLoad();
 };
 
-/* ===== USERS ===== */
+/* USERS */
 async function loadUsers(){
   userBody.innerHTML="";
   (await getDocs(collection(db,"users"))).forEach(u=>{
@@ -311,18 +289,14 @@ async function loadUsers(){
       <td><b>${d.name||"User"}</b><br>${d.email||d.phone}</td>
       <td class="${active?'status-active':'status-ban'}">${active?'Active':'Banned'}</td>
       <td>
-        <button class="btn warn" onclick="toggleUser('${u.id}',${active})">
+        <button type="button" class="btn warn" onclick="toggleUser('${u.id}',${active})">
           ${active?'Ban':'Unban'}
         </button>
-        <button class="btn primary" onclick="resetPassword('${d.email||''}')">
-          Reset Password
-        </button>
-        <button class="btn del" onclick="deleteUser('${u.id}')">Delete</button>
+        <button type="button" class="btn del" onclick="deleteUser('${u.id}')">Delete</button>
       </td>
     </tr>`;
   });
 }
-
 window.toggleUser=async(id,active)=>{
   await updateDoc(doc(db,"users",id),{active:!active});
   loadUsers();
@@ -331,11 +305,6 @@ window.deleteUser=async(id)=>{
   if(!confirm("Delete user?")) return;
   await deleteDoc(doc(db,"users",id));
   loadUsers();
-};
-window.resetPassword=async(email)=>{
-  if(!email) return alert("Email not found");
-  await sendPasswordResetEmail(auth,email);
-  alert("Reset email sent");
 };
 
 window.clearHistory=async()=>{
