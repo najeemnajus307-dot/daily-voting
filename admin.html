@@ -8,16 +8,27 @@
 <style>
 body{margin:0;font-family:Arial;background:#f1f5f9}
 .hidden{display:none}
-.card{background:#fff;margin:10px;padding:10px;border-radius:8px}
+.main{padding:14px;padding-bottom:90px}
+.card{
+  background:#fff;
+  padding:12px;
+  border-radius:10px;
+  box-shadow:0 0 8px rgba(0,0,0,.12);
+  margin-bottom:10px
+}
+.hrow{display:flex;gap:10px;flex-wrap:wrap}
 table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:6px;text-align:center}
+th,td{border:1px solid #ddd;padding:6px;text-align:center}
 th{background:#2563eb;color:#fff}
-button{padding:6px 10px;border:0;border-radius:6px;cursor:pointer}
+
+.rank1{background:#fde047}
+.rank2{background:#e5e7eb}
+.rank3{background:#fecaca}
+
+.btn{border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .add{background:#16a34a;color:#fff}
 .del{background:#dc2626;color:#fff}
 .warn{background:#f59e0b;color:#fff}
-
-.main{padding-bottom:80px}
 
 /* bottom nav */
 .bottom-nav{
@@ -39,11 +50,29 @@ button{padding:6px 10px;border:0;border-radius:6px;cursor:pointer}
 <!-- ================= DASHBOARD ================= -->
 <section id="page-home">
 <h3>Dashboard</h3>
+
+<div class="card hrow">
+  From <input type="date" id="d_from">
+  To <input type="date" id="d_to">
+  <button type="button" class="btn" onclick="dashLoad()">Apply</button>
+
+  <label>
+    <input type="checkbox" id="d_hide0" onchange="dashLoad()">
+    Hide 0 (only not voted)
+  </label>
+</div>
+
+<div class="card">
+Users: <b id="d_users">0</b> |
+Shown: <b id="d_shown">0</b>
+</div>
+
 <div class="card">
 <table>
 <thead>
 <tr>
-<th>SL</th><th>Rank</th><th>Name</th><th>Phone</th><th>Total</th><th>Add</th>
+<th>SL</th><th>Rank</th><th>Name</th>
+<th>Phone</th><th>Total</th><th>Add</th>
 </tr>
 </thead>
 <tbody id="dashBody"></tbody>
@@ -60,7 +89,7 @@ User:
 <select id="s_user"></select>
 Date:
 <input type="date" id="s_date">
-<button type="button" onclick="loadSignal()">View</button>
+<button type="button" class="btn" onclick="loadSignal()">View</button>
 </div>
 
 <div class="card">
@@ -101,7 +130,7 @@ Date:
 </div>
 
 <script type="module">
-/* ===== PASSWORD ===== */
+/* ===== ADMIN PASSWORD ===== */
 if(prompt("Admin password")!=="5") location.replace("index.html");
 
 /* ===== FIREBASE ===== */
@@ -120,27 +149,46 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-const today = ()=>new Date().toISOString().split("T")[0];
+const today=()=>new Date().toISOString().split("T")[0];
 
 /* ================= DASHBOARD ================= */
-async function loadDash(){
-  const users = await getDocs(collection(db,"users"));
-  const votes = await getDocs(collection(db,"votes"));
-  const map={};
+async function dashLoad(){
+  const users=await getDocs(collection(db,"users"));
+  const votes=await getDocs(collection(db,"votes"));
+
+  d_users.textContent=users.size;
+
+  if(d_from.value && !d_to.value) d_to.value=d_from.value;
+  const from=d_from.value;
+  const to=d_to.value;
+  const useDate=!!from;
+
+  const totalMap={}, votedMap={};
 
   votes.forEach(v=>{
     const x=v.data();
-    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+    if(useDate){
+      if(!x.date) return;
+      if(x.date<from || x.date>to) return;
+    }
+    votedMap[x.phone]=true;
+    totalMap[x.phone]=(totalMap[x.phone]||0)+Number(x.points||0);
   });
 
   let rows=[];
   users.forEach(u=>{
+    const p=u.data().phone;
     rows.push({
       name:u.data().name,
-      phone:u.data().phone,
-      total:map[u.data().phone]||0
+      phone:p,
+      total:totalMap[p]||0,
+      voted:!!votedMap[p]
     });
   });
+
+  if(d_hide0.checked){
+    rows=rows.filter(r=>r.voted || r.total>0);
+  }
 
   rows.sort((a,b)=>b.total-a.total);
 
@@ -149,17 +197,26 @@ async function loadDash(){
   rows.forEach(r=>{
     if(prev===null||r.total<prev) rank++;
     prev=r.total; sl++;
+
+    let cls="";
+    if(rank===1) cls="rank1";
+    else if(rank===2) cls="rank2";
+    else if(rank===3) cls="rank3";
+
     dashBody.innerHTML+=`
-    <tr>
+    <tr class="${cls}">
       <td>${sl}</td><td>${rank}</td>
       <td>${r.name}</td><td>${r.phone}</td>
       <td>${r.total}</td>
       <td>
         <input id="p_${r.phone}" type="number" style="width:60px">
-        <button class="add" onclick="addPoint('${r.phone}')">+</button>
+        <button type="button"
+        class="btn add"
+        onclick="addPoint('${r.phone}')">+</button>
       </td>
     </tr>`;
   });
+  d_shown.textContent=sl;
 }
 window.addPoint=async(phone)=>{
   const v=Number(document.getElementById("p_"+phone).value);
@@ -167,16 +224,15 @@ window.addPoint=async(phone)=>{
   await addDoc(collection(db,"votes"),{
     phone,points:v,date:today(),source:"admin"
   });
-  loadDash();
+  dashLoad();
 };
 
 /* ================= SIGNAL USER ================= */
 async function initSignal(){
   s_user.innerHTML="";
-  (await getDocs(collection(db,"users")))
-  .forEach(u=>{
+  (await getDocs(collection(db,"users"))).forEach(u=>{
     s_user.innerHTML+=`<option value="${u.data().phone}">
-      ${u.data().name}</option>`;
+    ${u.data().name}</option>`;
   });
 }
 window.loadSignal=async()=>{
@@ -186,7 +242,7 @@ window.loadSignal=async()=>{
   s_body.innerHTML="";
   votes.forEach(v=>{
     const x=v.data();
-    if(x.phone===phone && (!date || x.date===date)){
+    if(x.phone===phone && (!date||x.date===date)){
       s_body.innerHTML+=`
       <tr>
         <td>${x.date}</td>
@@ -202,7 +258,7 @@ window.loadSignal=async()=>{
 };
 window.delVote=async(id)=>{
   await deleteDoc(doc(db,"votes",id));
-  loadSignal();loadDash();
+  loadSignal();dashLoad();
 };
 
 /* ================= USERS ================= */
@@ -252,12 +308,12 @@ window.resetPoints=async(phone)=>{
       deleteDoc(doc(db,"votes",v.id));
     }
   });
-  loadDash();loadUsers();
+  dashLoad();loadUsers();
 };
 window.deleteUser=async(id)=>{
   if(!confirm("Delete user?")) return;
   await deleteDoc(doc(db,"users",id));
-  loadUsers();loadDash();
+  loadUsers();dashLoad();
 };
 
 /* ================= NAV ================= */
@@ -279,7 +335,7 @@ document.querySelectorAll(".bottom-nav button[data-page]")
 });
 
 /* INIT */
-loadDash();
+dashLoad();
 </script>
 </body>
 </html>
