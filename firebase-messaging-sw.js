@@ -24,3 +24,239 @@ messaging.onBackgroundMessage(function (payload) {
     }
   );
 });
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Faith & Fitness – Admin Panel</title>
+
+<style>
+:root{
+  --bg:#f1f5f9; --card:#fff; --pri:#2563eb; --ok:#16a34a; --bad:#dc2626;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:var(--bg)}
+.wrap{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;background:#0f172a;color:#fff;padding:12px;
+}
+.brand{font-weight:bold;text-align:center;margin:8px 0 16px}
+.nav a{
+  display:block;color:#cbd5f5;text-decoration:none;
+  padding:10px;border-radius:6px;margin:4px 0;cursor:pointer
+}
+.nav a.active,.nav a:hover{background:#1e293b;color:#fff}
+
+/* MAIN */
+.main{flex:1;padding:16px}
+.hrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.card{
+  background:var(--card);padding:12px;border-radius:10px;
+  box-shadow:0 0 8px rgba(0,0,0,.12)
+}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:14px}
+th{background:var(--pri);color:#fff}
+.rank1{background:#fde047}
+.rank2{background:#e5e7eb}
+.rank3{background:#fecaca}
+.btn{border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
+.add{background:var(--ok);color:#fff}
+.del{background:var(--bad);color:#fff}
+.hidden{display:none}
+input,select,textarea{padding:6px;width:100%}
+
+@media(max-width:700px){
+  .wrap{flex-direction:column}
+  .sidebar{width:100%}
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="brand">FAITH & FITNESS<br>ADMIN</div>
+  <div class="nav">
+    <a data-page="dash" class="active">Dashboard</a>
+    <a data-page="task">Task-wise Report</a>
+    <a data-page="user">User-wise Report</a>
+    <a data-page="notify">🔔 Notifications</a>
+    <a onclick="location.href='task-editor.html'">Task Editor</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- DASHBOARD -->
+<section id="page-dash">
+  <div class="hrow">
+    <div class="card">Users: <b id="d_users">0</b></div>
+    <div class="card">Shown: <b id="d_shown">0</b></div>
+  </div>
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>SL</th><th>Rank</th><th>Name</th><th>Phone</th><th>Total</th><th>Add</th></tr>
+      </thead>
+      <tbody id="dashBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- TASK REPORT -->
+<section id="page-task" class="hidden">
+  <div class="card">
+    <select id="t_task"></select>
+    <button class="btn add" onclick="taskLoad()">View</button>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Name</th><th>Phone</th><th>Points</th></tr></thead>
+      <tbody id="t_voted"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- USER REPORT -->
+<section id="page-user" class="hidden">
+  <div class="card">
+    <select id="u_user"></select>
+    <button class="btn add" onclick="userLoad()">View</button>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Date</th><th>Points</th><th>Source</th><th>Delete</th></tr></thead>
+      <tbody id="u_body"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 🔔 NOTIFICATION SETTINGS -->
+<section id="page-notify" class="hidden">
+  <div class="card">
+    <h3>🔔 Notification Settings</h3>
+
+    <label>
+      <input type="checkbox" id="n_enable"> Enable Reminder
+    </label>
+
+    <br><br>
+
+    <label>Message</label>
+    <textarea id="n_message" rows="3">
+You haven't voted yet. Please vote now 🙏
+    </textarea>
+
+    <br><br>
+
+    <label>Reminder Gap</label>
+    <select id="n_gap">
+      <option value="2">Every 2 Hours</option>
+      <option value="4">Every 4 Hours</option>
+      <option value="6">Every 6 Hours</option>
+    </select>
+
+    <br><br>
+    <button class="btn add" onclick="saveNotification()">Save</button>
+    <div id="n_status"></div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script type="module">
+/* ADMIN PASSWORD */
+if(prompt("Admin password")!=="5") location.replace("index.html");
+
+/* FIREBASE */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, addDoc,
+  deleteDoc, doc, setDoc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
+const db = getFirestore(app);
+
+/* NAV */
+document.querySelectorAll(".nav a[data-page]").forEach(a=>{
+  a.onclick=()=>{
+    document.querySelectorAll(".nav a").forEach(x=>x.classList.remove("active"));
+    a.classList.add("active");
+    document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
+    document.getElementById("page-"+a.dataset.page).classList.remove("hidden");
+  }
+});
+
+/* DASHBOARD */
+async function dashLoad(){
+  const users=await getDocs(collection(db,"users"));
+  const votes=await getDocs(collection(db,"votes"));
+  d_users.textContent=users.size;
+
+  const map={};
+  votes.forEach(v=>{
+    const x=v.data();
+    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+  });
+
+  let rows=[];
+  users.forEach(u=>{
+    rows.push({name:u.data().name, phone:u.data().phone, total:map[u.data().phone]||0});
+  });
+
+  rows.sort((a,b)=>b.total-a.total);
+  dashBody.innerHTML="";
+  let rank=0,prev=null,sl=0;
+
+  rows.forEach(r=>{
+    if(prev===null||r.total<prev) rank++;
+    prev=r.total; sl++;
+    dashBody.innerHTML+=`
+      <tr>
+        <td>${sl}</td><td>${rank}</td><td>${r.name}</td>
+        <td>${r.phone}</td><td>${r.total}</td>
+        <td><input id="p_${r.phone}" type="number" style="width:60px">
+        <button class="btn add" onclick="addPoint('${r.phone}')">+</button></td>
+      </tr>`;
+  });
+  d_shown.textContent=sl;
+}
+window.addPoint=async(phone)=>{
+  const v=Number(document.getElementById("p_"+phone).value);
+  if(v<=0) return;
+  await addDoc(collection(db,"votes"),{
+    phone, points:v, date:new Date().toISOString().split("T")[0], source:"admin"
+  });
+  dashLoad();
+};
+
+/* NOTIFICATION SAVE */
+window.saveNotification=async()=>{
+  await setDoc(doc(db,"settings","notification"),{
+    enabled:n_enable.checked,
+    message:n_message.value,
+    gap:Number(n_gap.value),
+    updatedAt:new Date().toISOString()
+  });
+  n_status.innerHTML="✅ Saved successfully";
+};
+
+/* INIT */
+dashLoad();
+</script>
+</body>
+</html>
