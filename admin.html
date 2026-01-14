@@ -1,140 +1,232 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Faith & Fitness – Admin Panel</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Reports</title>
 
 <style>
-:root{
-  --bg:#f1f5f9; --card:#fff; --pri:#2563eb; --ok:#16a34a; --bad:#dc2626;
-}
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial;background:var(--bg)}
-.wrap{display:flex;min-height:100vh}
-
-/* SIDEBAR */
-.sidebar{
-  width:220px;background:#0f172a;color:#fff;padding:12px;
+body{
+  margin:0;
+  font-family:system-ui,Arial;
+  background:linear-gradient(180deg,#020617,#020617);
+  color:#e5e7eb;
 }
-.brand{font-weight:bold;text-align:center;margin:8px 0 16px}
-.nav a{
-  display:block;color:#cbd5f5;text-decoration:none;
-  padding:10px;border-radius:6px;margin:4px 0;cursor:pointer
-}
-.nav a.active,.nav a:hover{background:#1e293b;color:#fff}
 
-/* MAIN */
-.main{flex:1;padding:16px}
-.hrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-.card{
-  background:var(--card);padding:12px;border-radius:10px;
-  box-shadow:0 0 8px rgba(0,0,0,.12)
-}
-table{width:100%;border-collapse:collapse;background:#fff}
-th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:14px}
-th{background:var(--pri);color:#fff}
-.btn{border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
-.add{background:var(--ok);color:#fff}
-.del{background:var(--bad);color:#fff}
-.hidden{display:none}
-input,select,textarea{padding:6px;width:100%}
-
-/* USER REPORT SUB BAR */
-.user-subbar{
+/* ===== TOP BAR ===== */
+.topbar{
+  position:fixed;
+  top:0;left:0;
+  width:100%;
+  height:64px;
+  background:linear-gradient(90deg,#020617,#0f172a);
   display:flex;
-  gap:8px;
-  margin:10px 0 12px;
-  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 16px;
+  z-index:1000;
 }
-.user-subbar button{
-  background:#e5e7eb;
-  border:none;
-  padding:6px 14px;
-  border-radius:20px;
-  font-size:13px;
+.logo{
+  background:#fff;
+  padding:4px;
+  border-radius:6px;
+}
+.logo img{height:36px}
+.logout{
+  color:#ef4444;
+  font-weight:600;
   cursor:pointer;
 }
-.user-subbar button.active{
-  background:var(--pri);
+
+/* ===== CONTENT ===== */
+.container{
+  padding:90px 16px 90px;
+  max-width:900px;
+  margin:auto;
+}
+
+h1{
+  margin:0 0 12px;
+}
+
+/* ===== FILTER BAR ===== */
+.pills{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+}
+.pills button{
+  background:#0f172a;
+  border:none;
+  color:#cbd5f5;
+  padding:8px 16px;
+  border-radius:20px;
+  cursor:pointer;
+}
+.pills button.active{
+  background:#16a34a;
   color:#fff;
 }
 
-@media(max-width:700px){
-  .wrap{flex-direction:column}
-  .sidebar{width:100%}
+/* DATE FILTER */
+.date-row{
+  display:flex;
+  gap:12px;
+  margin-bottom:18px;
+}
+.date-row input{
+  background:#020617;
+  border:1px solid #1e293b;
+  color:#fff;
+  padding:8px;
+  border-radius:8px;
+}
+
+/* ===== STATS ===== */
+.stats{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:20px;
+}
+.stat{
+  background:linear-gradient(180deg,#020617,#0f172a);
+  border:1px solid #1e293b;
+  border-radius:16px;
+  padding:20px;
+  text-align:center;
+}
+.stat span{
+  display:block;
+  font-size:28px;
+  color:#3b82f6;
+  font-weight:700;
+}
+
+/* ===== TABLE ===== */
+.card{
+  background:#fff;
+  color:#020617;
+  border-radius:16px;
+  overflow:hidden;
+}
+.card h3{
+  margin:0;
+  padding:14px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  padding:14px;
+  border-top:1px solid #e5e7eb;
+  text-align:left;
+}
+th{
+  color:#64748b;
+  font-size:13px;
+}
+.points{
+  color:#2563eb;
+  font-weight:700;
+}
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav{
+  position:fixed;
+  bottom:0;left:0;
+  width:100%;
+  height:64px;
+  background:linear-gradient(90deg,#020617,#0f172a);
+  display:flex;
+  justify-content:space-around;
+  align-items:center;
+}
+.bottom-nav div{
+  text-align:center;
+  color:#94a3b8;
+  font-size:12px;
+}
+.bottom-nav .active{
+  color:#3b82f6;
 }
 </style>
 </head>
 
 <body>
-<div class="wrap">
 
-<!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="brand">FAITH & FITNESS<br>ADMIN</div>
-  <div class="nav">
-    <a data-page="dash" class="active">Dashboard</a>
-    <a data-page="task">Task-wise Report</a>
-    <a data-page="user">User-wise Report</a>
-    <a data-page="notify">🔔 Notifications</a>
-    <a onclick="location.href='task-editor.html'">Task Editor</a>
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo"><img src="logo.png"></div>
+  <div class="logout">Logout</div>
+</div>
+
+<!-- CONTENT -->
+<div class="container">
+  <h1>Admin Reports</h1>
+
+  <!-- PILL FILTER -->
+  <div class="pills">
+    <button class="active">Daily</button>
+    <button>Weekly</button>
+    <button>Monthly</button>
+    <button class="active">Refresh</button>
   </div>
-</aside>
 
-<!-- MAIN -->
-<main class="main">
-
-<!-- DASHBOARD -->
-<section id="page-dash">
-  <div class="hrow">
-    <div class="card">Users: <b id="d_users">0</b></div>
-    <div class="card">Shown: <b id="d_shown">0</b></div>
+  <!-- DATE -->
+  <div class="date-row">
+    <input type="date">
+    <input type="date">
   </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat">
+      Total Participants
+      <span>8</span>
+    </div>
+    <div class="stat">
+      Active in Range
+      <span>3</span>
+    </div>
+  </div>
+
+  <!-- TABLE -->
   <div class="card">
+    <h3>Participant Overview</h3>
     <table>
       <thead>
-        <tr><th>SL</th><th>Rank</th><th>Name</th><th>Phone</th><th>Total</th><th>Add</th></tr>
+        <tr><th>Name</th><th>Phone</th><th>Total Points</th></tr>
       </thead>
-      <tbody id="dashBody"></tbody>
+      <tbody>
+        <tr>
+          <td>najeemnajus307@gmail.com</td>
+          <td>N/A</td>
+          <td class="points">5</td>
+        </tr>
+        <tr>
+          <td>najeemnajus738@gmail.com</td>
+          <td>N/A</td>
+          <td class="points">2</td>
+        </tr>
+      </tbody>
     </table>
   </div>
-</section>
+</div>
 
-<!-- TASK REPORT -->
-<section id="page-task" class="hidden">
-  <div class="card">
-    <select id="t_task"></select>
-    <button class="btn add">View</button>
-  </div>
-</section>
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="active">📊<br>Reports</div>
+  <div>💪<br>Challenges</div>
+  <div>👥<br>Users</div>
+  <div>⚙️<br>Settings</div>
+</div>
 
-<!-- USER REPORT -->
-<section id="page-user" class="hidden">
-  <div class="card">
-    <select id="u_user"></select>
-    <button class="btn add">View</button>
-  </div>
-
-  <!-- USER REPORT SUB BAR -->
-  <div class="user-subbar">
-    <button class="active" data-tab="overview">Overview</button>
-    <button data-tab="task">Task-wise</button>
-    <button data-tab="daily">Daily</button>
-    <button data-tab="monthly">Monthly</button>
-  </div>
-
-  <div class="card">
-    <table>
-      <thead>
-        <tr><th>Date</th><th>Points</th><th>Source</th></tr>
-      </thead>
-      <tbody id="u_body"></tbody>
-    </table>
-  </div>
-</section>
-
-<!-- NOTIFICATION -->
+</body>
+</html><!-- NOTIFICATION -->
 <section id="page-notify" class="hidden">
   <div class="card">
     <h3>🔔 Notification Settings</h3>
@@ -190,3 +282,4 @@ document.querySelectorAll(".user-subbar button").forEach(btn=>{
 
 </body>
   </html>
+
