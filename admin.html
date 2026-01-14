@@ -13,8 +13,13 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial;background:var(--bg)}
 .main{padding:14px;padding-bottom:90px}
-.card{background:var(--card);padding:12px;border-radius:12px;
-box-shadow:0 0 8px rgba(0,0,0,.12);margin-bottom:10px}
+.card{
+  background:var(--card);
+  padding:12px;
+  border-radius:12px;
+  box-shadow:0 0 8px rgba(0,0,0,.12);
+  margin-bottom:10px
+}
 .hrow{display:flex;gap:10px;flex-wrap:wrap}
 table{width:100%;border-collapse:collapse}
 th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:14px}
@@ -22,7 +27,10 @@ th{background:var(--pri);color:#fff}
 .rank1{background:#fde047}
 .rank2{background:#e5e7eb}
 .rank3{background:#fecaca}
-.btn{border:none;border-radius:8px;padding:6px 10px;font-weight:bold;cursor:pointer}
+.btn{
+  border:none;border-radius:8px;
+  padding:6px 10px;font-weight:bold;cursor:pointer
+}
 .add{background:var(--ok);color:#fff}
 .primary{background:#2563eb;color:#fff}
 .warn{background:var(--warn);color:#fff}
@@ -33,8 +41,9 @@ input,select{padding:6px}
 /* bottom nav */
 .bottom-nav{
   position:fixed;bottom:0;left:0;width:100%;
-  background:#0f172a;display:flex;
-  justify-content:space-around;padding:6px 0
+  background:#0f172a;
+  display:flex;justify-content:space-around;
+  padding:6px 0
 }
 .bottom-nav button{
   background:none;border:none;color:#cbd5f5;font-size:12px
@@ -158,10 +167,10 @@ const app = initializeApp({
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-/* ===== DATE NORMALIZE (🔥 KEY FIX) ===== */
+/* ===== DATE NORMALIZE ===== */
 function normalizeDate(d){
   if(!d) return "";
-  if(d.includes("-")) return d;
+  if(d.includes("-")) return d;     // yyyy-mm-dd
   const p=d.split("/");
   if(p.length!==3) return "";
   return `${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;
@@ -169,7 +178,7 @@ function normalizeDate(d){
 
 const today=()=>new Date().toISOString().split("T")[0];
 
-/* ===== DASHBOARD ===== */
+/* ===== DASHBOARD (🔥 FIXED) ===== */
 async function dashLoad(){
   const users=await getDocs(collection(db,"users"));
   const votes=await getDocs(collection(db,"votes"));
@@ -188,15 +197,15 @@ async function dashLoad(){
     const x=v.data();
     const vd=normalizeDate(x.date);
 
+    // ✅ DATE FILTER FIRST
     if(useDate){
       if(!vd) return;
       if(vd<from || vd>to) return;
-      votedMap[x.phone]=true;
-    }else{
-      votedMap[x.phone]=true;
     }
 
+    // count ONLY filtered votes
     totalMap[x.phone]=(totalMap[x.phone]||0)+Number(x.points||0);
+    votedMap[x.phone]=true;
   });
 
   let rows=[];
