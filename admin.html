@@ -47,8 +47,7 @@ input,select{padding:6px}
 /* ===== BOTTOM NAV ===== */
 .bottom-nav{
   position:fixed;
-  bottom:0; left:0;
-  width:100%;
+  bottom:0;left:0;width:100%;
   background:#0f172a;
   display:flex;
   justify-content:space-around;
@@ -57,8 +56,7 @@ input,select{padding:6px}
 }
 .bottom-nav button{
   background:none;border:none;
-  color:#cbd5f5;
-  font-size:12px;cursor:pointer;
+  color:#cbd5f5;font-size:12px;cursor:pointer;
 }
 .bottom-nav button.active{
   color:#fff;font-weight:bold;
@@ -108,26 +106,34 @@ input,select{padding:6px}
   </div>
 </section>
 
-<!-- TASK -->
+<!-- TASK REPORT -->
 <section id="page-task" class="hidden">
   <div class="card">
-    <h3>Task Report</h3>
-    <p>Task content here</p>
+    <h3>Task-wise Report</h3>
+    <table>
+      <thead><tr><th>Name</th><th>Phone</th><th>Points</th></tr></thead>
+      <tbody id="t_body"></tbody>
+    </table>
   </div>
 </section>
 
-<!-- USER -->
+<!-- USER REPORT -->
 <section id="page-user" class="hidden">
   <div class="card">
-    <h3>User Report</h3>
-    <p>User content here</p>
+    <h3>User-wise Report</h3>
+    <select id="u_user"></select>
+    <button class="btn" onclick="userLoad()">View</button>
+    <table>
+      <thead><tr><th>Date</th><th>Points</th><th>Delete</th></tr></thead>
+      <tbody id="u_body"></tbody>
+    </table>
   </div>
 </section>
 
 </main>
 </div>
 
-<!-- BOTTOM NAV (Mobile) -->
+<!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <button class="active" data-page="dash">🏠<br>Home</button>
   <button data-page="task">📋<br>Task</button>
@@ -140,8 +146,9 @@ if(prompt("Admin password")!=="5") location.replace("index.html");
 
 /* FIREBASE */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs } 
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import {
+  getFirestore, collection, getDocs, addDoc, deleteDoc, doc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
@@ -150,39 +157,126 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* DASHBOARD LOAD (demo) */
+/* DATE */
+const today=()=>new Date().toISOString().split("T")[0];
+
+/* DASHBOARD */
 async function dashLoad(){
-  const users = await getDocs(collection(db,"users"));
-  d_users.textContent = users.size;
-  dashBody.innerHTML="";
-  let i=1;
+  const users=await getDocs(collection(db,"users"));
+  const votes=await getDocs(collection(db,"votes"));
+  d_users.textContent=users.size;
+
+  const map={};
+  votes.forEach(v=>{
+    const x=v.data();
+    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+  });
+
+  let rows=[];
   users.forEach(u=>{
+    rows.push({
+      name:u.data().name,
+      phone:u.data().phone,
+      total:map[u.data().phone]||0
+    });
+  });
+
+  rows.sort((a,b)=>b.total-a.total);
+  dashBody.innerHTML="";
+  let sl=0,rank=0,prev=null;
+
+  rows.forEach(r=>{
+    if(prev===null||r.total<prev) rank++;
+    prev=r.total; sl++;
     dashBody.innerHTML+=`
-      <tr>
-        <td>${i++}</td><td>-</td>
-        <td>${u.data().name}</td>
-        <td>${u.data().phone}</td>
-        <td>0</td>
-        <td>-</td>
+      <tr class="${rank==1?'rank1':rank==2?'rank2':rank==3?'rank3':''}">
+        <td>${sl}</td><td>${rank}</td>
+        <td>${r.name}</td><td>${r.phone}</td>
+        <td>${r.total}</td>
+        <td>
+          <input id="p_${r.phone}" type="number" style="width:60px">
+          <button class="btn add" onclick="addPoint('${r.phone}')">+</button>
+        </td>
       </tr>`;
   });
-  d_shown.textContent=i-1;
+  d_shown.textContent=sl;
 }
-dashLoad();
+window.addPoint=async(phone)=>{
+  const v=Number(document.getElementById("p_"+phone).value);
+  if(v<=0)return alert("Enter points");
+  await addDoc(collection(db,"votes"),{
+    phone,points:v,date:today()
+  });
+  dashLoad();
+};
 
-/* BOTTOM NAV LOGIC */
-document.querySelectorAll(".bottom-nav button").forEach(btn=>{
-  btn.onclick=()=>{
+/* TASK REPORT */
+async function taskLoad(){
+  const users=await getDocs(collection(db,"users"));
+  const votes=await getDocs(collection(db,"votes"));
+  const map={};
+  votes.forEach(v=>{
+    const x=v.data();
+    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+  });
+  t_body.innerHTML="";
+  users.forEach(u=>{
+    const p=u.data().phone;
+    if(map[p]){
+      t_body.innerHTML+=`
+        <tr><td>${u.data().name}</td>
+        <td>${p}</td><td>${map[p]}</td></tr>`;
+    }
+  });
+}
+
+/* USER REPORT */
+async function userInit(){
+  u_user.innerHTML="";
+  (await getDocs(collection(db,"users"))).forEach(u=>{
+    u_user.innerHTML+=`
+      <option value="${u.data().phone}">
+        ${u.data().name}
+      </option>`;
+  });
+}
+window.userLoad=async()=>{
+  const phone=u_user.value;
+  const votes=await getDocs(collection(db,"votes"));
+  u_body.innerHTML="";
+  votes.forEach(v=>{
+    const x=v.data();
+    if(x.phone===phone){
+      u_body.innerHTML+=`
+        <tr>
+          <td>${x.date}</td>
+          <td>${x.points}</td>
+          <td><button class="btn del" onclick="delVote('${v.id}')">X</button></td>
+        </tr>`;
+    }
+  });
+};
+window.delVote=async(id)=>{
+  await deleteDoc(doc(db,"votes",id));
+  userLoad(); dashLoad();
+};
+
+/* BOTTOM NAV */
+document.querySelectorAll(".bottom-nav button").forEach(b=>{
+  b.onclick=()=>{
     document.querySelectorAll(".bottom-nav button")
-      .forEach(b=>b.classList.remove("active"));
-    btn.classList.add("active");
-
+      .forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
     document.querySelectorAll("section")
       .forEach(s=>s.classList.add("hidden"));
-    document.getElementById("page-"+btn.dataset.page)
+    document.getElementById("page-"+b.dataset.page)
       .classList.remove("hidden");
+    if(b.dataset.page==="task") taskLoad();
   };
 });
+
+/* INIT */
+dashLoad(); userInit();
 </script>
 </body>
 </html>
