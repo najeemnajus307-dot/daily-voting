@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Faith & Fitness – Admin</title>
+<title>Faith & Fitness – Admin Panel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -13,14 +13,16 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial;background:var(--bg)}
 .hidden{display:none}
+
 .main{padding:16px;padding-bottom:90px}
 .card{
-  background:#fff;padding:12px;margin-bottom:12px;
-  border-radius:10px;box-shadow:0 0 8px rgba(0,0,0,.1)
+  background:var(--card);padding:12px;margin-bottom:12px;
+  border-radius:10px;box-shadow:0 0 8px rgba(0,0,0,.12)
 }
 table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ddd;padding:6px;text-align:center}
+th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:14px}
 th{background:var(--pri);color:#fff}
+
 .btn{border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .add{background:var(--ok);color:#fff}
 .del{background:var(--bad);color:#fff}
@@ -31,10 +33,11 @@ th{background:var(--pri);color:#fff}
   position:fixed;bottom:0;left:0;width:100%;
   background:#0f172a;color:#fff;
   display:flex;justify-content:space-around;
-  padding:10px 0
+  padding:10px 0;z-index:999
 }
 .bottom-nav button{
-  background:none;border:none;color:#cbd5f5;font-size:12px
+  background:none;border:none;color:#cbd5f5;
+  font-size:12px;cursor:pointer
 }
 .bottom-nav button.active{color:#fff;font-weight:bold}
 </style>
@@ -59,7 +62,14 @@ th{background:var(--pri);color:#fff}
   <div class="card">
     <table>
       <thead>
-        <tr><th>Name</th><th>Phone</th><th>Total</th><th>Add</th></tr>
+        <tr>
+          <th>SL</th>
+          <th>Rank</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Total</th>
+          <th>Add</th>
+        </tr>
       </thead>
       <tbody id="dashBody"></tbody>
     </table>
@@ -71,13 +81,16 @@ th{background:var(--pri);color:#fff}
   <div class="card">
     <table>
       <thead>
-        <tr><th>User</th><th>Status</th><th>Action</th></tr>
+        <tr>
+          <th>User</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
       </thead>
       <tbody id="userBody"></tbody>
     </table>
   </div>
 
-  <!-- DANGER ZONE -->
   <div class="card" style="background:#fff0f0">
     <h3 style="color:#dc2626">Danger Zone</h3>
     <button class="btn ban" onclick="clearVotes()">
@@ -92,15 +105,17 @@ th{background:var(--pri);color:#fff}
 
 </div>
 
-<!-- NAV -->
+<!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <button id="btn-dash" class="active" onclick="show('dash')">Dashboard</button>
   <button id="btn-users" onclick="show('users')">Users</button>
 </div>
 
 <script type="module">
+/* ADMIN PASSWORD */
 if(prompt("Admin password")!=="5") location.href="index.html";
 
+/* FIREBASE */
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -117,97 +132,118 @@ const app = initializeApp({
 const db = getFirestore(app);
 
 /* NAV */
-window.show=(p)=>{
+window.show = (p)=>{
   document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
   document.getElementById(p).classList.remove("hidden");
+
   document.querySelectorAll(".bottom-nav button")
     .forEach(b=>b.classList.remove("active"));
   document.getElementById("btn-"+p).classList.add("active");
+
   if(p==="dash") loadDash();
   if(p==="users") loadUsers();
 };
 
 /* DASHBOARD */
 window.loadDash = async ()=>{
-  const users = await getDocs(collection(db,"users"));
-  const votes = await getDocs(collection(db,"votes"));
+  const usersSnap = await getDocs(collection(db,"users"));
+  const votesSnap = await getDocs(collection(db,"votes"));
 
-  const from=d_from.value,to=d_to.value||from;
-  const useDate=!!from;
+  const from = d_from.value;
+  const to   = d_to.value || from;
+  const useDate = !!from;
 
-  const map={}, voted={};
+  const pointMap = {};
+  const votedMap = {};
 
-  votes.forEach(v=>{
-    const x=v.data();
+  votesSnap.forEach(v=>{
+    const x = v.data();
     if(useDate){
       if(!x.date) return;
-      if(x.date<from||x.date>to) return;
+      if(x.date < from || x.date > to) return;
     }
-    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
-    voted[x.phone]=true;
+    pointMap[x.phone] = (pointMap[x.phone] || 0) + Number(x.points || 0);
+    votedMap[x.phone] = true;
   });
 
+  let rows = [];
+  usersSnap.forEach(u=>{
+    const d = u.data();
+    const phone = d.phone;
+    const total = pointMap[phone] || 0;
+    const hasVoted = votedMap[phone] === true;
+
+    if(hide0.checked && total === 0 && !hasVoted) return;
+
+    rows.push({ name:d.name, phone, total });
+  });
+
+  rows.sort((a,b)=>b.total - a.total);
+
   dashBody.innerHTML="";
-  users.forEach(u=>{
-    const p=u.data().phone;
-    const total=map[p]||0;
-    const hasVoted=voted[p]===true;
+  let rank = 0, prev = null, sl = 0;
 
-    if(hide0.checked && total===0 && !hasVoted) return;
+  rows.forEach(r=>{
+    sl++;
+    if(prev === null || r.total < prev) rank++;
+    prev = r.total;
 
-    dashBody.innerHTML+=`
+    dashBody.innerHTML += `
       <tr>
-        <td>${u.data().name}</td>
-        <td>${p}</td>
-        <td>${total}</td>
+        <td>${sl}</td>
+        <td>${rank}</td>
+        <td>${r.name}</td>
+        <td>${r.phone}</td>
+        <td>${r.total}</td>
         <td>
-          <input id="p_${p}" type="number" style="width:60px">
-          <button class="btn add" onclick="addPoint('${p}')">+</button>
+          <input id="p_${r.phone}" type="number" style="width:60px">
+          <button class="btn add" onclick="addPoint('${r.phone}')">+</button>
         </td>
       </tr>`;
   });
 };
 
 window.addPoint = async(phone)=>{
-  const v=Number(document.getElementById("p_"+phone).value);
-  if(v<=0) return;
+  const v = Number(document.getElementById("p_"+phone).value);
+  if(v<=0) return alert("Enter points");
   await addDoc(collection(db,"votes"),{
-    phone,points:v,
-    date:new Date().toISOString().split("T")[0]
+    phone, points:v,
+    date:new Date().toISOString().split("T")[0],
+    source:"admin"
   });
   loadDash();
 };
 
 /* USERS */
 window.loadUsers = async ()=>{
-  const users=await getDocs(collection(db,"users"));
+  const users = await getDocs(collection(db,"users"));
   userBody.innerHTML="";
   users.forEach(u=>{
-    const d=u.data();
-    const active=d.active!==false;
-    userBody.innerHTML+=`
+    const d = u.data();
+    const active = d.active !== false;
+    userBody.innerHTML += `
       <tr>
         <td>${d.name}<br>${d.phone}</td>
-        <td>${active?"Active":"Banned"}</td>
+        <td>${active ? "Active" : "Banned"}</td>
         <td>
           <button class="btn ${active?"ban":"unban"}"
-            onclick="toggle('${u.id}',${active})">
+            onclick="toggleUser('${u.id}',${active})">
             ${active?"Ban":"Unban"}
           </button>
           <button class="btn del"
-            onclick="delUser('${u.id}')">Delete</button>
+            onclick="deleteUser('${u.id}')">Delete</button>
         </td>
       </tr>`;
   });
 };
 
-window.toggle=async(id,a)=>{
-  await updateDoc(doc(db,"users",id),{active:!a});
+window.toggleUser = async(id,active)=>{
+  await updateDoc(doc(db,"users",id),{ active: !active });
   loadUsers();
 };
 
-window.delUser=async(id)=>{
-  if(confirm("Delete user?")){
+window.deleteUser = async(id)=>{
+  if(confirm("Delete this user?")){
     await deleteDoc(doc(db,"users",id));
     loadUsers(); loadDash();
   }
@@ -216,23 +252,25 @@ window.delUser=async(id)=>{
 /* DANGER ZONE */
 window.clearVotes = async ()=>{
   if(!confirm("Clear ALL votes but keep users?")) return;
-  const v=await getDocs(collection(db,"votes"));
+  const v = await getDocs(collection(db,"votes"));
   v.forEach(x=>deleteDoc(doc(db,"votes",x.id)));
-  alert("History cleared");
+  alert("Vote history cleared");
   loadDash();
 };
 
 window.resetAll = async ()=>{
-  if(!confirm("DELETE USERS + HISTORY?")) return;
-  const v=await getDocs(collection(db,"votes"));
-  const u=await getDocs(collection(db,"users"));
+  if(!confirm("DELETE USERS + ALL HISTORY?")) return;
+  const v = await getDocs(collection(db,"votes"));
+  const u = await getDocs(collection(db,"users"));
   v.forEach(x=>deleteDoc(doc(db,"votes",x.id)));
   u.forEach(x=>deleteDoc(doc(db,"users",x.id)));
-  alert("Everything reset");
+  alert("Everything deleted");
   loadDash(); loadUsers();
 };
 
+/* INIT */
 show("dash");
 </script>
+
 </body>
 </html>
