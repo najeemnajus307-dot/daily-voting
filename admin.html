@@ -14,18 +14,18 @@
 body{margin:0;font-family:Arial;background:var(--bg)}
 .wrap{display:flex;min-height:100vh}
 
-/* ===== SIDEBAR ===== */
+/* SIDEBAR */
 .sidebar{
   width:220px;background:#0f172a;color:#fff;padding:12px;
 }
 .brand{font-weight:bold;text-align:center;margin:8px 0 16px}
 .nav a{
   display:block;color:#cbd5f5;text-decoration:none;
-  padding:10px;border-radius:6px;margin:4px 0;cursor:pointer;
+  padding:10px;border-radius:6px;margin:4px 0;cursor:pointer
 }
 .nav a.active,.nav a:hover{background:#1e293b;color:#fff}
 
-/* ===== MAIN ===== */
+/* MAIN */
 .main{flex:1;padding:16px;padding-bottom:80px}
 .hrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .card{
@@ -44,25 +44,18 @@ th{background:var(--pri);color:#fff}
 .hidden{display:none}
 input,select{padding:6px}
 
-/* ===== BOTTOM NAV ===== */
+/* BOTTOM NAV */
 .bottom-nav{
-  position:fixed;
-  bottom:0;left:0;width:100%;
-  background:#0f172a;
-  display:flex;
-  justify-content:space-around;
-  padding:6px 0;
-  z-index:1000;
+  position:fixed;bottom:0;left:0;width:100%;
+  background:#0f172a;display:flex;
+  justify-content:space-around;padding:6px 0;z-index:1000;
 }
 .bottom-nav button{
-  background:none;border:none;
-  color:#cbd5f5;font-size:12px;cursor:pointer;
+  background:none;border:none;color:#cbd5f5;font-size:12px
 }
-.bottom-nav button.active{
-  color:#fff;font-weight:bold;
-}
+.bottom-nav button.active{color:#fff;font-weight:bold}
 
-/* ===== RESPONSIVE ===== */
+/* RESPONSIVE */
 @media(max-width:700px){
   .sidebar{display:none}
 }
@@ -72,7 +65,7 @@ input,select{padding:6px}
 <body>
 <div class="wrap">
 
-<!-- SIDEBAR (Desktop) -->
+<!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="brand">FAITH & FITNESS<br>ADMIN</div>
   <div class="nav">
@@ -108,23 +101,37 @@ input,select{padding:6px}
 
 <!-- TASK REPORT -->
 <section id="page-task" class="hidden">
+
+  <div class="card" style="margin-bottom:10px">
+    Task :
+    <select id="t_task"></select>
+    <button class="btn" onclick="taskLoad()">View</button>
+  </div>
+
   <div class="card">
-    <h3>Task-wise Report</h3>
     <table>
-      <thead><tr><th>Name</th><th>Phone</th><th>Points</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Name</th><th>Phone</th><th>Points</th><th>Add</th>
+        </tr>
+      </thead>
       <tbody id="t_body"></tbody>
     </table>
   </div>
+
 </section>
 
 <!-- USER REPORT -->
 <section id="page-user" class="hidden">
   <div class="card">
-    <h3>User-wise Report</h3>
+    User :
     <select id="u_user"></select>
     <button class="btn" onclick="userLoad()">View</button>
+
     <table>
-      <thead><tr><th>Date</th><th>Points</th><th>Delete</th></tr></thead>
+      <thead>
+        <tr><th>Date</th><th>Points</th><th>Task</th><th>Delete</th></tr>
+      </thead>
       <tbody id="u_body"></tbody>
     </table>
   </div>
@@ -147,7 +154,8 @@ if(prompt("Admin password")!=="5") location.replace("index.html");
 /* FIREBASE */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, addDoc, deleteDoc, doc
+  getFirestore, collection, getDocs,
+  addDoc, deleteDoc, doc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const app = initializeApp({
@@ -157,7 +165,6 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* DATE */
 const today=()=>new Date().toISOString().split("T")[0];
 
 /* DASHBOARD */
@@ -205,30 +212,61 @@ window.addPoint=async(phone)=>{
   const v=Number(document.getElementById("p_"+phone).value);
   if(v<=0)return alert("Enter points");
   await addDoc(collection(db,"votes"),{
-    phone,points:v,date:today()
+    phone,points:v,date:today(),source:"admin"
   });
   dashLoad();
 };
 
-/* TASK REPORT */
+/* TASK INIT */
+async function taskInit(){
+  t_task.innerHTML="";
+  (await getDocs(collection(db,"tasks"))).forEach(t=>{
+    t_task.innerHTML+=`
+      <option value="${t.id}">${t.data().text}</option>`;
+  });
+}
+
+/* TASK LOAD (SELECTED TASK) */
 async function taskLoad(){
+  const taskId=t_task.value;
   const users=await getDocs(collection(db,"users"));
   const votes=await getDocs(collection(db,"votes"));
+
   const map={};
   votes.forEach(v=>{
     const x=v.data();
-    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+    if(x.taskId===taskId){
+      map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+    }
   });
+
   t_body.innerHTML="";
   users.forEach(u=>{
     const p=u.data().phone;
-    if(map[p]){
-      t_body.innerHTML+=`
-        <tr><td>${u.data().name}</td>
-        <td>${p}</td><td>${map[p]}</td></tr>`;
-    }
+    t_body.innerHTML+=`
+      <tr>
+        <td>${u.data().name}</td>
+        <td>${p}</td>
+        <td>${map[p]||0}</td>
+        <td>
+          <input id="tp_${p}" type="number" style="width:60px">
+          <button class="btn add"
+            onclick="addTaskPoint('${p}')">+</button>
+        </td>
+      </tr>`;
   });
 }
+
+/* ADD TASK POINT */
+window.addTaskPoint=async(phone)=>{
+  const v=Number(document.getElementById("tp_"+phone).value);
+  if(v<=0)return alert("Enter points");
+  await addDoc(collection(db,"votes"),{
+    phone,points:v,date:today(),
+    taskId:t_task.value,source:"task-admin"
+  });
+  taskLoad(); dashLoad();
+};
 
 /* USER REPORT */
 async function userInit(){
@@ -251,7 +289,11 @@ window.userLoad=async()=>{
         <tr>
           <td>${x.date}</td>
           <td>${x.points}</td>
-          <td><button class="btn del" onclick="delVote('${v.id}')">X</button></td>
+          <td>${x.taskId||"-"}</td>
+          <td>
+            <button class="btn del"
+              onclick="delVote('${v.id}')">X</button>
+          </td>
         </tr>`;
     }
   });
@@ -276,7 +318,7 @@ document.querySelectorAll(".bottom-nav button").forEach(b=>{
 });
 
 /* INIT */
-dashLoad(); userInit();
+dashLoad(); taskInit(); userInit();
 </script>
 </body>
 </html>
