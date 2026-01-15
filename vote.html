@@ -10,7 +10,7 @@ body{
   margin:0;
   font-family:Arial, sans-serif;
   background:#f1f5f9;
-  padding-bottom:80px; /* space for bottom nav */
+  padding-bottom:80px;
 }
 .header{
   background:#fff;
@@ -20,107 +20,53 @@ body{
 }
 .header img{height:110px}
 
-.container{
-  display:flex;
-  justify-content:center;
-  padding:20px;
-}
+.container{display:flex;justify-content:center;padding:20px}
 .card{
-  background:#fff;
-  width:100%;
-  max-width:380px;
-  padding:20px;
-  border-radius:12px;
+  background:#fff;max-width:380px;width:100%;
+  padding:20px;border-radius:12px;
   box-shadow:0 6px 14px rgba(0,0,0,.15);
   text-align:center;
 }
 
-/* VOTE UI */
-.task{
-  border:1px solid #ddd;
-  padding:10px;
-  border-radius:8px;
-  margin:8px 0;
-  text-align:left;
-}
-.msg{
-  background:#fef3c7;
-  padding:10px;
-  border-radius:8px;
-  margin-top:10px;
-  font-size:14px;
-}
-button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:6px;
-  font-size:15px;
-  cursor:pointer;
-}
+/* Vote UI */
+.task{border:1px solid #ddd;padding:10px;border-radius:8px;margin:8px 0;text-align:left}
+.msg{background:#fef3c7;padding:10px;border-radius:8px;margin-top:10px;font-size:14px}
+button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;font-size:15px;cursor:pointer}
 .submit{background:#16a34a;color:#fff}
 .disabled{background:#9ca3af;cursor:not-allowed}
 .logout{background:#dc2626;color:#fff}
 .timer{color:#2563eb;font-size:13px;margin-top:6px}
 
-/* LEADERBOARD */
-.rank{
-  padding:6px;
-  border-bottom:1px solid #eee;
-  font-size:14px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-weight:bold;
-}
+/* Leaderboard */
+.rank{padding:6px;border-bottom:1px solid #eee;font-size:14px;font-weight:bold}
 .rank-1{color:#b45309}
 .rank-2{color:#374151}
 .rank-3{color:#7c2d12}
 
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:8px;
-}
-th,td{
-  border:1px solid #ddd;
-  padding:6px;
-  font-size:14px;
-  text-align:center;
-}
+/* Table */
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{border:1px solid #ddd;padding:6px;font-size:14px;text-align:center}
 th{background:#2563eb;color:#fff}
 
-/* BOTTOM NAV */
+/* Rank colors in table */
+.r1{background:#fde047;font-weight:bold}
+.r2{background:#e5e7eb;font-weight:bold}
+.r3{background:#fecaca;font-weight:bold}
+
+/* Bottom nav */
 .bottom-nav{
-  position:fixed;
-  bottom:0;
-  left:0;
-  width:100%;
-  background:#0f172a;
-  display:flex;
-  justify-content:space-around;
-  padding:10px 0;
-  z-index:100;
+  position:fixed;bottom:0;left:0;width:100%;
+  background:#0f172a;display:flex;justify-content:space-around;
+  padding:10px 0;z-index:100
 }
-.bottom-nav button{
-  background:none;
-  border:none;
-  color:#cbd5f5;
-  font-size:13px;
-  cursor:pointer;
-}
-.bottom-nav button.active{
-  color:#fff;
-  font-weight:bold;
-}
+.bottom-nav button{background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer}
+.bottom-nav button.active{color:#fff;font-weight:bold}
 .bottom-nav span{display:block;font-size:20px}
 </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
   <img src="logo..png" alt="Faith & Fitness">
 </div>
@@ -128,10 +74,9 @@ th{background:#2563eb;color:#fff}
 <div class="container">
 <div class="card">
 
-<!-- ===== HOME / VOTING SECTION ===== -->
+<!-- HOME -->
 <div id="homeSection">
   <h3 style="color:#16a34a">FAITH & FITNESS</h3>
-
   <div id="todayDate"></div>
   <div id="userName"></div>
   <div id="userPoints"></div>
@@ -148,7 +93,7 @@ th{background:#2563eb;color:#fff}
   <div id="top3"></div>
 </div>
 
-<!-- ===== LEADERBOARD SECTION (SAME PAGE) ===== -->
+<!-- LEADERBOARD -->
 <div id="leaderboardSection" style="display:none">
   <h3>🏆 Full Leaderboard</h3>
 
@@ -157,7 +102,11 @@ th{background:#2563eb;color:#fff}
   <h4 style="margin-top:10px">All Users</h4>
   <table>
     <thead>
-      <tr><th>SL</th><th>Name</th><th>Points</th></tr>
+      <tr>
+        <th>Rank</th>
+        <th>Name</th>
+        <th>Points</th>
+      </tr>
     </thead>
     <tbody id="allRanks"></tbody>
   </table>
@@ -166,7 +115,7 @@ th{background:#2563eb;color:#fff}
 </div>
 </div>
 
-<!-- ===== BOTTOM NAV ===== -->
+<!-- Bottom Nav -->
 <div class="bottom-nav">
   <button class="active" id="homeBtn" onclick="showHome()">
     <span>🏠</span>Home
@@ -176,7 +125,6 @@ th{background:#2563eb;color:#fff}
   </button>
 </div>
 
-<!-- ===== FIREBASE + LOGIC ===== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -184,7 +132,7 @@ import {
   query, where, addDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE */
+/* Firebase */
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -192,24 +140,23 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* LOGIN */
+/* Login */
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
-/* DATE */
+/* Date */
 todayDate.innerText = "Today: " + new Date().toDateString();
 
-/* 8 PM RULE */
+/* 8 PM rule */
 function getVoteDate(){
-  const d = new Date();
-  if(d.getHours() < 20) d.setDate(d.getDate()-1);
+  const d=new Date();
+  if(d.getHours()<20) d.setDate(d.getDate()-1);
   return d.toISOString().split("T")[0];
 }
 
-/* TIMER */
+/* Timer */
 function updateTimer(){
-  const now=new Date();
-  const next=new Date();
+  const now=new Date(), next=new Date();
   next.setHours(20,0,0,0);
   if(now>=next) next.setDate(next.getDate()+1);
   const diff=next-now;
@@ -220,13 +167,13 @@ function updateTimer(){
 }
 setInterval(updateTimer,1000); updateTimer();
 
-/* USER */
+/* User */
 async function loadUser(){
   const s=await getDocs(query(collection(db,"users"),where("phone","==",phone)));
   s.forEach(d=>userName.innerText="Hello, "+d.data().name);
 }
 
-/* POINTS */
+/* Points */
 async function loadPoints(){
   let t=0;
   const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
@@ -234,7 +181,7 @@ async function loadPoints(){
   userPoints.innerText="Your Points: "+t;
 }
 
-/* CHECK VOTED */
+/* Check voted */
 async function checkVoted(){
   const s=await getDocs(query(
     collection(db,"votes"),
@@ -250,7 +197,7 @@ async function checkVoted(){
   return false;
 }
 
-/* TASKS */
+/* Tasks */
 async function loadTasks(){
   if(await checkVoted()) return;
   const now=new Date();
@@ -270,7 +217,7 @@ async function loadTasks(){
   });
 }
 
-/* SUBMIT */
+/* Submit */
 window.submitVote=async()=>{
   const c=document.querySelectorAll("#taskBox input:checked");
   if(!c.length) return alert("Select task");
@@ -281,7 +228,7 @@ window.submitVote=async()=>{
   loadPoints(); checkVoted(); loadLeaderboardData();
 };
 
-/* LEADERBOARD DATA (SAME SOURCE) */
+/* Leaderboard data */
 async function loadLeaderboardData(){
   const u=await getDocs(collection(db,"users"));
   const v=await getDocs(collection(db,"votes"));
@@ -298,28 +245,36 @@ async function loadLeaderboardData(){
   });
   rows.sort((a,b)=>b.total-a.total);
 
-  /* TOP 3 (home + full) */
+  /* Top 3 */
   top3.innerHTML=""; top3Full.innerHTML="";
   let rank=1,prev=null,count=0;
   for(let r of rows){
     if(prev!==null && r.total<prev){rank++;count=0;}
     if(rank>3||count>=2) continue;
     const icon=rank===1?"🥇":rank===2?"🥈":"🥉";
-    const row=`<div class="rank rank-${rank}">${icon} Rank ${rank} – ${r.name} – ${r.total}</div>`;
-    top3.innerHTML+=row;
-    top3Full.innerHTML+=row;
+    const html=`<div class="rank rank-${rank}">${icon} Rank ${rank} – ${r.name} – ${r.total}</div>`;
+    top3.innerHTML+=html; top3Full.innerHTML+=html;
     prev=r.total; count++;
   }
 
-  /* ALL USERS */
+  /* All Users with Rank + Icon + Color */
   allRanks.innerHTML="";
+  let rnk=0, prevPts=null;
   rows.forEach((r,i)=>{
+    if(prevPts===null || r.total<prevPts) rnk++;
+    prevPts=r.total;
+    const icon=rnk===1?"🥇":rnk===2?"🥈":rnk===3?"🥉":"";
+    const cls=rnk===1?"r1":rnk===2?"r2":rnk===3?"r3":"";
     allRanks.innerHTML+=`
-      <tr><td>${i+1}</td><td>${r.name}</td><td>${r.total}</td></tr>`;
+      <tr class="${cls}">
+        <td>${icon} ${rnk}</td>
+        <td>${r.name}</td>
+        <td>${r.total}</td>
+      </tr>`;
   });
 }
 
-/* NAV TOGGLE */
+/* Nav toggle */
 window.showHome=()=>{
   homeSection.style.display="block";
   leaderboardSection.style.display="none";
@@ -334,17 +289,14 @@ window.showLeaderboard=()=>{
   loadLeaderboardData();
 };
 
-/* LOGOUT */
+/* Logout */
 window.logout=()=>{
   localStorage.clear();
   location.replace("index.html");
 };
 
-/* INIT */
-loadUser();
-loadPoints();
-loadTasks();
-loadLeaderboardData();
+/* Init */
+loadUser(); loadPoints(); loadTasks(); loadLeaderboardData();
 </script>
 
 </body>
