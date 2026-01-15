@@ -37,7 +37,7 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;fon
 .logout{background:#dc2626;color:#fff}
 .timer{color:#2563eb;font-size:13px;margin-top:6px}
 
-/* ===== TOP PERFORMERS (ROW + COLUMNS) ===== */
+/* ===== TOP PERFORMERS ===== */
 .tp-row{
   display:grid;
   grid-template-columns:70px 1fr 60px;
@@ -119,7 +119,7 @@ th{background:#2563eb;color:#fff}
 <div class="container">
 <div class="card">
 
-<!-- ===== HOME / VOTING ===== -->
+<!-- ===== HOME ===== -->
 <div id="homeSection">
   <h3 style="color:#16a34a">FAITH & FITNESS</h3>
   <div id="todayDate"></div>
@@ -135,29 +135,10 @@ th{background:#2563eb;color:#fff}
 
   <hr>
   <h3>🏆 Top Performers</h3>
-
   <div class="tp-row" style="background:#2563eb;color:#fff">
     <div>Rank</div><div>Name</div><div>Points</div>
   </div>
   <div id="top3"></div>
-
-  <hr>
-  <h3>📅 Your Progress</h3>
-
-  <div class="cal-head">
-    <button onclick="prevMonth()">◀</button>
-    <span id="calTitle"></span>
-    <button onclick="nextMonth()">▶</button>
-  </div>
-
-  <div class="calendar" id="calendar"></div>
-
-  <div class="legend">
-    <span><i class="l done"></i> Completed</span>
-    <span><i class="l pending"></i> Pending</span>
-    <span><i class="l missed"></i> Missed</span>
-    <span><i class="l future"></i> Future</span>
-  </div>
 </div>
 
 <!-- ===== LEADERBOARD ===== -->
@@ -176,6 +157,26 @@ th{background:#2563eb;color:#fff}
   </table>
 </div>
 
+<!-- ===== CALENDAR ===== -->
+<div id="calendarSection" style="display:none">
+  <h3>📅 Your Progress</h3>
+
+  <div class="cal-head">
+    <button onclick="prevMonth()">◀</button>
+    <span id="calTitle"></span>
+    <button onclick="nextMonth()">▶</button>
+  </div>
+
+  <div class="calendar" id="calendar"></div>
+
+  <div class="legend">
+    <span><i class="l done"></i> Completed</span>
+    <span><i class="l pending"></i> Pending</span>
+    <span><i class="l missed"></i> Missed</span>
+    <span><i class="l future"></i> Future</span>
+  </div>
+</div>
+
 </div>
 </div>
 
@@ -183,6 +184,7 @@ th{background:#2563eb;color:#fff}
 <div class="bottom-nav">
   <button class="active" id="homeBtn" onclick="showHome()"><span>🏠</span>Home</button>
   <button id="leaderBtn" onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
+  <button id="calBtn" onclick="showCalendar()"><span>📅</span>Calendar</button>
 </div>
 
 <script type="module">
@@ -204,6 +206,7 @@ if(!phone) location.replace("index.html");
 
 todayDate.innerText="Today: "+new Date().toDateString();
 
+/* Vote date rule */
 function getVoteDate(){
   const d=new Date();
   if(d.getHours()<20) d.setDate(d.getDate()-1);
@@ -251,7 +254,7 @@ async function loadTasks(){
   });
 }
 
-/* Submit */
+/* Submit vote */
 window.submitVote=async()=>{
   const c=document.querySelectorAll("#taskBox input:checked");
   if(!c.length) return alert("Select task");
@@ -260,7 +263,7 @@ window.submitVote=async()=>{
   loadPoints();loadLeaderboardData();loadCalendar();
 };
 
-/* Leaderboard + Top */
+/* Leaderboard */
 async function loadLeaderboardData(){
   const u=await getDocs(collection(db,"users"));
   const v=await getDocs(collection(db,"votes"));
@@ -306,12 +309,37 @@ async function loadCalendar(){
   }
 }
 
-/* Nav */
-window.showHome=()=>{homeSection.style.display="block";leaderboardSection.style.display="none";}
-window.showLeaderboard=()=>{homeSection.style.display="none";leaderboardSection.style.display="block";}
+/* NAV */
+window.showHome=()=>{
+  homeSection.style.display="block";
+  leaderboardSection.style.display="none";
+  calendarSection.style.display="none";
+  homeBtn.classList.add("active");
+  leaderBtn.classList.remove("active");
+  calBtn.classList.remove("active");
+};
+window.showLeaderboard=()=>{
+  homeSection.style.display="none";
+  leaderboardSection.style.display="block";
+  calendarSection.style.display="none";
+  leaderBtn.classList.add("active");
+  homeBtn.classList.remove("active");
+  calBtn.classList.remove("active");
+  loadLeaderboardData();
+};
+window.showCalendar=()=>{
+  homeSection.style.display="none";
+  leaderboardSection.style.display="none";
+  calendarSection.style.display="block";
+  calBtn.classList.add("active");
+  homeBtn.classList.remove("active");
+  leaderBtn.classList.remove("active");
+  loadCalendar();
+};
 
-window.logout=()=>{localStorage.clear();location.replace("index.html");}
+window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
+/* INIT */
 loadUser();loadPoints();loadTasks();loadLeaderboardData();loadCalendar();
 </script>
 
