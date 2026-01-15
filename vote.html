@@ -37,14 +37,21 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;fon
 .logout{background:#dc2626;color:#fff}
 .timer{color:#2563eb;font-size:13px;margin-top:6px}
 
-/* ===== TOP PERFORMER ROW COLORS ===== */
+/* ===== TOP PERFORMER (COLUMN ROW) ===== */
 .tp-row{
-  padding:6px;
+  display:grid;
+  grid-template-columns:70px 1fr 60px;
+  align-items:center;
+  padding:8px;
   border-radius:6px;
-  margin:4px 0;
-  border-bottom:1px solid #eee;
+  margin:6px 0;
   font-weight:bold;
 }
+.tp-rank{text-align:left}
+.tp-name{text-align:left}
+.tp-points{text-align:right}
+
+/* Row colors */
 .tp-1{background:#fde047;color:#78350f}
 .tp-2{background:#e5e7eb;color:#374151}
 .tp-3{background:#fecaca;color:#7c2d12}
@@ -96,23 +103,30 @@ th{background:#2563eb;color:#fff}
 
   <hr>
   <h3>🏆 Top Performers</h3>
+
+  <!-- Header row -->
+  <div class="tp-row" style="background:#2563eb;color:#fff">
+    <div>Rank</div><div>Name</div><div>Points</div>
+  </div>
+
   <div id="top3"></div>
 </div>
 
-<!-- ===== LEADERBOARD (SAME PAGE) ===== -->
+<!-- ===== LEADERBOARD ===== -->
 <div id="leaderboardSection" style="display:none">
   <h3>🏆 Full Leaderboard</h3>
+
+  <!-- Header -->
+  <div class="tp-row" style="background:#2563eb;color:#fff">
+    <div>Rank</div><div>Name</div><div>Points</div>
+  </div>
 
   <div id="top3Full"></div>
 
   <h4 style="margin-top:10px">All Users</h4>
   <table>
     <thead>
-      <tr>
-        <th>Rank</th>
-        <th>Name</th>
-        <th>Points</th>
-      </tr>
+      <tr><th>Rank</th><th>Name</th><th>Points</th></tr>
     </thead>
     <tbody id="allRanks"></tbody>
   </table>
@@ -251,23 +265,25 @@ async function loadLeaderboardData(){
   });
   rows.sort((a,b)=>b.total-a.total);
 
-  /* Top 3 (ROW COLORED) */
+  /* Top performers (columns) */
   top3.innerHTML=""; top3Full.innerHTML="";
   let rank=1,prev=null,count=0;
   for(let r of rows){
     if(prev!==null && r.total<prev){rank++;count=0;}
     if(rank>3||count>=2) continue;
     const icon=rank===1?"🥇":rank===2?"🥈":"🥉";
-    const html=`
+    const rowHTML=`
       <div class="tp-row tp-${rank}">
-        ${icon} Rank ${rank} – ${r.name} – ${r.total}
+        <div class="tp-rank">${icon} ${rank}</div>
+        <div class="tp-name">${r.name}</div>
+        <div class="tp-points">${r.total}</div>
       </div>`;
-    top3.innerHTML+=html;
-    top3Full.innerHTML+=html;
+    top3.innerHTML+=rowHTML;
+    top3Full.innerHTML+=rowHTML;
     prev=r.total; count++;
   }
 
-  /* All Users table with rank + icon + color */
+  /* All users table */
   allRanks.innerHTML="";
   let rnk=0, prevPts=null;
   rows.forEach(r=>{
