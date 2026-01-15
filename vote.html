@@ -37,7 +37,7 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;fon
 .logout{background:#dc2626;color:#fff}
 .timer{color:#2563eb;font-size:13px;margin-top:6px}
 
-/* ===== TOP PERFORMER (COLUMN ROW) ===== */
+/* ===== TOP PERFORMERS (ROW + COLUMNS) ===== */
 .tp-row{
   display:grid;
   grid-template-columns:70px 1fr 60px;
@@ -47,11 +47,6 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;fon
   margin:6px 0;
   font-weight:bold;
 }
-.tp-rank{text-align:left}
-.tp-name{text-align:left}
-.tp-points{text-align:right}
-
-/* Row colors */
 .tp-1{background:#fde047;color:#78350f}
 .tp-2{background:#e5e7eb;color:#374151}
 .tp-3{background:#fecaca;color:#7c2d12}
@@ -60,11 +55,48 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;fon
 table{width:100%;border-collapse:collapse;margin-top:8px}
 th,td{border:1px solid #ddd;padding:6px;font-size:14px;text-align:center}
 th{background:#2563eb;color:#fff}
-
-/* Rank colors in table */
 .r1{background:#fde047;font-weight:bold}
 .r2{background:#e5e7eb;font-weight:bold}
 .r3{background:#fecaca;font-weight:bold}
+
+/* ===== CALENDAR ===== */
+.cal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:10px 0;
+  font-weight:bold;
+}
+.calendar{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:8px;
+}
+.day{
+  height:38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  font-size:14px;
+  color:#fff;
+}
+.done{background:#16a34a}
+.pending{background:#facc15;color:#000}
+.missed{background:#ef4444}
+.future{background:#374151}
+.today{outline:3px solid #3b82f6}
+
+.legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  font-size:12px;
+  margin-top:10px;
+}
+.legend .l{
+  width:12px;height:12px;border-radius:3px;display:inline-block
+}
 
 /* ===== BOTTOM NAV ===== */
 .bottom-nav{
@@ -104,30 +136,42 @@ th{background:#2563eb;color:#fff}
   <hr>
   <h3>🏆 Top Performers</h3>
 
-  <!-- Header row -->
   <div class="tp-row" style="background:#2563eb;color:#fff">
     <div>Rank</div><div>Name</div><div>Points</div>
   </div>
-
   <div id="top3"></div>
+
+  <hr>
+  <h3>📅 Your Progress</h3>
+
+  <div class="cal-head">
+    <button onclick="prevMonth()">◀</button>
+    <span id="calTitle"></span>
+    <button onclick="nextMonth()">▶</button>
+  </div>
+
+  <div class="calendar" id="calendar"></div>
+
+  <div class="legend">
+    <span><i class="l done"></i> Completed</span>
+    <span><i class="l pending"></i> Pending</span>
+    <span><i class="l missed"></i> Missed</span>
+    <span><i class="l future"></i> Future</span>
+  </div>
 </div>
 
 <!-- ===== LEADERBOARD ===== -->
 <div id="leaderboardSection" style="display:none">
   <h3>🏆 Full Leaderboard</h3>
 
-  <!-- Header -->
   <div class="tp-row" style="background:#2563eb;color:#fff">
     <div>Rank</div><div>Name</div><div>Points</div>
   </div>
-
   <div id="top3Full"></div>
 
-  <h4 style="margin-top:10px">All Users</h4>
+  <h4>All Users</h4>
   <table>
-    <thead>
-      <tr><th>Rank</th><th>Name</th><th>Points</th></tr>
-    </thead>
+    <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
     <tbody id="allRanks"></tbody>
   </table>
 </div>
@@ -137,12 +181,8 @@ th{background:#2563eb;color:#fff}
 
 <!-- ===== BOTTOM NAV ===== -->
 <div class="bottom-nav">
-  <button class="active" id="homeBtn" onclick="showHome()">
-    <span>🏠</span>Home
-  </button>
-  <button id="leaderBtn" onclick="showLeaderboard()">
-    <span>🏆</span>Leaderboard
-  </button>
+  <button class="active" id="homeBtn" onclick="showHome()"><span>🏠</span>Home</button>
+  <button id="leaderBtn" onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
 </div>
 
 <script type="module">
@@ -152,7 +192,6 @@ import {
   query, where, addDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* Firebase */
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -160,14 +199,11 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* Login */
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
-/* Date */
-todayDate.innerText = "Today: " + new Date().toDateString();
+todayDate.innerText="Today: "+new Date().toDateString();
 
-/* 8 PM rule */
 function getVoteDate(){
   const d=new Date();
   if(d.getHours()<20) d.setDate(d.getDate()-1);
@@ -176,16 +212,13 @@ function getVoteDate(){
 
 /* Timer */
 function updateTimer(){
-  const now=new Date(), next=new Date();
+  const now=new Date(),next=new Date();
   next.setHours(20,0,0,0);
   if(now>=next) next.setDate(next.getDate()+1);
   const diff=next-now;
-  const h=Math.floor(diff/3600000),
-        m=Math.floor((diff%3600000)/60000),
-        s=Math.floor((diff%60000)/1000);
-  timer.innerText=`Next voting in ${h}h ${m}m ${s}s`;
+  timer.innerText=`Next voting in ${Math.floor(diff/3600000)}h ${Math.floor(diff%3600000/60000)}m`;
 }
-setInterval(updateTimer,1000); updateTimer();
+setInterval(updateTimer,1000);updateTimer();
 
 /* User */
 async function loadUser(){
@@ -201,25 +234,8 @@ async function loadPoints(){
   userPoints.innerText="Your Points: "+t;
 }
 
-/* Check voted */
-async function checkVoted(){
-  const s=await getDocs(query(
-    collection(db,"votes"),
-    where("phone","==",phone),
-    where("date","==",getVoteDate())
-  ));
-  if(!s.empty){
-    submitBtn.disabled=true;
-    submitBtn.classList.add("disabled");
-    message.innerHTML=`<div class="msg">You already voted today ✅</div>`;
-    return true;
-  }
-  return false;
-}
-
 /* Tasks */
 async function loadTasks(){
-  if(await checkVoted()) return;
   const now=new Date();
   const s=await getDocs(collection(db,"tasks"));
   taskBox.innerHTML="";
@@ -228,10 +244,8 @@ async function loadTasks(){
     if(now>=new Date(t.start)&&now<=new Date(t.end)){
       taskBox.innerHTML+=`
         <div class="task">
-          <label>
-            <input type="checkbox" data-points="${t.points}">
-            ${t.text} (${t.points} pts)
-          </label>
+          <label><input type="checkbox" data-points="${t.points}">
+          ${t.text} (${t.points} pts)</label>
         </div>`;
     }
   });
@@ -241,88 +255,64 @@ async function loadTasks(){
 window.submitVote=async()=>{
   const c=document.querySelectorAll("#taskBox input:checked");
   if(!c.length) return alert("Select task");
-  let pts=0; c.forEach(x=>pts+=Number(x.dataset.points));
-  await addDoc(collection(db,"votes"),{
-    phone, points:pts, date:getVoteDate(), source:"user"
-  });
-  loadPoints(); checkVoted(); loadLeaderboardData();
+  let pts=0;c.forEach(x=>pts+=Number(x.dataset.points));
+  await addDoc(collection(db,"votes"),{phone,points:pts,date:getVoteDate()});
+  loadPoints();loadLeaderboardData();loadCalendar();
 };
 
-/* Leaderboard data */
+/* Leaderboard + Top */
 async function loadLeaderboardData(){
   const u=await getDocs(collection(db,"users"));
   const v=await getDocs(collection(db,"votes"));
   const map={};
-  v.forEach(x=>{
-    const d=x.data();
-    map[d.phone]=(map[d.phone]||0)+Number(d.points||0);
-  });
-
+  v.forEach(x=>{map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0);});
   let rows=[];
-  u.forEach(x=>{
-    const p=x.data().phone;
-    if(map[p]>0) rows.push({name:x.data().name,total:map[p]});
-  });
+  u.forEach(x=>{if(map[x.data().phone]>0)rows.push({name:x.data().name,total:map[x.data().phone]});});
   rows.sort((a,b)=>b.total-a.total);
 
-  /* Top performers (columns) */
-  top3.innerHTML=""; top3Full.innerHTML="";
+  top3.innerHTML="";top3Full.innerHTML="";allRanks.innerHTML="";
   let rank=1,prev=null,count=0;
-  for(let r of rows){
-    if(prev!==null && r.total<prev){rank++;count=0;}
-    if(rank>3||count>=2) continue;
-    const icon=rank===1?"🥇":rank===2?"🥈":"🥉";
-    const rowHTML=`
-      <div class="tp-row tp-${rank}">
-        <div class="tp-rank">${icon} ${rank}</div>
-        <div class="tp-name">${r.name}</div>
-        <div class="tp-points">${r.total}</div>
-      </div>`;
-    top3.innerHTML+=rowHTML;
-    top3Full.innerHTML+=rowHTML;
-    prev=r.total; count++;
-  }
-
-  /* All users table */
-  allRanks.innerHTML="";
-  let rnk=0, prevPts=null;
   rows.forEach(r=>{
-    if(prevPts===null || r.total<prevPts) rnk++;
-    prevPts=r.total;
-    const icon=rnk===1?"🥇":rnk===2?"🥈":rnk===3?"🥉":"";
-    const cls=rnk===1?"r1":rnk===2?"r2":rnk===3?"r3":"";
-    allRanks.innerHTML+=`
-      <tr class="${cls}">
-        <td>${icon} ${rnk}</td>
-        <td>${r.name}</td>
-        <td>${r.total}</td>
-      </tr>`;
+    if(prev!==null&&r.total<prev){rank++;count=0;}
+    const icon=rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":"";
+    if(rank<=3&&count<2){
+      const row=`<div class="tp-row tp-${rank}">
+        <div>${icon} ${rank}</div><div>${r.name}</div><div>${r.total}</div></div>`;
+      top3.innerHTML+=row;top3Full.innerHTML+=row;count++;
+    }
+    allRanks.innerHTML+=`<tr class="r${rank}"><td>${icon} ${rank}</td><td>${r.name}</td><td>${r.total}</td></tr>`;
+    prev=r.total;
   });
 }
 
-/* Nav toggle */
-window.showHome=()=>{
-  homeSection.style.display="block";
-  leaderboardSection.style.display="none";
-  homeBtn.classList.add("active");
-  leaderBtn.classList.remove("active");
-};
-window.showLeaderboard=()=>{
-  homeSection.style.display="none";
-  leaderboardSection.style.display="block";
-  leaderBtn.classList.add("active");
-  homeBtn.classList.remove("active");
-  loadLeaderboardData();
-};
+/* Calendar */
+let curMonth=new Date().getMonth(),curYear=new Date().getFullYear();
+window.prevMonth=()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--;}loadCalendar();}
+window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalendar();}
 
-/* Logout */
-window.logout=()=>{
-  localStorage.clear();
-  location.replace("index.html");
-};
+async function loadCalendar(){
+  calendar.innerHTML="";
+  calTitle.innerText=new Date(curYear,curMonth).toLocaleString("default",{month:"long",year:"numeric"});
+  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
+  const voted={};s.forEach(d=>voted[d.data().date]=1);
+  const days=new Date(curYear,curMonth+1,0).getDate();
+  const today=new Date().toISOString().split("T")[0];
+  for(let i=1;i<=days;i++){
+    const ds=new Date(curYear,curMonth,i).toISOString().split("T")[0];
+    let cls="future";
+    if(ds<today)cls=voted[ds]?"done":"missed";
+    if(ds===today)cls=voted[ds]?"done":"pending";
+    calendar.innerHTML+=`<div class="day ${cls} ${ds===today?"today":""}">${i}</div>`;
+  }
+}
 
-/* Init */
-loadUser(); loadPoints(); loadTasks(); loadLeaderboardData();
+/* Nav */
+window.showHome=()=>{homeSection.style.display="block";leaderboardSection.style.display="none";}
+window.showLeaderboard=()=>{homeSection.style.display="none";leaderboardSection.style.display="block";}
+
+window.logout=()=>{localStorage.clear();location.replace("index.html");}
+
+loadUser();loadPoints();loadTasks();loadLeaderboardData();loadCalendar();
 </script>
 
 </body>
