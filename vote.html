@@ -40,10 +40,18 @@ th{background:#2563eb;color:#fff}
 .missed{background:#ef4444}
 .future{background:#374151}
 .today{outline:3px solid #3b82f6}
+
 .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;margin-top:10px}
 .legend .l{width:12px;height:12px;border-radius:3px;display:inline-block}
 
-.bottom-nav{position:fixed;bottom:0;left:0;width:100%;background:#0f172a;display:flex;justify-content:space-around;padding:10px 0;z-index:100}
+.workout-video{margin-top:14px}
+.workout-video video{border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,.15)}
+
+.bottom-nav{
+  position:fixed;bottom:0;left:0;width:100%;
+  background:#0f172a;display:flex;justify-content:space-around;
+  padding:10px 0;z-index:100
+}
 .bottom-nav button{background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer}
 .bottom-nav button.active{color:#fff;font-weight:bold}
 .bottom-nav span{display:block;font-size:20px}
@@ -88,6 +96,7 @@ th{background:#2563eb;color:#fff}
     <div>Rank</div><div>Name</div><div>Points</div>
   </div>
   <div id="top3Full"></div>
+
   <h4>All Users</h4>
   <table>
     <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
@@ -112,13 +121,41 @@ th{background:#2563eb;color:#fff}
   </div>
 </div>
 
+<!-- WORKOUT VIDEOS (LAST) -->
+<div id="workoutSection" style="display:none">
+  <h3>🏋️ Workouts Videos</h3>
+
+  <div class="workout-video">
+    <h4>Day 1 Workout</h4>
+    <video controls width="100%">
+      <source src="PASTE_DAY1_MP4_URL" type="video/mp4">
+    </video>
+  </div>
+
+  <div class="workout-video">
+    <h4>Day 2 Workout</h4>
+    <video controls width="100%">
+      <source src="PASTE_DAY2_MP4_URL" type="video/mp4">
+    </video>
+  </div>
+
+  <div class="workout-video">
+    <h4>Day 3 Workout</h4>
+    <video controls width="100%">
+      <source src="PASTE_DAY3_MP4_URL" type="video/mp4">
+    </video>
+  </div>
+</div>
+
 </div>
 </div>
 
+<!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <button class="active" id="homeBtn" onclick="showHome()"><span>🏠</span>Home</button>
   <button id="leaderBtn" onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
   <button id="calBtn" onclick="showCalendar()"><span>📅</span>Calendar</button>
+  <button id="workBtn" onclick="showWorkout()"><span>🏋️</span>Workout</button>
 </div>
 
 <script type="module">
@@ -152,8 +189,7 @@ async function checkVoted(){
   const s = await getDocs(query(collection(db,"votes"),where("phone","==",phone),where("date","==",getVoteDate())));
   if(!s.empty){
     hideTasks();
-    submitBtn.disabled=true;
-    submitBtn.classList.add("disabled");
+    submitBtn.disabled=true; submitBtn.classList.add("disabled");
     message.innerHTML=`<div class="msg">You have already voted today ✅<br><b>Next voting:</b> ${nextVoteText()}</div>`;
     return true;
   }
@@ -191,9 +227,8 @@ window.submitVote = async ()=>{
   await addDoc(collection(db,"votes"),{phone,points:pts,date:getVoteDate(),source:"user"});
   message.innerHTML=`<div class="msg">Vote submitted successfully ✅<br><b>Next voting:</b> ${nextVoteText()}</div>`;
   hideTasks();
-  submitBtn.disabled=true;
-  submitBtn.classList.add("disabled");
-  loadPoints();loadLeaderboardData();loadCalendar();
+  submitBtn.disabled=true; submitBtn.classList.add("disabled");
+  loadPoints(); loadLeaderboardData(); loadCalendar();
 };
 
 async function loadLeaderboardData(){
@@ -235,13 +270,15 @@ async function loadCalendar(){
   }
 }
 
-window.showHome=()=>{homeSection.style.display="block";leaderboardSection.style.display="none";calendarSection.style.display="none";}
-window.showLeaderboard=()=>{homeSection.style.display="none";leaderboardSection.style.display="block";calendarSection.style.display="none";loadLeaderboardData();}
-window.showCalendar=()=>{homeSection.style.display="none";leaderboardSection.style.display="none";calendarSection.style.display="block";loadCalendar();}
+window.showHome=()=>{homeSection.style.display="block";leaderboardSection.style.display="none";calendarSection.style.display="none";workoutSection.style.display="none";}
+window.showLeaderboard=()=>{homeSection.style.display="none";leaderboardSection.style.display="block";calendarSection.style.display="none";workoutSection.style.display="none";loadLeaderboardData();}
+window.showCalendar=()=>{homeSection.style.display="none";leaderboardSection.style.display="none";calendarSection.style.display="block";workoutSection.style.display="none";loadCalendar();}
+window.showWorkout=()=>{homeSection.style.display="none";leaderboardSection.style.display="none";calendarSection.style.display="none";workoutSection.style.display="block";}
+
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
-loadUser();loadPoints();loadTasks();loadLeaderboardData();loadCalendar();checkVoted();
+loadUser(); loadPoints(); loadTasks(); loadLeaderboardData(); loadCalendar(); checkVoted();
 </script>
 
 </body>
-</html>
+  </html>
