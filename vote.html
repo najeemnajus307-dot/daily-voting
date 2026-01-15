@@ -60,11 +60,20 @@ button{
 .disabled{background:#9ca3af;cursor:not-allowed}
 .logout{background:#dc2626;color:#fff}
 .timer{color:#2563eb;font-size:13px;margin-top:6px}
+
+/* LEADERBOARD */
 .rank{
   padding:6px;
   border-bottom:1px solid #eee;
   font-size:14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
+.rank-1{color:#b45309;font-weight:bold}
+.rank-2{color:#374151;font-weight:bold}
+.rank-3{color:#7c2d12;font-weight:bold}
+.icon{font-size:16px}
 </style>
 </head>
 
@@ -228,42 +237,56 @@ window.submitVote = async ()=>{
   loadLeaderboard();
 };
 
-/* LEADERBOARD – DENSE RANKING */
+/* LEADERBOARD – ICONS + MAX 2 PER RANK */
 async function loadLeaderboard(){
-  const users=await getDocs(collection(db,"users"));
-  const votes=await getDocs(collection(db,"votes"));
+  const users = await getDocs(collection(db,"users"));
+  const votes = await getDocs(collection(db,"votes"));
 
-  const map={};
+  const map = {};
   votes.forEach(v=>{
-    const x=v.data();
-    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+    const x = v.data();
+    map[x.phone] = (map[x.phone] || 0) + Number(x.points || 0);
   });
 
-  let rows=[];
+  let rows = [];
   users.forEach(u=>{
-    const p=u.data().phone;
-    if(map[p]>0){
-      rows.push({name:u.data().name,total:map[p]});
+    const p = u.data().phone;
+    if(map[p] > 0){
+      rows.push({ name:u.data().name, total:map[p] });
     }
   });
 
   rows.sort((a,b)=>b.total-a.total);
 
   leaderboard.innerHTML="";
-  let rank=1, prev=null;
+  let rank=1, prev=null, countInRank=0;
 
   for(let r of rows){
-    if(prev!==null && r.total<prev) rank++;
-    prev=r.total;
+    if(prev!==null && r.total<prev){
+      rank++;
+      countInRank=0;
+    }
     if(rank>3) break;
+    if(countInRank>=2){
+      prev=r.total;
+      continue;
+    }
+
+    const icon = rank===1?"🥇":rank===2?"🥈":"🥉";
 
     leaderboard.innerHTML+=`
-      <div class="rank">
-        <b>Rank ${rank}</b> – ${r.name} – ${r.total} pts
+      <div class="rank rank-${rank}">
+        <span class="icon">${icon}</span>
+        <span>Rank ${rank}</span>
+        <span>– ${r.name}</span>
+        <span>– ${r.total} pts</span>
       </div>`;
+
+    countInRank++;
+    prev=r.total;
   }
 
-  if(!rows.length){
+  if(!leaderboard.innerHTML){
     leaderboard.innerHTML=`<div class="msg">No ranking yet</div>`;
   }
 }
