@@ -60,6 +60,11 @@ button{
 .disabled{background:#9ca3af;cursor:not-allowed}
 .logout{background:#dc2626;color:#fff}
 .timer{color:#2563eb;font-size:13px;margin-top:6px}
+.rank{
+  padding:6px;
+  border-bottom:1px solid #eee;
+  font-size:14px;
+}
 </style>
 </head>
 
@@ -87,10 +92,13 @@ button{
 <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
 <button class="logout" onclick="logout()">Logout</button>
 
+<hr style="margin:20px 0">
+<h3>🏆 Today Top Rank</h3>
+<div id="leaderboard"></div>
+
 </div>
 </div>
 
-<!-- 🔥 FIREBASE + LOGIC -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
@@ -98,7 +106,7 @@ import {
   query, where, addDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* FIREBASE */
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -106,150 +114,162 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* 🔐 LOGIN CHECK */
+/* LOGIN CHECK */
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
-/* 📅 DISPLAY DATE (INFO ONLY) */
+/* DATE DISPLAY */
 todayDate.innerText = "Today: " + new Date().toDateString();
 
-/* 🕗 CORRECT VOTING DATE (8 PM RULE) */
+/* 8 PM RULE */
 function getVoteDate(){
   const d = new Date();
-  if(d.getHours() < 20){
-    d.setDate(d.getDate() - 1);
-  }
+  if(d.getHours() < 20) d.setDate(d.getDate()-1);
   return d.toISOString().split("T")[0];
 }
 
-/* ⏰ NEXT VOTING TIMER */
+/* TIMER */
 function updateTimer(){
   const now = new Date();
   const next = new Date();
   next.setHours(20,0,0,0);
   if(now >= next) next.setDate(next.getDate()+1);
-
-  const diff = next - now;
-  const h = Math.floor(diff/3600000);
-  const m = Math.floor((diff%3600000)/60000);
-  const s = Math.floor((diff%60000)/1000);
-  timer.innerText = `Next voting in ${h}h ${m}m ${s}s`;
+  const diff = next-now;
+  const h=Math.floor(diff/3600000),
+        m=Math.floor((diff%3600000)/60000),
+        s=Math.floor((diff%60000)/1000);
+  timer.innerText=`Next voting in ${h}h ${m}m ${s}s`;
 }
-setInterval(updateTimer,1000);
-updateTimer();
+setInterval(updateTimer,1000); updateTimer();
 
-/* 👤 LOAD USER */
+/* LOAD USER */
 async function loadUser(){
   const snap = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
   );
-  snap.forEach(d=>{
-    userName.innerText = "Hello, " + d.data().name;
-  });
+  snap.forEach(d=> userName.innerText="Hello, "+d.data().name);
 }
 
-/* ⭐ LOAD TOTAL POINTS */
+/* LOAD TOTAL POINTS */
 async function loadPoints(){
-  let total = 0;
+  let total=0;
   const snap = await getDocs(
     query(collection(db,"votes"), where("phone","==",phone))
   );
-  snap.forEach(d=> total += Number(d.data().points||0));
-  userPoints.innerText = "Total Points: " + total;
+  snap.forEach(d=> total+=Number(d.data().points||0));
+  userPoints.innerText="Total Points: "+total;
 }
 
-/* 🔁 CHECK ALREADY VOTED */
+/* CHECK ALREADY VOTED */
 async function checkVoted(){
   const snap = await getDocs(
-    query(
-      collection(db,"votes"),
+    query(collection(db,"votes"),
       where("phone","==",phone),
       where("date","==",getVoteDate())
     )
   );
-
   if(!snap.empty){
-    submitBtn.disabled = true;
+    submitBtn.disabled=true;
     submitBtn.classList.add("disabled");
-    message.innerHTML = `
-      <div class="msg">
-        You have already voted today ✅<br>
-        Next voting at <b>8 PM</b>
-      </div>`;
+    message.innerHTML=`<div class="msg">You already voted today ✅</div>`;
     return true;
   }
   return false;
 }
 
-/* 📋 LOAD ACTIVE TASKS */
+/* LOAD TASKS */
 async function loadTasks(){
   if(await checkVoted()) return;
-
-  const now = new Date();
-  const snap = await getDocs(collection(db,"tasks"));
-  taskBox.innerHTML="";
+  const now=new Date();
+  const snap=await getDocs(collection(db,"tasks"));
   let active=false;
-
+  taskBox.innerHTML="";
   snap.forEach(d=>{
     const t=d.data();
-    if(now >= new Date(t.start) && now <= new Date(t.end)){
+    if(now>=new Date(t.start)&&now<=new Date(t.end)){
       active=true;
-      taskBox.innerHTML += `
+      taskBox.innerHTML+=`
         <div class="task">
           <label>
             <input type="checkbox" data-points="${t.points}">
-            ${t.text} ( ${t.points} pts )
+            ${t.text} (${t.points} pts)
           </label>
         </div>`;
     }
   });
-
   if(!active){
     submitBtn.disabled=true;
     submitBtn.classList.add("disabled");
-    taskBox.innerHTML=`<div class="msg">No active tasks ❌</div>`;
+    taskBox.innerHTML=`<div class="msg">No active tasks</div>`;
   }
 }
 
-/* 🗳️ SUBMIT VOTE */
+/* SUBMIT VOTE */
 window.submitVote = async ()=>{
-  const checked = document.querySelectorAll("#taskBox input:checked");
-  if(!checked.length){
-    alert("Task select cheyyanam");
-    return;
-  }
+  const checked=document.querySelectorAll("#taskBox input:checked");
+  if(!checked.length) return alert("Task select cheyyanam");
 
-  // FINAL DUPLICATE CHECK
-  const q = query(
+  const already=await getDocs(query(
     collection(db,"votes"),
     where("phone","==",phone),
     where("date","==",getVoteDate())
-  );
-  const already = await getDocs(q);
-  if(!already.empty){
-    alert("You already voted today");
-    submitBtn.disabled=true;
-    submitBtn.classList.add("disabled");
-    return;
-  }
+  ));
+  if(!already.empty) return alert("Already voted");
 
-  let points = 0;
-  checked.forEach(c=> points += Number(c.dataset.points));
+  let points=0;
+  checked.forEach(c=>points+=Number(c.dataset.points));
 
   await addDoc(collection(db,"votes"),{
-    phone,
-    points,
-    date: getVoteDate(),
-    source: "user",
-    createdAt: new Date().toISOString()
+    phone, points, date:getVoteDate(), source:"user"
   });
 
   loadPoints();
   checkVoted();
+  loadLeaderboard();
 };
 
-/* 🚪 LOGOUT */
-window.logout = ()=>{
+/* LEADERBOARD – DENSE RANKING */
+async function loadLeaderboard(){
+  const users=await getDocs(collection(db,"users"));
+  const votes=await getDocs(collection(db,"votes"));
+
+  const map={};
+  votes.forEach(v=>{
+    const x=v.data();
+    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+  });
+
+  let rows=[];
+  users.forEach(u=>{
+    const p=u.data().phone;
+    if(map[p]>0){
+      rows.push({name:u.data().name,total:map[p]});
+    }
+  });
+
+  rows.sort((a,b)=>b.total-a.total);
+
+  leaderboard.innerHTML="";
+  let rank=1, prev=null;
+
+  for(let r of rows){
+    if(prev!==null && r.total<prev) rank++;
+    prev=r.total;
+    if(rank>3) break;
+
+    leaderboard.innerHTML+=`
+      <div class="rank">
+        <b>Rank ${rank}</b> – ${r.name} – ${r.total} pts
+      </div>`;
+  }
+
+  if(!rows.length){
+    leaderboard.innerHTML=`<div class="msg">No ranking yet</div>`;
+  }
+}
+
+/* LOGOUT */
+window.logout=()=>{
   localStorage.clear();
   location.replace("index.html");
 };
@@ -258,30 +278,7 @@ window.logout = ()=>{
 loadUser();
 loadPoints();
 loadTasks();
-</script>
-
-<!-- 🔔 VANILLA NOTIFICATION PERMISSION -->
-<script>
-function askNotificationPermission(){
-  if(!("Notification" in window)) return;
-
-  if(Notification.permission === "granted") return;
-
-  if(Notification.permission === "denied"){
-    alert("Notification blocked.\nBrowser settings il allow cheyyanam");
-    return;
-  }
-
-  Notification.requestPermission().then(p=>{
-    if(p==="granted"){
-      new Notification("Faith & Fitness",{
-        body:"Notifications enabled successfully 🎉",
-        icon:"logo.png"
-      });
-    }
-  });
-}
-window.onload = askNotificationPermission;
+loadLeaderboard();
 </script>
 
 </body>
