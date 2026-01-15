@@ -37,13 +37,19 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;fon
 .logout{background:#dc2626;color:#fff}
 .timer{color:#2563eb;font-size:13px;margin-top:6px}
 
-/* Leaderboard */
-.rank{padding:6px;border-bottom:1px solid #eee;font-size:14px;font-weight:bold}
-.rank-1{color:#b45309}
-.rank-2{color:#374151}
-.rank-3{color:#7c2d12}
+/* ===== TOP PERFORMER ROW COLORS ===== */
+.tp-row{
+  padding:6px;
+  border-radius:6px;
+  margin:4px 0;
+  border-bottom:1px solid #eee;
+  font-weight:bold;
+}
+.tp-1{background:#fde047;color:#78350f}
+.tp-2{background:#e5e7eb;color:#374151}
+.tp-3{background:#fecaca;color:#7c2d12}
 
-/* Table */
+/* ===== TABLE ===== */
 table{width:100%;border-collapse:collapse;margin-top:8px}
 th,td{border:1px solid #ddd;padding:6px;font-size:14px;text-align:center}
 th{background:#2563eb;color:#fff}
@@ -53,7 +59,7 @@ th{background:#2563eb;color:#fff}
 .r2{background:#e5e7eb;font-weight:bold}
 .r3{background:#fecaca;font-weight:bold}
 
-/* Bottom nav */
+/* ===== BOTTOM NAV ===== */
 .bottom-nav{
   position:fixed;bottom:0;left:0;width:100%;
   background:#0f172a;display:flex;justify-content:space-around;
@@ -74,7 +80,7 @@ th{background:#2563eb;color:#fff}
 <div class="container">
 <div class="card">
 
-<!-- HOME -->
+<!-- ===== HOME / VOTING ===== -->
 <div id="homeSection">
   <h3 style="color:#16a34a">FAITH & FITNESS</h3>
   <div id="todayDate"></div>
@@ -93,7 +99,7 @@ th{background:#2563eb;color:#fff}
   <div id="top3"></div>
 </div>
 
-<!-- LEADERBOARD -->
+<!-- ===== LEADERBOARD (SAME PAGE) ===== -->
 <div id="leaderboardSection" style="display:none">
   <h3>🏆 Full Leaderboard</h3>
 
@@ -115,7 +121,7 @@ th{background:#2563eb;color:#fff}
 </div>
 </div>
 
-<!-- Bottom Nav -->
+<!-- ===== BOTTOM NAV ===== -->
 <div class="bottom-nav">
   <button class="active" id="homeBtn" onclick="showHome()">
     <span>🏠</span>Home
@@ -245,22 +251,26 @@ async function loadLeaderboardData(){
   });
   rows.sort((a,b)=>b.total-a.total);
 
-  /* Top 3 */
+  /* Top 3 (ROW COLORED) */
   top3.innerHTML=""; top3Full.innerHTML="";
   let rank=1,prev=null,count=0;
   for(let r of rows){
     if(prev!==null && r.total<prev){rank++;count=0;}
     if(rank>3||count>=2) continue;
     const icon=rank===1?"🥇":rank===2?"🥈":"🥉";
-    const html=`<div class="rank rank-${rank}">${icon} Rank ${rank} – ${r.name} – ${r.total}</div>`;
-    top3.innerHTML+=html; top3Full.innerHTML+=html;
+    const html=`
+      <div class="tp-row tp-${rank}">
+        ${icon} Rank ${rank} – ${r.name} – ${r.total}
+      </div>`;
+    top3.innerHTML+=html;
+    top3Full.innerHTML+=html;
     prev=r.total; count++;
   }
 
-  /* All Users with Rank + Icon + Color */
+  /* All Users table with rank + icon + color */
   allRanks.innerHTML="";
   let rnk=0, prevPts=null;
-  rows.forEach((r,i)=>{
+  rows.forEach(r=>{
     if(prevPts===null || r.total<prevPts) rnk++;
     prevPts=r.total;
     const icon=rnk===1?"🥇":rnk===2?"🥈":rnk===3?"🥉":"";
