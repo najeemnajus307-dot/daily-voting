@@ -10,15 +10,20 @@ body{
   margin:0;
   font-family:Arial, sans-serif;
   background:#f1f5f9;
+  padding-bottom:80px; /* bottom nav space */
 }
+.hidden{display:none}
+
+/* HEADER */
 .header{
   background:#fff;
   text-align:center;
   padding:10px;
   box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
-.header img{height:80px}
+.header img{height:70px}
 
+/* CARD */
 .container{
   display:flex;
   justify-content:center;
@@ -32,8 +37,8 @@ body{
   border-radius:14px;
   box-shadow:0 6px 14px rgba(0,0,0,.15);
 }
-.hidden{display:none}
 
+/* BUTTONS */
 button{
   width:100%;
   padding:12px;
@@ -45,25 +50,33 @@ button{
 }
 .submit{background:#16a34a;color:#fff}
 .logout{background:#dc2626;color:#fff}
-.disabled{background:#9ca3af;cursor:not-allowed}
+.disabled{background:#9ca3af}
 
+/* BOTTOM NAV */
 .nav{
   position:fixed;
-  bottom:0; left:0; right:0;
+  bottom:0;left:0;right:0;
+  height:60px;
   background:#0f172a;
   display:flex;
 }
 .nav div{
   flex:1;
   text-align:center;
-  padding:10px;
+  padding-top:8px;
   color:#cbd5f5;
+  font-size:13px;
   cursor:pointer;
 }
 .nav .active{color:#facc15}
 
-h3{text-align:center;margin:10px 0}
-h4{margin:15px 0 8px}
+/* TABLE */
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #ddd;padding:6px;text-align:center}
+th{background:#2563eb;color:#fff}
+.rank1{background:#fde047}
+.rank2{background:#e5e7eb}
+.rank3{background:#fecaca}
 </style>
 </head>
 
@@ -77,40 +90,54 @@ h4{margin:15px 0 8px}
 <div class="container">
 <div class="card">
 
-<!-- HOME PAGE -->
+<!-- HOME -->
 <section id="page-home">
-  <h3>FAITH & FITNESS</h3>
+  <h3 style="text-align:center;">FAITH & FITNESS</h3>
   <div id="todayDate"></div>
   <div id="userName"></div>
   <div id="userPoints"></div>
-
   <div id="message" style="margin-top:10px"></div>
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
 </section>
 
-<!-- WORKOUT PAGE -->
+<!-- LEADERBOARD -->
+<section id="page-leaderboard" class="hidden">
+  <h3 style="text-align:center;">🏆 Leaderboard</h3>
+  <table>
+    <thead>
+      <tr><th>Rank</th><th>Name</th><th>Points</th></tr>
+    </thead>
+    <tbody id="lbBody"></tbody>
+  </table>
+</section>
+
+<!-- CALENDAR -->
+<section id="page-calendar" class="hidden">
+  <h3 style="text-align:center;">📅 Your Progress</h3>
+  <div style="text-align:center;margin-top:10px">
+    <p>🟢 Completed &nbsp; 🟡 Pending &nbsp; 🔴 Missed &nbsp; ⚫ Future</p>
+    <p>(Calendar logic next update)</p>
+  </div>
+</section>
+
+<!-- WORKOUT -->
 <section id="page-workout" class="hidden">
-  <h3>🏋️ Workouts Videos</h3>
+  <h3 style="text-align:center;">🏋️ Workout Videos</h3>
 
   <h4>Day 1 Workout</h4>
   <iframe width="100%" height="220"
     src="https://www.youtube.com/embed/UcTifA8SqL4"
-    frameborder="0"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-    allowfullscreen>
-  </iframe>
+    frameborder="0" allowfullscreen></iframe>
 
   <h4>Day 2 Workout</h4>
   <iframe width="100%" height="220"
     src="https://www.youtube.com/embed/Zq3ZDvf9ocg"
-    frameborder="0"
-    allowfullscreen>
-  </iframe>
+    frameborder="0" allowfullscreen></iframe>
 
   <h4>Day 3 Workout</h4>
-  <div style="background:#f1f5f9;padding:20px;border-radius:10px;text-align:center;">
+  <div style="background:#f1f5f9;padding:15px;border-radius:10px;text-align:center">
     Video coming soon 💪
   </div>
 </section>
@@ -120,13 +147,15 @@ h4{margin:15px 0 8px}
 
 <!-- BOTTOM NAV -->
 <div class="nav">
-  <div id="nav-home" class="active" onclick="showPage('home')">🏠 Home</div>
-  <div id="nav-workout" onclick="showPage('workout')">🏋️ Workout</div>
+  <div id="nav-home" class="active" onclick="showPage('home')">🏠<br>Home</div>
+  <div id="nav-leaderboard" onclick="showPage('leaderboard')">🏆<br>Leaderboard</div>
+  <div id="nav-calendar" onclick="showPage('calendar')">📅<br>Calendar</div>
+  <div id="nav-workout" onclick="showPage('workout')">🏋️<br>Workout</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, addDoc } 
+import { getFirestore, collection, getDocs, addDoc } 
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* FIREBASE */
@@ -137,32 +166,27 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* LOGIN CHECK */
+/* LOGIN */
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
 /* DATE */
 todayDate.innerText = "Today: " + new Date().toDateString();
 
-/* LOAD USER */
-async function loadUser(){
-  const snap = await getDocs(
-    query(collection(db,"users"), where("phone","==",phone))
-  );
-  snap.forEach(d=>{
-    userName.innerText = "Hello, " + d.data().name;
-  });
-}
+/* USER */
+userName.innerText = "Hello, " + phone;
 
 /* LOAD POINTS */
 async function loadPoints(){
   let total=0;
-  const snap = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
-  );
-  snap.forEach(d=> total+=Number(d.data().points||0));
+  const snap = await getDocs(collection(db,"votes"));
+  snap.forEach(d=>{
+    if(d.data().phone===phone)
+      total+=Number(d.data().points||0);
+  });
   userPoints.innerText = "Your Points: " + total;
 }
+loadPoints();
 
 /* SUBMIT VOTE */
 window.submitVote = async ()=>{
@@ -170,20 +194,35 @@ window.submitVote = async ()=>{
   submitBtn.classList.add("disabled");
   await addDoc(collection(db,"votes"),{
     phone, points:10,
-    date:new Date().toISOString().split("T")[0],
-    source:"user"
+    date:new Date().toISOString().split("T")[0]
   });
-  message.innerHTML="✅ Vote submitted successfully";
+  message.innerHTML="✅ Vote submitted";
   loadPoints();
 };
 
-/* LOGOUT */
-window.logout=()=>{
-  localStorage.clear();
-  location.replace("index.html");
-};
+/* LEADERBOARD */
+async function loadLeaderboard(){
+  const map={};
+  const snap=await getDocs(collection(db,"votes"));
+  snap.forEach(d=>{
+    const x=d.data();
+    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+  });
+  const rows=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  lbBody.innerHTML="";
+  let rank=0,prev=null;
+  rows.forEach(([p,pts])=>{
+    if(prev===null||pts<prev) rank++;
+    prev=pts;
+    const tr=document.createElement("tr");
+    tr.className=rank===1?"rank1":rank===2?"rank2":rank===3?"rank3":"";
+    tr.innerHTML=`<td>${rank}</td><td>${p}</td><td>${pts}</td>`;
+    lbBody.appendChild(tr);
+  });
+}
+loadLeaderboard();
 
-/* NAV SWITCH */
+/* NAV */
 window.showPage=(p)=>{
   document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
   document.querySelectorAll(".nav div").forEach(n=>n.classList.remove("active"));
@@ -191,9 +230,11 @@ window.showPage=(p)=>{
   document.getElementById("nav-"+p).classList.add("active");
 };
 
-/* INIT */
-loadUser();
-loadPoints();
+/* LOGOUT */
+window.logout=()=>{
+  localStorage.clear();
+  location.replace("index.html");
+};
 </script>
 
 </body>
