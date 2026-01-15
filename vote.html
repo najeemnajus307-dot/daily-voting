@@ -75,37 +75,43 @@ th{background:#2563eb;color:#fff}
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
+
+  <hr>
+  <h3>🏆 Top Performers</h3>
+  <div id="top3"></div>
 </div>
 
 <!-- LEADERBOARD -->
 <div id="leaderboardSection" style="display:none">
-  <h3>🏆 Leaderboard</h3>
-  <div id="top3"></div>
+  <h3>🏆 Full Leaderboard</h3>
+  <div id="top3Full"></div>
+  <table>
+    <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
+    <tbody id="allRanks"></tbody>
+  </table>
 </div>
 
 <!-- CALENDAR -->
 <div id="calendarSection" style="display:none">
-  <h3>📅 Progress</h3>
+  <h3>📅 Your Progress</h3>
+  <div class="cal-head">
+    <button onclick="prevMonth()">◀</button>
+    <span id="calTitle"></span>
+    <button onclick="nextMonth()">▶</button>
+  </div>
   <div class="calendar" id="calendar"></div>
 </div>
 
-<!-- WORKOUT (YOUTUBE SHORTS) -->
+<!-- WORKOUT -->
 <div id="workoutSection" style="display:none">
   <h3>💪 Daily Workout</h3>
-
   <iframe
     width="100%"
     height="400"
     src="https://www.youtube.com/embed/Zq3ZDvf9ocg"
-    title="Workout Shorts"
     frameborder="0"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
     allowfullscreen>
   </iframe>
-
-  <p style="font-size:13px;margin-top:8px;color:#374151">
-    Workout complete cheyth shesham vote cheyyuka 🔥
-  </p>
 </div>
 
 </div>
@@ -127,43 +133,125 @@ th{background:#2563eb;color:#fff}
   </button>
 </div>
 
-<script>
-todayDate.innerText="Today: "+new Date().toDateString();
+<!-- FIREBASE + LOGIC (ORIGINAL) -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, collection, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-function setActive(id){
-  document.querySelectorAll(".bottom-nav button")
-    .forEach(b=>b.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
+const app = initializeApp({
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
+const db = getFirestore(app);
+
+const phone = localStorage.getItem("userPhone");
+if(!phone) location.replace("index.html");
+
+todayDate.innerText = "Today: " + new Date().toDateString();
+
+function getVoteDate(){
+  const d=new Date();
+  if(d.getHours()<20) d.setDate(d.getDate()-1);
+  return d.toISOString().split("T")[0];
+}
+function nextVoteText(){
+  const d=new Date(); d.setDate(d.getDate()+1);
+  return d.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short"})+" at 8:00 PM";
+}
+function hideTasks(){ taskBox.innerHTML=""; }
+
+async function checkVoted(){
+  const s = await getDocs(query(collection(db,"votes"),where("phone","==",phone),where("date","==",getVoteDate())));
+  if(!s.empty){
+    hideTasks();
+    submitBtn.disabled=true;
+    submitBtn.classList.add("disabled");
+    message.innerHTML=`<div class="msg">You have already voted today ✅<br><b>Next voting:</b> ${nextVoteText()}</div>`;
+    return true;
+  }
+  return false;
 }
 
-function showHome(){
-  homeSection.style.display="block";
-  leaderboardSection.style.display="none";
-  calendarSection.style.display="none";
-  workoutSection.style.display="none";
-  setActive("homeBtn");
+async function loadUser(){
+  const s=await getDocs(query(collection(db,"users"),where("phone","==",phone)));
+  s.forEach(d=>userName.innerText="Hello, "+d.data().name);
 }
-function showLeaderboard(){
-  homeSection.style.display="none";
-  leaderboardSection.style.display="block";
-  calendarSection.style.display="none";
-  workoutSection.style.display="none";
-  setActive("leaderBtn");
+async function loadPoints(){
+  let t=0;
+  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
+  s.forEach(d=>t+=Number(d.data().points||0));
+  userPoints.innerText="Your Points: "+t;
 }
-function showCalendar(){
-  homeSection.style.display="none";
-  leaderboardSection.style.display="none";
-  calendarSection.style.display="block";
-  workoutSection.style.display="none";
-  setActive("calBtn");
+async function loadTasks(){
+  if(await checkVoted()) return;
+  const now=new Date();
+  const s=await getDocs(collection(db,"tasks"));
+  taskBox.innerHTML="";
+  s.forEach(d=>{
+    const t=d.data();
+    if(now>=new Date(t.start)&&now<=new Date(t.end)){
+      taskBox.innerHTML+=`<div class="task"><label><input type="checkbox" data-points="${t.points}">${t.text} (${t.points} pts)</label></div>`;
+    }
+  });
 }
-function showWorkout(){
-  homeSection.style.display="none";
-  leaderboardSection.style.display="none";
-  calendarSection.style.display="none";
-  workoutSection.style.display="block";
-  setActive("workoutBtn");
+
+window.submitVote = async ()=>{
+  if(await checkVoted()) return;
+  const checked=document.querySelectorAll("#taskBox input:checked");
+  if(!checked.length) return alert("Task select cheyyanam");
+  let pts=0; checked.forEach(c=>pts+=Number(c.dataset.points));
+  await addDoc(collection(db,"votes"),{phone,points:pts,date:getVoteDate(),source:"user"});
+  message.innerHTML=`<div class="msg">Vote submitted successfully ✅<br><b>Next voting:</b> ${nextVoteText()}</div>`;
+  hideTasks();
+  submitBtn.disabled=true;
+  submitBtn.classList.add("disabled");
+  loadPoints();loadLeaderboardData();loadCalendar();
+};
+
+async function loadLeaderboardData(){
+  const u=await getDocs(collection(db,"users"));
+  const v=await getDocs(collection(db,"votes"));
+  const map={}; v.forEach(x=>map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0));
+  let rows=[]; u.forEach(x=>{if(map[x.data().phone]>0)rows.push({name:x.data().name,total:map[x.data().phone]});});
+  rows.sort((a,b)=>b.total-a.total);
+  top3.innerHTML=""; top3Full.innerHTML=""; allRanks.innerHTML="";
+  let rank=1,prev=null;
+  rows.forEach(r=>{
+    if(prev!==null&&r.total<prev) rank++;
+    const icon=rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":"";
+    if(rank<=3) top3.innerHTML+=`<div class="tp-row tp-${rank}"><div>${icon} ${rank}</div><div>${r.name}</div><div>${r.total}</div></div>`;
+    allRanks.innerHTML+=`<tr><td>${icon} ${rank}</td><td>${r.name}</td><td>${r.total}</td></tr>`;
+    prev=r.total;
+  });
 }
+
+let curMonth=new Date().getMonth(),curYear=new Date().getFullYear();
+window.prevMonth=()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--;}loadCalendar();}
+window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalendar();}
+async function loadCalendar(){
+  calendar.innerHTML="";
+  calTitle.innerText=new Date(curYear,curMonth).toLocaleString("default",{month:"long",year:"numeric"});
+  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
+  const voted={}; s.forEach(d=>voted[d.data().date]=1);
+  const days=new Date(curYear,curMonth+1,0).getDate();
+  const today=new Date().toISOString().split("T")[0];
+  for(let i=1;i<=days;i++){
+    const ds=new Date(curYear,curMonth,i).toISOString().split("T")[0];
+    let cls="future";
+    if(ds<today) cls=voted[ds]?"done":"missed";
+    if(ds===today) cls=voted[ds]?"done":"pending";
+    calendar.innerHTML+=`<div class="day ${cls} ${ds===today?"today":""}">${i}</div>`;
+  }
+}
+
+window.showHome=()=>{homeSection.style.display="block";leaderboardSection.style.display="none";calendarSection.style.display="none";workoutSection.style.display="none";}
+window.showLeaderboard=()=>{homeSection.style.display="none";leaderboardSection.style.display="block";calendarSection.style.display="none";workoutSection.style.display="none";loadLeaderboardData();}
+window.showCalendar=()=>{homeSection.style.display="none";leaderboardSection.style.display="none";calendarSection.style.display="block";workoutSection.style.display="none";loadCalendar();}
+window.showWorkout=()=>{homeSection.style.display="none";leaderboardSection.style.display="none";calendarSection.style.display="none";workoutSection.style.display="block";}
+window.logout=()=>{localStorage.clear();location.replace("index.html");};
+
+loadUser();loadPoints();loadTasks();loadLeaderboardData();loadCalendar();checkVoted();
 </script>
 
 </body>
