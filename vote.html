@@ -5,173 +5,128 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Faith & Fitness – Vote</title>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
-body{
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:#f1f5f9;
-  padding-bottom:80px;
-}
-.hidden{display:none}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;padding-bottom:80px}
+.header{background:#fff;text-align:center;padding:8px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.header img{height:110px}
+.container{display:flex;justify-content:center;padding:20px}
+.card{background:#fff;max-width:380px;width:100%;padding:20px;border-radius:12px;box-shadow:0 6px 14px rgba(0,0,0,.15);text-align:center}
 
-/* HEADER */
-.header{
-  background:#fff;
-  text-align:center;
-  padding:10px;
-  box-shadow:0 2px 6px rgba(0,0,0,.1);
-}
-.header img{height:70px}
-
-/* CARD */
-.container{
-  display:flex;
-  justify-content:center;
-  padding:20px;
-}
-.card{
-  background:#fff;
-  width:100%;
-  max-width:420px;
-  padding:20px;
-  border-radius:14px;
-  box-shadow:0 6px 14px rgba(0,0,0,.15);
-}
-
-/* TEXT */
-h3{text-align:center;margin:10px 0}
-h4{margin:15px 0 8px}
-.muted{color:#64748b}
-
-/* BUTTONS */
-button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:8px;
-  font-size:15px;
-  cursor:pointer;
-}
+.task{border:1px solid #ddd;padding:10px;border-radius:8px;margin:8px 0;text-align:left}
+.msg{background:#fef3c7;padding:10px;border-radius:8px;margin-top:10px;font-size:14px}
+button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;font-size:15px;cursor:pointer}
 .submit{background:#16a34a;color:#fff}
+.disabled{background:#9ca3af;cursor:not-allowed}
 .logout{background:#dc2626;color:#fff}
-.disabled{background:#9ca3af}
 
-/* TABLE */
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:10px;
-}
-th,td{
-  border:1px solid #ddd;
-  padding:6px;
-  text-align:center;
-}
+.tp-row{display:grid;grid-template-columns:70px 1fr 60px;align-items:center;padding:8px;border-radius:6px;margin:6px 0;font-weight:bold}
+.tp-1{background:#fde047}
+.tp-2{background:#e5e7eb}
+.tp-3{background:#fecaca}
+
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{border:1px solid #ddd;padding:6px;font-size:14px;text-align:center}
 th{background:#2563eb;color:#fff}
-.rank1{background:#fde047}
-.rank2{background:#e5e7eb}
-.rank3{background:#fecaca}
 
-/* BOTTOM NAV */
-.nav{
-  position:fixed;
-  bottom:0;left:0;right:0;
-  height:60px;
-  background:#0f172a;
-  display:flex;
+.r1{background:#fde047;font-weight:bold}
+.r2{background:#e5e7eb;font-weight:bold}
+.r3{background:#fecaca;font-weight:bold}
+
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-weight:bold}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.day{height:38px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:14px;color:#fff}
+.done{background:#16a34a}
+.pending{background:#facc15;color:#000}
+.missed{background:#ef4444}
+.future{background:#374151}
+.today{outline:3px solid #3b82f6}
+
+.bottom-nav{
+  position:fixed;bottom:0;left:0;width:100%;
+  background:#0f172a;display:flex;justify-content:space-around;
+  padding:10px 0;z-index:100
 }
-.nav div{
-  flex:1;
-  text-align:center;
-  padding-top:6px;
-  color:#cbd5f5;
-  font-size:13px;
-  cursor:pointer;
+.bottom-nav button{
+  background:none;border:none;color:#cbd5f5;
+  font-size:13px;cursor:pointer
 }
-.nav .active{color:#facc15}
+.bottom-nav button.active{color:#fff;font-weight:bold}
+.bottom-nav i{display:block;font-size:20px}
 </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
-  <img src="logo..png" alt="Faith & Fitness">
+  <img src="logo..png">
 </div>
 
 <div class="container">
 <div class="card">
 
 <!-- HOME -->
-<section id="page-home">
-  <h3>FAITH & FITNESS</h3>
-  <p id="todayDate" class="muted"></p>
-  <p id="userName"></p>
-  <p id="userPoints"></p>
+<div id="homeSection">
+  <h3 style="color:#16a34a">FAITH & FITNESS</h3>
+  <div id="todayDate"></div>
+  <div id="userName"></div>
+  <div id="userPoints"></div>
 
+  <div id="taskBox"></div>
   <div id="message"></div>
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
-</section>
+
+  <hr>
+  <h3>🏆 Top Performers</h3>
+  <div id="top3"></div>
+</div>
 
 <!-- LEADERBOARD -->
-<section id="page-leaderboard" class="hidden">
-  <h3>🏆 Leaderboard</h3>
+<div id="leaderboardSection" style="display:none">
+  <h3>🏆 Full Leaderboard</h3>
   <table>
-    <thead>
-      <tr><th>Rank</th><th>User</th><th>Points</th></tr>
-    </thead>
-    <tbody id="lbBody"></tbody>
+    <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
+    <tbody id="allRanks"></tbody>
   </table>
-</section>
+</div>
 
 <!-- CALENDAR -->
-<section id="page-calendar" class="hidden">
-  <h3>📅 Calendar</h3>
-  <p class="muted" style="text-align:center">
-    Calendar logic next update 🙂
-  </p>
-</section>
+<div id="calendarSection" style="display:none">
+  <h3>📅 Your Progress</h3>
+  <div class="cal-head">
+    <button onclick="prevMonth()">◀</button>
+    <span id="calTitle"></span>
+    <button onclick="nextMonth()">▶</button>
+  </div>
+  <div class="calendar" id="calendar"></div>
+</div>
 
 <!-- WORKOUT -->
-<section id="page-workout" class="hidden">
-  <h3>🏋️ Workout Videos</h3>
-
-  <h4>Day 1 Workout</h4>
-  <iframe width="100%" height="220"
-    src="https://www.youtube.com/embed/UcTifA8SqL4"
-    frameborder="0" allowfullscreen></iframe>
-
-  <h4>Day 2 Workout</h4>
-  <iframe width="100%" height="220"
+<div id="workoutSection" style="display:none">
+  <h3>💪 Daily Workout</h3>
+  <iframe width="100%" height="400"
     src="https://www.youtube.com/embed/Zq3ZDvf9ocg"
-    frameborder="0" allowfullscreen></iframe>
-
-  <h4>Day 3 Workout</h4>
-  <div style="background:#f1f5f9;padding:15px;border-radius:10px;text-align:center">
-    Video coming soon 💪
-  </div>
-</section>
+    frameborder="0" allowfullscreen>
+  </iframe>
+</div>
 
 </div>
 </div>
 
-<!-- BOTTOM NAV -->
-<div class="nav">
-  <div id="nav-home" class="active" onclick="showPage('home')">🏠<br>Home</div>
-  <div id="nav-leaderboard" onclick="showPage('leaderboard')">🏆<br>Leaderboard</div>
-  <div id="nav-calendar" onclick="showPage('calendar')">📅<br>Calendar</div>
-  <div id="nav-workout" onclick="showPage('workout')">🏋️<br>Workout</div>
+<div class="bottom-nav">
+  <button class="active" onclick="showHome()"><i class="fa fa-house"></i>Home</button>
+  <button onclick="showLeaderboard()"><i class="fa fa-trophy"></i>Rank</button>
+  <button onclick="showCalendar()"><i class="fa fa-calendar"></i>Calendar</button>
+  <button onclick="showWorkout()"><i class="fa fa-dumbbell"></i>Workout</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc } 
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* FIREBASE */
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
   authDomain:"daily-voting-793ee.firebaseapp.com",
@@ -179,81 +134,47 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* LOGIN */
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
-/* DATE */
-todayDate.innerText = "Today: " + new Date().toDateString();
-userName.innerText = "Hello, " + phone;
+todayDate.innerText="Today: "+new Date().toDateString();
 
-/* LOAD POINTS */
-async function loadPoints(){
-  let total=0;
-  const snap = await getDocs(collection(db,"votes"));
-  snap.forEach(d=>{
-    if(d.data().phone===phone){
-      total += Number(d.data().points||0);
-    }
-  });
-  userPoints.innerText = "Your Points: " + total;
-}
-loadPoints();
-
-/* SUBMIT VOTE */
-window.submitVote = async ()=>{
-  submitBtn.disabled=true;
-  submitBtn.classList.add("disabled");
-
-  await addDoc(collection(db,"votes"),{
-    phone,
-    points:10,
-    date:new Date().toISOString().split("T")[0]
-  });
-
-  message.innerHTML="✅ Vote submitted";
-  loadPoints();
-  loadLeaderboard();
-};
-
-/* LEADERBOARD */
-async function loadLeaderboard(){
+async function loadLeaderboardData(){
+  const u=await getDocs(collection(db,"users"));
+  const v=await getDocs(collection(db,"votes"));
   const map={};
-  const snap = await getDocs(collection(db,"votes"));
-  snap.forEach(d=>{
-    const x=d.data();
-    map[x.phone]=(map[x.phone]||0)+Number(x.points||0);
+  v.forEach(x=>map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0));
+
+  let rows=[];
+  u.forEach(x=>{
+    if(map[x.data().phone]>0)
+      rows.push({name:x.data().name,total:map[x.data().phone]});
   });
 
-  const rows = Object.entries(map).sort((a,b)=>b[1]-a[1]);
-  lbBody.innerHTML="";
-  let rank=0,prev=null;
+  rows.sort((a,b)=>b.total-a.total);
+  allRanks.innerHTML="";
+  let rank=1,prev=null;
 
-  rows.forEach(([p,pts])=>{
-    if(prev===null || pts<prev) rank++;
-    prev=pts;
-
-    const tr=document.createElement("tr");
-    tr.className = rank===1?"rank1":rank===2?"rank2":rank===3?"rank3":"";
-    tr.innerHTML=`<td>${rank}</td><td>${p}</td><td>${pts}</td>`;
-    lbBody.appendChild(tr);
+  rows.forEach(r=>{
+    if(prev!==null && r.total<prev) rank++;
+    const icon=rank==1?"🥇":rank==2?"🥈":rank==3?"🥉":"";
+    allRanks.innerHTML+=`
+      <tr class="r${rank}">
+        <td>${icon} ${rank}</td>
+        <td>${r.name}</td>
+        <td>${r.total}</td>
+      </tr>`;
+    prev=r.total;
   });
 }
-loadLeaderboard();
 
-/* NAV */
-window.showPage=(p)=>{
-  document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
-  document.querySelectorAll(".nav div").forEach(n=>n.classList.remove("active"));
-  document.getElementById("page-"+p).classList.remove("hidden");
-  document.getElementById("nav-"+p).classList.add("active");
-};
+window.showHome=()=>{homeSection.style.display="block";leaderboardSection.style.display="none";calendarSection.style.display="none";workoutSection.style.display="none";}
+window.showLeaderboard=()=>{homeSection.style.display="none";leaderboardSection.style.display="block";calendarSection.style.display="none";workoutSection.style.display="none";loadLeaderboardData();}
+window.showCalendar=()=>{homeSection.style.display="none";leaderboardSection.style.display="none";calendarSection.style.display="block";workoutSection.style.display="none";}
+window.showWorkout=()=>{homeSection.style.display="none";leaderboardSection.style.display="none";calendarSection.style.display="none";workoutSection.style.display="block";}
+window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
-/* LOGOUT */
-window.logout=()=>{
-  localStorage.clear();
-  location.replace("index.html");
-};
+loadLeaderboardData();
 </script>
 
 </body>
