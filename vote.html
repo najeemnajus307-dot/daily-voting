@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Faith & Fitness – Vote</title>
 
-<!-- FONT AWESOME ICONS -->
+<!-- ICONS -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;padding-bottom:90px}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;padding-bottom:80px}
 .header{background:#fff;text-align:center;padding:8px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
 .header img{height:110px}
 .container{display:flex;justify-content:center;padding:20px}
@@ -28,10 +28,10 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;fon
 .tp-3{background:#fecaca}
 
 table{width:100%;border-collapse:collapse;margin-top:8px}
-th,td{border:1px solid #ddd;padding:6px;font-size:14px}
+th,td{border:1px solid #ddd;padding:6px;font-size:14px;text-align:center}
 th{background:#2563eb;color:#fff}
 
-.cal-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0}
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-weight:bold}
 .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 .day{height:38px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:14px;color:#fff}
 .done{background:#16a34a}
@@ -42,16 +42,15 @@ th{background:#2563eb;color:#fff}
 
 .bottom-nav{
   position:fixed;bottom:0;left:0;width:100%;
-  background:#0f172a;
-  display:flex;justify-content:space-around;
-  padding:10px 0
+  background:#0f172a;display:flex;justify-content:space-around;
+  padding:10px 0;z-index:100
 }
 .bottom-nav button{
-  background:none;border:none;color:#94a3b8;
-  font-size:12px
+  background:none;border:none;color:#cbd5f5;
+  font-size:13px;cursor:pointer
 }
-.bottom-nav button.active{color:#fff}
-.bottom-nav i{font-size:20px;display:block}
+.bottom-nav button.active{color:#fff;font-weight:bold}
+.bottom-nav i{display:block;font-size:20px}
 </style>
 </head>
 
@@ -76,43 +75,35 @@ th{background:#2563eb;color:#fff}
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
-
-  <hr>
-  <h3>🏆 Top Performers</h3>
-  <div id="top3"></div>
 </div>
 
 <!-- LEADERBOARD -->
 <div id="leaderboardSection" style="display:none">
   <h3>🏆 Leaderboard</h3>
-  <div id="top3Full"></div>
-  <table>
-    <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
-    <tbody id="allRanks"></tbody>
-  </table>
+  <div id="top3"></div>
 </div>
 
 <!-- CALENDAR -->
 <div id="calendarSection" style="display:none">
   <h3>📅 Progress</h3>
-  <div class="cal-head">
-    <button onclick="prevMonth()">◀</button>
-    <span id="calTitle"></span>
-    <button onclick="nextMonth()">▶</button>
-  </div>
   <div class="calendar" id="calendar"></div>
 </div>
 
-<!-- WORKOUT -->
+<!-- WORKOUT (YOUTUBE SHORTS) -->
 <div id="workoutSection" style="display:none">
   <h3>💪 Daily Workout</h3>
 
-  <iframe width="100%" height="215"
-    src="https://www.youtube.com/embed/UBMk30rjy0o"
+  <iframe
+    width="100%"
+    height="400"
+    src="https://www.youtube.com/embed/Zq3ZDvf9ocg"
+    title="Workout Shorts"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
     allowfullscreen>
   </iframe>
 
-  <p style="font-size:13px;margin-top:8px">
+  <p style="font-size:13px;margin-top:8px;color:#374151">
     Workout complete cheyth shesham vote cheyyuka 🔥
   </p>
 </div>
@@ -125,15 +116,12 @@ th{background:#2563eb;color:#fff}
   <button class="active" id="homeBtn" onclick="showHome()">
     <i class="fa-solid fa-house"></i>Home
   </button>
-
   <button id="leaderBtn" onclick="showLeaderboard()">
     <i class="fa-solid fa-trophy"></i>Rank
   </button>
-
   <button id="calBtn" onclick="showCalendar()">
     <i class="fa-solid fa-calendar-days"></i>Calendar
   </button>
-
   <button id="workoutBtn" onclick="showWorkout()">
     <i class="fa-solid fa-dumbbell"></i>Workout
   </button>
@@ -141,8 +129,6 @@ th{background:#2563eb;color:#fff}
 
 <script>
 todayDate.innerText="Today: "+new Date().toDateString();
-userName.innerText="Hello User";
-userPoints.innerText="Your Points: 0";
 
 function setActive(id){
   document.querySelectorAll(".bottom-nav button")
@@ -178,20 +164,6 @@ function showWorkout(){
   workoutSection.style.display="block";
   setActive("workoutBtn");
 }
-function submitVote(){ alert("Vote Submitted ✅"); }
-function logout(){ alert("Logout"); }
-
-let curMonth=new Date().getMonth(),curYear=new Date().getFullYear();
-function prevMonth(){curMonth--;loadCalendar();}
-function nextMonth(){curMonth++;loadCalendar();}
-function loadCalendar(){
-  calendar.innerHTML="";
-  calTitle.innerText=new Date(curYear,curMonth).toLocaleString("default",{month:"long",year:"numeric"});
-  for(let i=1;i<=30;i++){
-    calendar.innerHTML+=`<div class="day future">${i}</div>`;
-  }
-}
-loadCalendar();
 </script>
 
 </body>
