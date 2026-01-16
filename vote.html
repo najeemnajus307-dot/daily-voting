@@ -40,11 +40,20 @@ th{background:#2563eb;color:#fff}
 .missed{background:#ef4444}
 .future{background:#374151}
 .today{outline:3px solid #3b82f6}
+
 .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;margin-top:10px}
 .legend .l{width:12px;height:12px;border-radius:3px;display:inline-block}
 
-.bottom-nav{position:fixed;bottom:0;left:0;width:100%;background:#0f172a;display:flex;justify-content:space-around;padding:10px 0;z-index:100}
-.bottom-nav button{background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer}
+.bottom-nav{
+  position:fixed;bottom:0;left:0;width:100%;
+  background:#0f172a;
+  display:flex;justify-content:space-around;
+  padding:10px 0;z-index:100
+}
+.bottom-nav button{
+  background:none;border:none;
+  color:#cbd5f5;font-size:13px;cursor:pointer
+}
 .bottom-nav button.active{color:#fff;font-weight:bold}
 .bottom-nav span{display:block;font-size:20px}
 </style>
@@ -104,21 +113,17 @@ th{background:#2563eb;color:#fff}
     <button onclick="nextMonth()">▶</button>
   </div>
   <div class="calendar" id="calendar"></div>
-  <div class="legend">
-    <span><i class="l done"></i> Completed</span>
-    <span><i class="l pending"></i> Pending</span>
-    <span><i class="l missed"></i> Missed</span>
-    <span><i class="l future"></i> Future</span>
-  </div>
 </div>
 
 </div>
 </div>
 
+<!-- BOTTOM NAV -->
 <div class="bottom-nav">
-  <button class="active" id="homeBtn" onclick="showHome()"><span>🏠</span>Home</button>
-  <button id="leaderBtn" onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
-  <button id="calBtn" onclick="showCalendar()"><span>📅</span>Calendar</button>
+  <button class="active" onclick="showHome()"><span>🏠</span>Home</button>
+  <button onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
+  <button onclick="showCalendar()"><span>📅</span>Calendar</button>
+  <button onclick="openPlank()"><span>🧍‍♂️</span>Plank</button>
 </div>
 
 <script type="module">
@@ -135,7 +140,7 @@ const db = getFirestore(app);
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
-todayDate.innerText = "Today: " + new Date().toDateString();
+todayDate.innerText="Today: "+new Date().toDateString();
 
 function getVoteDate(){
   const d=new Date();
@@ -149,12 +154,15 @@ function nextVoteText(){
 function hideTasks(){ taskBox.innerHTML=""; }
 
 async function checkVoted(){
-  const s = await getDocs(query(collection(db,"votes"),where("phone","==",phone),where("date","==",getVoteDate())));
+  const s=await getDocs(query(collection(db,"votes"),
+    where("phone","==",phone),
+    where("date","==",getVoteDate())
+  ));
   if(!s.empty){
     hideTasks();
     submitBtn.disabled=true;
     submitBtn.classList.add("disabled");
-    message.innerHTML=`<div class="msg">You have already voted today ✅<br><b>Next voting:</b> ${nextVoteText()}</div>`;
+    message.innerHTML=`<div class="msg">Already voted ✅<br><b>Next:</b> ${nextVoteText()}</div>`;
     return true;
   }
   return false;
@@ -178,7 +186,13 @@ async function loadTasks(){
   s.forEach(d=>{
     const t=d.data();
     if(now>=new Date(t.start)&&now<=new Date(t.end)){
-      taskBox.innerHTML+=`<div class="task"><label><input type="checkbox" data-points="${t.points}">${t.text} (${t.points} pts)</label></div>`;
+      taskBox.innerHTML+=`
+      <div class="task">
+        <label>
+          <input type="checkbox" data-points="${t.points}">
+          ${t.text} (${t.points} pts)
+        </label>
+      </div>`;
     }
   });
 }
@@ -188,8 +202,10 @@ window.submitVote = async ()=>{
   const checked=document.querySelectorAll("#taskBox input:checked");
   if(!checked.length) return alert("Task select cheyyanam");
   let pts=0; checked.forEach(c=>pts+=Number(c.dataset.points));
-  await addDoc(collection(db,"votes"),{phone,points:pts,date:getVoteDate(),source:"user"});
-  message.innerHTML=`<div class="msg">Vote submitted successfully ✅<br><b>Next voting:</b> ${nextVoteText()}</div>`;
+  await addDoc(collection(db,"votes"),{
+    phone,points:pts,date:getVoteDate(),source:"user"
+  });
+  message.innerHTML=`<div class="msg">Vote submitted ✅<br><b>Next:</b> ${nextVoteText()}</div>`;
   hideTasks();
   submitBtn.disabled=true;
   submitBtn.classList.add("disabled");
@@ -199,48 +215,48 @@ window.submitVote = async ()=>{
 async function loadLeaderboardData(){
   const u=await getDocs(collection(db,"users"));
   const v=await getDocs(collection(db,"votes"));
-  const map={}; v.forEach(x=>map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0));
-  let rows=[]; u.forEach(x=>{if(map[x.data().phone]>0)rows.push({name:x.data().name,total:map[x.data().phone]});});
+  const map={};
+  v.forEach(x=>map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0));
+  let rows=[];
+  u.forEach(x=>{
+    if(map[x.data().phone]>0)
+      rows.push({name:x.data().name,total:map[x.data().phone]});
+  });
   rows.sort((a,b)=>b.total-a.total);
-  top3.innerHTML=""; top3Full.innerHTML=""; allRanks.innerHTML="";
-  let rank=1,prev=null,count=0;
+  top3.innerHTML="";allRanks.innerHTML="";
+  let rank=1,prev=null;
   rows.forEach(r=>{
-    if(prev!==null&&r.total<prev){rank++;count=0;}
+    if(prev!==null&&r.total<prev) rank++;
     const icon=rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":"";
-    if(rank<=3&&count<2){
-      const row=`<div class="tp-row tp-${rank}"><div>${icon} ${rank}</div><div>${r.name}</div><div>${r.total}</div></div>`;
-      top3.innerHTML+=row; top3Full.innerHTML+=row; count++;
+    if(rank<=3){
+      top3.innerHTML+=`
+      <div class="tp-row tp-${rank}">
+        <div>${icon} ${rank}</div>
+        <div>${r.name}</div>
+        <div>${r.total}</div>
+      </div>`;
     }
-    allRanks.innerHTML+=`<tr class="r${rank}"><td>${icon} ${rank}</td><td>${r.name}</td><td>${r.total}</td></tr>`;
+    allRanks.innerHTML+=`
+    <tr class="r${rank}">
+      <td>${icon} ${rank}</td>
+      <td>${r.name}</td>
+      <td>${r.total}</td>
+    </tr>`;
     prev=r.total;
   });
 }
 
-let curMonth=new Date().getMonth(),curYear=new Date().getFullYear();
-window.prevMonth=()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--;}loadCalendar();}
-window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalendar();}
-async function loadCalendar(){
-  calendar.innerHTML="";
-  calTitle.innerText=new Date(curYear,curMonth).toLocaleString("default",{month:"long",year:"numeric"});
-  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
-  const voted={}; s.forEach(d=>voted[d.data().date]=1);
-  const days=new Date(curYear,curMonth+1,0).getDate();
-  const today=new Date().toISOString().split("T")[0];
-  for(let i=1;i<=days;i++){
-    const ds=new Date(curYear,curMonth,i).toISOString().split("T")[0];
-    let cls="future";
-    if(ds<today) cls=voted[ds]?"done":"missed";
-    if(ds===today) cls=voted[ds]?"done":"pending";
-    calendar.innerHTML+=`<div class="day ${cls} ${ds===today?"today":""}">${i}</div>`;
-  }
-}
-
 window.showHome=()=>{homeSection.style.display="block";leaderboardSection.style.display="none";calendarSection.style.display="none";}
 window.showLeaderboard=()=>{homeSection.style.display="none";leaderboardSection.style.display="block";calendarSection.style.display="none";loadLeaderboardData();}
-window.showCalendar=()=>{homeSection.style.display="none";leaderboardSection.style.display="none";calendarSection.style.display="block";loadCalendar();}
+window.showCalendar=()=>{homeSection.style.display="none";leaderboardSection.style.display="none";calendarSection.style.display="block";}
+
+window.openPlank=()=>{
+  window.open("https://forms.gle/27H48E8rNhN9nNz29","_blank");
+};
+
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
-loadUser();loadPoints();loadTasks();loadLeaderboardData();loadCalendar();checkVoted();
+loadUser();loadPoints();loadTasks();loadLeaderboardData();checkVoted();
 </script>
 
 </body>
