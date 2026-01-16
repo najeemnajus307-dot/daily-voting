@@ -6,37 +6,35 @@
 <title>Faith & Fitness – Vote</title>
 
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;padding-bottom:80px}
-.header{background:#fff;text-align:center;padding:8px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
-.header img{height:110px}
-.container{display:flex;justify-content:center;padding:20px}
-.card{background:#fff;max-width:380px;width:100%;padding:20px;border-radius:12px;box-shadow:0 6px 14px rgba(0,0,0,.15)}
-
-.task{border:1px solid #ddd;padding:10px;border-radius:8px;margin:8px 0}
-.msg{background:#fef3c7;padding:10px;border-radius:8px;margin-top:10px;font-size:14px}
-
-button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:6px;font-size:15px}
-.submit{background:#16a34a;color:#fff}
-.logout{background:#dc2626;color:#fff}
-
-.tp-row{display:grid;grid-template-columns:60px 1fr 70px;align-items:center;padding:8px;border-radius:6px;margin:6px 0;font-weight:bold}
-.tp-1{background:#fde047}
-.tp-2{background:#e5e7eb}
-.tp-3{background:#fecaca}
-
+body{margin:0;font-family:Arial;background:#0b1020;color:#fff;padding-bottom:80px}
+.header{text-align:center;padding:15px}
+.container{display:flex;justify-content:center}
+.card{width:100%;max-width:380px;padding:20px;text-align:center}
+button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;font-size:15px}
+.submit{background:#ec4899;color:#fff}
+.logout{background:#06b6d4;color:#000}
 input{width:100%;padding:8px;margin-top:6px}
 
-.bottom-nav{position:fixed;bottom:0;left:0;width:100%;background:#0f172a;display:flex;justify-content:space-around;padding:10px 0}
-.bottom-nav button{background:none;border:none;color:#cbd5f5;font-size:13px}
-.bottom-nav button.active{color:#fff;font-weight:bold}
+.tp-row{display:grid;grid-template-columns:50px 1fr 60px;padding:8px;margin:6px 0;border-radius:6px;font-weight:bold}
+.tp-1{background:#fde047;color:#000}
+.tp-2{background:#e5e7eb;color:#000}
+.tp-3{background:#fecaca;color:#000}
+
+.bottom-nav{position:fixed;bottom:0;left:0;width:100%;background:#020617;display:flex;justify-content:space-around;padding:10px}
+.bottom-nav button{background:none;border:none;color:#94a3b8}
+.bottom-nav button.active{color:#fff}
 .bottom-nav span{display:block;font-size:20px}
+
+.msg{background:#fef3c7;color:#000;padding:8px;border-radius:6px;margin-top:8px}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <img src="logo.png">
+  <h2 style="color:#ec4899">FAITH & FITNESS</h2>
+  <div id="today"></div>
+  <div id="userPoints"></div>
 </div>
 
 <div class="container">
@@ -44,160 +42,150 @@ input{width:100%;padding:8px;margin-top:6px}
 
 <!-- HOME -->
 <div id="homeSection">
-  <h3 style="color:#16a34a">FAITH & FITNESS</h3>
-  <div id="todayDate"></div>
-  <div id="userName"></div>
-  <div id="userPoints"></div>
-
-  <div id="taskBox"></div>
-  <div id="message"></div>
-
   <button class="submit" onclick="submitVote()">Submit Vote</button>
-  <button class="logout" onclick="logout()">Logout</button>
+  <div id="message"></div>
+</div>
+
+<!-- LEADERBOARD -->
+<div id="leaderSection" style="display:none">
+  <h3>🏆 Leaderboard</h3>
+  <div id="leaderList"></div>
+</div>
+
+<!-- CALENDAR -->
+<div id="calendarSection" style="display:none">
+  <h3>📅 Calendar</h3>
+  <div id="calendar"></div>
 </div>
 
 <!-- PLANK -->
 <div id="plankSection" style="display:none">
   <h3>🏋️ Plank Competition</h3>
-
   <input type="number" id="plankTime" placeholder="Plank time (seconds)">
   <input type="file" id="plankVideo" accept="video/*">
-
   <button class="submit" onclick="uploadPlank()">Upload Video</button>
   <div id="plankMsg"></div>
 
-  <hr>
-  <h4>🏆 Top Plank Holders</h4>
-  <div class="tp-row" style="background:#2563eb;color:#fff">
-    <div>Rank</div><div>Name</div><div>Time</div>
-  </div>
+  <h4 style="margin-top:15px">🏆 Top Plank</h4>
   <div id="plankTop"></div>
 </div>
+
+<button class="logout" onclick="logout()">Logout</button>
 
 </div>
 </div>
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
-  <button class="active" id="homeBtn" onclick="showHome()"><span>🏠</span>Home</button>
+  <button id="homeBtn" class="active" onclick="showHome()"><span>🏠</span>Home</button>
+  <button id="leaderBtn" onclick="showLeader()"><span>🏆</span>Top</button>
+  <button id="calBtn" onclick="showCalendar()"><span>📅</span>Calendar</button>
   <button id="plankBtn" onclick="showPlank()"><span>🏋️</span>Plank</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, query, where }
+import { getFirestore, collection, addDoc, getDocs } 
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-storage.js";
 
-/* FIREBASE CONFIG */
+/* FIREBASE */
 const app = initializeApp({
   apiKey:"YOUR_API_KEY",
-  authDomain:"YOUR_AUTH_DOMAIN",
+  authDomain:"YOUR_AUTH",
   projectId:"YOUR_PROJECT_ID",
   storageBucket:"YOUR_BUCKET"
 });
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-/* USER CHECK */
+/* USER */
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
-todayDate.innerText = "Today: " + new Date().toDateString();
+today.innerText = new Date().toDateString();
 
-/* LOAD USER */
-async function loadUser(){
-  const s = await getDocs(query(collection(db,"users"),where("phone","==",phone)));
-  s.forEach(d=>userName.innerText="Hello, "+d.data().name);
-}
-loadUser();
-
-/* POINTS */
-async function loadPoints(){
-  let t=0;
-  const s = await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
-  s.forEach(d=>t+=Number(d.data().points||0));
-  userPoints.innerText="Your Points: "+t;
-}
-loadPoints();
-
-/* VOTING */
+/* HOME VOTE */
 window.submitVote = async ()=>{
   await addDoc(collection(db,"votes"),{
     phone,
     points:10,
     date:new Date().toISOString().split("T")[0]
   });
-  message.innerHTML="<div class='msg'>✅ Vote submitted</div>";
-  loadPoints();
+  message.innerHTML="<div class='msg'>Vote Submitted ✅</div>";
 };
 
-/* PLANK UPLOAD */
-window.uploadPlank = async ()=>{
-  const time = Number(plankTime.value);
-  const file = plankVideo.files[0];
-
-  if(!file || !time) return alert("Time & video required");
-  if(time < 30) return alert("Minimum plank time 30 seconds");
-
-  plankMsg.innerHTML="Uploading... ⏳";
-
-  const fileRef = ref(storage,"plank/"+phone+"_"+Date.now());
-  await uploadBytes(fileRef,file);
-  const url = await getDownloadURL(fileRef);
-
-  await addDoc(collection(db,"plank_videos"),{
-    phone,
-    name:userName.innerText.replace("Hello, ",""),
-    duration:time,
-    videoUrl:url,
-    date:new Date().toISOString().split("T")[0]
+/* LEADERBOARD */
+async function loadLeader(){
+  const s = await getDocs(collection(db,"votes"));
+  let map={};
+  s.forEach(d=>{
+    map[d.data().phone]=(map[d.data().phone]||0)+d.data().points;
   });
-
-  plankMsg.innerHTML="<div class='msg'>✅ Video uploaded</div>";
-  loadPlankLeaderboard();
-};
-
-/* PLANK LEADERBOARD */
-async function loadPlankLeaderboard(){
-  const s = await getDocs(collection(db,"plank_videos"));
-  let rows=[];
-  s.forEach(d=>rows.push(d.data()));
-  rows.sort((a,b)=>b.duration-a.duration);
-
-  plankTop.innerHTML="";
-  rows.slice(0,5).forEach((r,i)=>{
-    const icon=i==0?"🥇":i==1?"🥈":i==2?"🥉":"";
-    plankTop.innerHTML+=`
+  let arr=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  leaderList.innerHTML="";
+  arr.slice(0,5).forEach((r,i)=>{
+    leaderList.innerHTML+=`
       <div class="tp-row tp-${i+1}">
-        <div>${icon} ${i+1}</div>
-        <div>${r.name}</div>
-        <div>${r.duration}s</div>
+        <div>${i+1}</div><div>${r[0]}</div><div>${r[1]}</div>
       </div>`;
   });
 }
 
-/* NAVIGATION */
-window.showHome=()=>{
-  homeSection.style.display="block";
-  plankSection.style.display="none";
-  homeBtn.classList.add("active");
-  plankBtn.classList.remove("active");
-};
-window.showPlank=()=>{
-  homeSection.style.display="none";
-  plankSection.style.display="block";
-  plankBtn.classList.add("active");
-  homeBtn.classList.remove("active");
-  loadPlankLeaderboard();
+/* PLANK */
+window.uploadPlank = async ()=>{
+  if(plankTime.value<30) return alert("Minimum 30 seconds");
+  const file=plankVideo.files[0];
+  if(!file) return alert("Video required");
+
+  plankMsg.innerHTML="Uploading...";
+  const r=ref(storage,"plank/"+phone+Date.now());
+  await uploadBytes(r,file);
+  const url=await getDownloadURL(r);
+
+  await addDoc(collection(db,"plank_videos"),{
+    phone,
+    duration:+plankTime.value,
+    videoUrl:url
+  });
+
+  plankMsg.innerHTML="<div class='msg'>Uploaded ✅</div>";
+  loadPlank();
 };
 
-window.logout=()=>{
-  localStorage.clear();
-  location.replace("index.html");
-};
+async function loadPlank(){
+  const s=await getDocs(collection(db,"plank_videos"));
+  let a=[];
+  s.forEach(d=>a.push(d.data()));
+  a.sort((x,y)=>y.duration-x.duration);
+  plankTop.innerHTML="";
+  a.slice(0,3).forEach((r,i)=>{
+    plankTop.innerHTML+=`
+      <div class="tp-row tp-${i+1}">
+        <div>${i+1}</div><div>${r.phone}</div><div>${r.duration}s</div>
+      </div>`;
+  });
+}
+
+/* NAV */
+function reset(){
+  homeSection.style.display=leaderSection.style.display=
+  calendarSection.style.display=plankSection.style.display="none";
+  document.querySelectorAll(".bottom-nav button").forEach(b=>b.classList.remove("active"));
+}
+window.showHome=()=>{reset();homeSection.style.display="block";homeBtn.classList.add("active");}
+window.showLeader=()=>{reset();leaderSection.style.display="block";leaderBtn.classList.add("active");loadLeader();}
+window.showCalendar=()=>{reset();calendarSection.style.display="block";calBtn.classList.add("active");}
+window.showPlank=()=>{reset();plankSection.style.display="block";plankBtn.classList.add("active");loadPlank();}
+
+window.logout=()=>{localStorage.clear();location.replace("index.html");}
+
+/* DEFAULT LOAD */
+showHome();
+loadLeader();
+loadPlank();
 </script>
 
 </body>
-  </html>
+</html>
