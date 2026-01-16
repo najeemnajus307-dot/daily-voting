@@ -7,19 +7,18 @@
 
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;padding-bottom:80px}
-.header{background:#fff;text-align:center;padding:8px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
-.header img{height:110px}
+.header{background:#fff;text-align:center;padding:10px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.header img{height:90px}
 .container{display:flex;justify-content:center;padding:20px}
 .card{background:#fff;max-width:380px;width:100%;padding:20px;border-radius:12px;box-shadow:0 6px 14px rgba(0,0,0,.15);text-align:center}
 
-.task{border:1px solid #ddd;padding:10px;border-radius:8px;margin:8px 0;text-align:left}
-.msg{background:#fef3c7;padding:10px;border-radius:8px;margin-top:10px;font-size:14px}
 button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;font-size:15px;cursor:pointer}
 .submit{background:#16a34a;color:#fff}
-.disabled{background:#9ca3af}
 .logout{background:#dc2626;color:#fff}
 
-.tp-row{display:grid;grid-template-columns:70px 1fr 60px;align-items:center;padding:8px;border-radius:6px;margin:6px 0;font-weight:bold}
+.msg{background:#fef3c7;padding:8px;border-radius:6px;margin-top:8px}
+
+.tp-row{display:grid;grid-template-columns:60px 1fr 60px;padding:6px;border-radius:6px;margin:4px 0;font-weight:bold}
 .tp-1{background:#fde047}
 .tp-2{background:#e5e7eb}
 .tp-3{background:#fecaca}
@@ -28,11 +27,11 @@ table{width:100%;border-collapse:collapse;margin-top:8px}
 th,td{border:1px solid #ddd;padding:6px;font-size:14px;text-align:center}
 th{background:#2563eb;color:#fff}
 
-.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
-.day{height:38px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:14px;color:#fff}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px}
+.day{height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:#fff}
 .done{background:#16a34a}
-.pending{background:#facc15;color:#000}
 .missed{background:#ef4444}
+.pending{background:#facc15;color:#000}
 .future{background:#374151}
 
 .bottom-nav{position:fixed;bottom:0;left:0;width:100%;background:#0f172a;display:flex;justify-content:space-around;padding:10px 0}
@@ -47,7 +46,8 @@ input{width:100%;padding:8px}
 <body>
 
 <div class="header">
-  <img src="logo.png">
+  <!-- 🔥 LOGO FIXED -->
+  <img src="images/logo.png" alt="Faith & Fitness">
 </div>
 
 <div class="container">
@@ -59,6 +59,7 @@ input{width:100%;padding:8px}
   <div id="todayDate"></div>
   <div id="userName"></div>
   <div id="userPoints"></div>
+
   <button class="submit" onclick="submitVote()">Submit Vote</button>
   <div id="message"></div>
 </div>
@@ -67,7 +68,9 @@ input{width:100%;padding:8px}
 <div id="leaderboardSection" style="display:none">
   <h3>🏆 Leaderboard</h3>
   <table>
-    <thead><tr><th>Rank</th><th>User</th><th>Points</th></tr></thead>
+    <thead>
+      <tr><th>Rank</th><th>User</th><th>Points</th></tr>
+    </thead>
     <tbody id="allRanks"></tbody>
   </table>
 </div>
@@ -88,7 +91,7 @@ input{width:100%;padding:8px}
     <input type="number" id="plankS" placeholder="SS">
   </div>
 
-  <button class="submit" onclick="submitPlankTime()">Submit Time</button>
+  <button class="submit" onclick="submitPlank()">Submit Time</button>
   <div id="plankMsg"></div>
 </div>
 
@@ -99,7 +102,7 @@ input{width:100%;padding:8px}
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
-  <button class="active" id="homeBtn" onclick="showHome()"><span>🏠</span>Home</button>
+  <button id="homeBtn" class="active" onclick="showHome()"><span>🏠</span>Home</button>
   <button id="leaderBtn" onclick="showLeaderboard()"><span>🏆</span>Top</button>
   <button id="calBtn" onclick="showCalendar()"><span>📅</span>Calendar</button>
   <button id="plankBtn" onclick="showPlank()"><span>🏋️</span>Plank</button>
@@ -110,13 +113,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebas
 import { getFirestore, collection, addDoc, getDocs }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+/* 🔥 FIREBASE CONFIG */
 const app = initializeApp({
   apiKey:"YOUR_API_KEY",
-  authDomain:"YOUR_AUTH",
+  authDomain:"YOUR_AUTH_DOMAIN",
   projectId:"YOUR_PROJECT_ID"
 });
 const db = getFirestore(app);
 
+/* USER */
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
@@ -131,14 +136,14 @@ window.submitVote = async ()=>{
     date:new Date().toISOString().split("T")[0]
   });
   message.innerHTML="<div class='msg'>Vote submitted ✅</div>";
-  loadPoints(); loadLeaderboard();
+  loadPoints(); loadLeaderboard(); loadCalendar();
 };
 
 /* POINTS */
 async function loadPoints(){
   const s = await getDocs(collection(db,"votes"));
   let t=0;
-  s.forEach(d=>{ if(d.data().phone==phone) t+=d.data().points });
+  s.forEach(d=>{ if(d.data().phone===phone) t+=Number(d.data().points||0) });
   userPoints.innerText="Your Points: "+t;
 }
 
@@ -147,7 +152,9 @@ async function loadLeaderboard(){
   const s = await getDocs(collection(db,"votes"));
   let map={};
   s.forEach(d=>{
-    map[d.data().phone]=(map[d.data().phone]||0)+d.data().points;
+    const v=d.data();
+    if(!v.phone || !v.points) return;
+    map[v.phone]=(map[v.phone]||0)+Number(v.points);
   });
   let arr=Object.entries(map).sort((a,b)=>b[1]-a[1]);
   allRanks.innerHTML="";
@@ -156,15 +163,35 @@ async function loadLeaderboard(){
   });
 }
 
-/* PLANK TIME */
-window.submitPlankTime = async ()=>{
+/* CALENDAR */
+async function loadCalendar(){
+  calendar.innerHTML="";
+  const s = await getDocs(collection(db,"votes"));
+  const voted={};
+  s.forEach(d=>{
+    if(d.data().phone===phone) voted[d.data().date]=true;
+  });
+
+  const now=new Date();
+  const days=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const today=now.toISOString().split("T")[0];
+
+  for(let i=1;i<=days;i++){
+    const ds=new Date(now.getFullYear(),now.getMonth(),i).toISOString().split("T")[0];
+    let cls="future";
+    if(ds<today) cls=voted[ds]?"done":"missed";
+    if(ds===today) cls=voted[ds]?"done":"pending";
+    calendar.innerHTML+=`<div class="day ${cls}">${i}</div>`;
+  }
+}
+
+/* PLANK */
+window.submitPlank = async ()=>{
   const h=Number(plankH.value||0);
   const m=Number(plankM.value||0);
   const s=Number(plankS.value||0);
   const total=h*3600+m*60+s;
-
-  if(total<30) return alert("Minimum plank time 30 seconds");
-
+  if(total<30) return alert("Minimum 30 seconds");
   plankMsg.innerHTML="Submitting...";
   await addDoc(collection(db,"plank_videos"),{
     phone,
@@ -180,17 +207,17 @@ function reset(){
   leaderboardSection.style.display=
   calendarSection.style.display=
   plankSection.style.display="none";
-  document.querySelectorAll(".bottom-nav button")
-    .forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".bottom-nav button").forEach(b=>b.classList.remove("active"));
 }
 window.showHome=()=>{reset();homeSection.style.display="block";homeBtn.classList.add("active");}
 window.showLeaderboard=()=>{reset();leaderboardSection.style.display="block";leaderBtn.classList.add("active");loadLeaderboard();}
-window.showCalendar=()=>{reset();calendarSection.style.display="block";calBtn.classList.add("active");}
+window.showCalendar=()=>{reset();calendarSection.style.display="block";calBtn.classList.add("active");loadCalendar();}
 window.showPlank=()=>{reset();plankSection.style.display="block";plankBtn.classList.add("active");}
 
 window.logout=()=>{localStorage.clear();location.replace("index.html");}
 
-loadPoints(); loadLeaderboard(); showHome();
+/* LOAD */
+loadPoints(); loadLeaderboard(); loadCalendar(); showHome();
 </script>
 
 </body>
