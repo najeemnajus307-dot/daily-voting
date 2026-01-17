@@ -6,7 +6,7 @@
 <title>Faith & Fitness – Vote</title>
 
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;padding-bottom:90px}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;padding-bottom:80px}
 .header{background:#fff;text-align:center;padding:10px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
 .header img{height:90px}
 
@@ -19,28 +19,6 @@ body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;padding-bottom:90p
   text-align:center
 }
 
-/* NAV (Workout Categories) */
-.cat-nav{
-  display:flex;
-  gap:8px;
-  overflow-x:auto;
-  margin:10px 0;
-}
-.cat-nav button{
-  padding:8px 14px;
-  border:none;
-  border-radius:20px;
-  background:#e5e7eb;
-  cursor:pointer;
-  font-size:14px;
-  white-space:nowrap
-}
-.cat-nav button.active{
-  background:#16a34a;
-  color:#fff;
-}
-
-/* TASKS */
 .task{
   border:1px solid #ddd;
   padding:12px;
@@ -51,27 +29,25 @@ body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;padding-bottom:90p
 
 .msg{
   background:#fef3c7;
-  padding:10px;
+  padding:12px;
   border-radius:8px;
   margin:10px 0;
   font-size:14px
 }
 
-button.submit{
+button{
   width:100%;
   padding:12px;
   margin-top:10px;
   border:none;
   border-radius:6px;
   font-size:15px;
-  background:#16a34a;
-  color:#fff;
   cursor:pointer
 }
-button.disabled{background:#9ca3af;cursor:not-allowed}
-.logout{background:#dc2626;color:#fff;margin-top:8px}
+.submit{background:#16a34a;color:#fff}
+.logout{background:#dc2626;color:#fff}
+.disabled{background:#9ca3af;cursor:not-allowed}
 
-/* BOTTOM NAV */
 .bottom-nav{
   position:fixed;bottom:0;left:0;width:100%;
   background:#0f172a;
@@ -79,7 +55,8 @@ button.disabled{background:#9ca3af;cursor:not-allowed}
   padding:10px 0
 }
 .bottom-nav button{
-  background:none;border:none;color:#cbd5f5;font-size:13px
+  background:none;border:none;
+  color:#cbd5f5;font-size:13px
 }
 .bottom-nav span{display:block;font-size:20px}
 </style>
@@ -88,7 +65,7 @@ button.disabled{background:#9ca3af;cursor:not-allowed}
 <body>
 
 <div class="header">
-  <img src="logo..png" alt="Faith & Fitness">
+  <img src="logo..png">
 </div>
 
 <div class="container">
@@ -99,10 +76,6 @@ button.disabled{background:#9ca3af;cursor:not-allowed}
 <div id="userName"></div>
 <div id="userPoints"></div>
 
-<!-- WORKOUT NAV -->
-<div class="cat-nav" id="catNav"></div>
-
-<!-- TASKS -->
 <div id="taskBox"></div>
 <div id="message"></div>
 
@@ -115,14 +88,15 @@ button.disabled{background:#9ca3af;cursor:not-allowed}
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <button onclick="location.reload()"><span>🏠</span>Home</button>
+  <button onclick="location.href='leaderboard.html'"><span>🏆</span>Leaderboard</button>
+  <button onclick="location.href='calendar.html'"><span>📅</span>Calendar</button>
   <button onclick="openPlank()"><span>🧍‍♂️</span>Plank</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import {
-  getFirestore, collection, getDocs, query, where, addDoc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, where, addDoc } 
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 /* FIREBASE */
 const app = initializeApp({
@@ -136,78 +110,92 @@ const db = getFirestore(app);
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
-/* BASIC */
+/* INFO */
 todayDate.innerText = "Today: " + new Date().toDateString();
-let activeCategory = "";
+
+/* =========================
+   CUSTOM VOTING DAY LOGIC
+   8 PM → next day 12 PM
+========================= */
+function getVoteDate(){
+  const now = new Date();
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const today8PM = new Date(today);
+  today8PM.setHours(20,0,0,0);
+
+  const tomorrow12PM = new Date(today);
+  tomorrow12PM.setDate(today.getDate()+1);
+  tomorrow12PM.setHours(12,0,0,0);
+
+  // valid voting window
+  if(now >= today8PM && now <= tomorrow12PM){
+    return today.toISOString().split("T")[0];
+  }
+
+  return null; // voting closed
+}
+
+/* CHECK ALREADY VOTED */
+async function checkVoted(){
+  const voteDate = getVoteDate();
+  if(!voteDate) return false;
+
+  const s = await getDocs(query(
+    collection(db,"votes"),
+    where("phone","==",phone),
+    where("date","==",voteDate)
+  ));
+
+  if(!s.empty){
+    submitBtn.disabled = true;
+    submitBtn.classList.add("disabled");
+    message.innerHTML =
+      "<div class='msg'>✅ Already voted for this day</div>";
+    return true;
+  }
+  return false;
+}
 
 /* LOAD USER */
 async function loadUser(){
-  const s = await getDocs(query(
-    collection(db,"users"),
-    where("phone","==",phone)
-  ));
+  const s = await getDocs(query(collection(db,"users"),where("phone","==",phone)));
   s.forEach(d=>userName.innerText="Hello, "+d.data().name);
 }
 
 /* LOAD POINTS */
 async function loadPoints(){
   let t=0;
-  const s=await getDocs(query(
-    collection(db,"votes"),
-    where("phone","==",phone)
-  ));
+  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
   s.forEach(d=>t+=Number(d.data().points||0));
   userPoints.innerText="Your Points: "+t;
 }
 
-/* LOAD CATEGORIES (NAV BUTTONS) */
-async function loadCategories(){
-  const s = await getDocs(collection(db,"categories"));
-  catNav.innerHTML="";
-  let first=true;
-
-  s.forEach(d=>{
-    const c=d.data();
-    if(c.active){
-      const btn=document.createElement("button");
-      btn.innerText=c.name;
-      btn.onclick=()=>{
-        document.querySelectorAll(".cat-nav button")
-          .forEach(b=>b.classList.remove("active"));
-        btn.classList.add("active");
-        activeCategory=d.id;
-        loadTasks();
-      };
-      if(first){
-        btn.classList.add("active");
-        activeCategory=d.id;
-        first=false;
-      }
-      catNav.appendChild(btn);
-    }
-  });
-
-  loadTasks();
-}
-
-/* LOAD TASKS BY CATEGORY */
+/* LOAD TASKS */
 async function loadTasks(){
-  taskBox.innerHTML="";
-  message.innerHTML="";
+  const voteDate = getVoteDate();
 
-  const s = await getDocs(query(
-    collection(db,"tasks"),
-    where("category","==",activeCategory)
-  ));
-
-  if(s.empty){
-    taskBox.innerHTML="<div class='msg'>No tasks in this category</div>";
+  if(!voteDate){
+    taskBox.innerHTML =
+      "<div class='msg'>⏰ Voting open: <b>8:00 PM – next day 12:00 PM</b></div>";
+    submitBtn.disabled = true;
+    submitBtn.classList.add("disabled");
     return;
   }
 
+  if(await checkVoted()) return;
+
+  submitBtn.disabled = false;
+  submitBtn.classList.remove("disabled");
+
+  const s = await getDocs(collection(db,"tasks"));
+  taskBox.innerHTML = "";
+
   s.forEach(d=>{
     const t=d.data();
-    taskBox.innerHTML+=`
+    taskBox.innerHTML += `
       <div class="task">
         <label>
           <input type="checkbox" data-points="${t.points}">
@@ -219,8 +207,13 @@ async function loadTasks(){
 
 /* SUBMIT VOTE */
 window.submitVote = async ()=>{
+  const voteDate = getVoteDate();
+  if(!voteDate) return alert("Voting closed");
+
+  if(await checkVoted()) return;
+
   const checked=document.querySelectorAll("#taskBox input:checked");
-  if(!checked.length) return alert("Select at least one task");
+  if(!checked.length) return alert("Task select cheyyanam");
 
   let pts=0;
   checked.forEach(c=>pts+=Number(c.dataset.points));
@@ -228,11 +221,13 @@ window.submitVote = async ()=>{
   await addDoc(collection(db,"votes"),{
     phone,
     points:pts,
-    category:activeCategory,
-    date:new Date().toISOString().split("T")[0]
+    date:voteDate,
+    created:new Date()
   });
 
-  message.innerHTML="<div class='msg'>✅ Vote submitted</div>";
+  submitBtn.disabled=true;
+  submitBtn.classList.add("disabled");
+  message.innerHTML="<div class='msg'>✅ Vote submitted successfully</div>";
   loadPoints();
 };
 
@@ -245,7 +240,7 @@ window.logout=()=>{localStorage.clear();location.replace("index.html");};
 /* INIT */
 loadUser();
 loadPoints();
-loadCategories();
+loadTasks();
 </script>
 
 </body>
