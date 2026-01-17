@@ -123,7 +123,7 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   <button onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
   <button onclick="showCalendar()"><span>📅</span>Calendar</button>
   <button onclick="openPlank()"><span>🧍‍♂️</span>Plank</button>
-  <button onclick="openworcut()"><span>🧍‍♂️</span>woecut</button>
+  <button onclick="openworcut()"><span>📚</span>woecut</button>
 </div>
 
 <script type="module">
@@ -336,6 +336,7 @@ window.showCalendar=()=>{homeSection.style.display="none";
 leaderboardSection.style.display="none";calendarSection.style.display="block";
 loadCalendar();}
 window.openPlank=()=>window.open("https://forms.gle/27H48E8rNhN9nNz29","_blank");
+window.openwoecut=()=>window.open("https://forms.gle/27H48E8rNhN9nNz29","_blank");
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
 loadUser();loadPoints();loadTasks();
@@ -344,5 +345,6 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
