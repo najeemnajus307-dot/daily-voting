@@ -73,6 +73,7 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 
   <div id="taskBox"></div>
   <div id="message"></div>
+  <div id="nextVoteBox" class="msg" style="display:none"></div>
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
@@ -126,7 +127,7 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, addDoc } 
+import { getFirestore, collection, getDocs, query, where, addDoc }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const app = initializeApp({
@@ -147,6 +148,42 @@ function getVoteDate(){
   return d.toISOString().split("T")[0];
 }
 
+/* ===== TIMER ADD (NEW) ===== */
+function nextVoteTime(){
+  const now=new Date();
+  const t=new Date();
+  t.setHours(20,0,0,0);
+  if(now>=t) t.setDate(t.getDate()+1);
+  return t;
+}
+
+function startTimer(){
+  nextVoteBox.style.display="block";
+  submitBtn.disabled=true;
+  submitBtn.classList.add("disabled");
+  taskBox.innerHTML="";
+
+  const tick=()=>{
+    const diff=nextVoteTime()-new Date();
+    if(diff<=0){
+      nextVoteBox.innerHTML="Voting is open ✅ Refresh page";
+      submitBtn.disabled=false;
+      submitBtn.classList.remove("disabled");
+      loadTasks();
+      return;
+    }
+    const h=Math.floor(diff/36e5);
+    const m=Math.floor(diff%36e5/6e4);
+    const s=Math.floor(diff%6e4/1000);
+    nextVoteBox.innerHTML=
+    `Today voting is complete ✅<br>
+     Next voting is <b>tomorrow at 8:00 PM</b><br>
+     ⏳ ${h}h ${m}m ${s}s`;
+    setTimeout(tick,1000);
+  };
+  tick();
+}
+
 async function checkVoted(){
   const s=await getDocs(query(
     collection(db,"votes"),
@@ -154,9 +191,7 @@ async function checkVoted(){
     where("date","==",getVoteDate())
   ));
   if(!s.empty){
-    submitBtn.disabled=true;
-    submitBtn.classList.add("disabled");
-    message.innerHTML="<div class='msg'>Already voted ✅</div>";
+    startTimer();   // ← changed
     return true;
   }
   return false;
@@ -198,6 +233,7 @@ window.submitVote=async()=>{
   await addDoc(collection(db,"votes"),{phone,points:pts,date:getVoteDate()});
   message.innerHTML="<div class='msg'>Vote submitted ✅</div>";
   loadPoints();loadLeaderboardData();loadCalendar();
+  startTimer();   // ← added
 };
 
 async function loadLeaderboardData(){
@@ -218,7 +254,6 @@ async function loadLeaderboardData(){
 
   rows.sort((a,b)=>b.total-a.total);
 
-  // GROUP BY RANK
   const rankGroups={};
   let rank=1,prev=null;
   rows.forEach(r=>{
@@ -232,14 +267,11 @@ async function loadLeaderboardData(){
 
   top3.innerHTML="";
   allRanks.innerHTML="";
-
-  // ROTATION STORE
   const rot=JSON.parse(localStorage.getItem("topRotate")||"{}");
 
   [1,2,3].forEach(rk=>{
     const list=rankGroups[rk]||[];
     if(!list.length) return;
-
     const start=rot[rk]||0;
     for(let i=0;i<Math.min(2,list.length);i++){
       const p=list[(start+i)%list.length];
@@ -253,7 +285,6 @@ async function loadLeaderboardData(){
 
   localStorage.setItem("topRotate",JSON.stringify(rot));
 
-  // FULL TABLE
   let r=1,pr=null;
   rows.forEach(x=>{
     if(pr!==null && x.total<pr) r++;
