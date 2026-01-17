@@ -19,7 +19,8 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;fon
 .disabled{background:#9ca3af;cursor:not-allowed}
 .logout{background:#dc2626;color:#fff}
 
-.tp-row{display:grid;grid-template-columns:70px 1fr 60px;align-items:center;padding:8px;border-radius:6px;margin:6px 0;font-weight:bold}
+.tp-row{display:grid;grid-template-columns:70px 1fr 60px;align-items:center;
+padding:8px;border-radius:6px;margin:6px 0;font-weight:bold}
 .tp-1{background:#fde047}
 .tp-2{background:#e5e7eb}
 .tp-3{background:#fecaca}
@@ -35,7 +36,8 @@ tr.tp-3 td{background:#fecaca}
 .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 .week-head div{text-align:center;font-weight:bold;color:#1f2933}
 
-.day{height:38px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:14px;color:#fff}
+.day{height:38px;display:flex;align-items:center;justify-content:center;
+border-radius:50%;font-size:14px;color:#fff}
 .done{background:#16a34a}
 .pending{background:#facc15;color:#000}
 .missed{background:#ef4444}
@@ -43,12 +45,11 @@ tr.tp-3 td{background:#fecaca}
 .today{outline:3px solid #3b82f6}
 
 .bottom-nav{
-  position:fixed;bottom:0;left:0;width:100%;
-  background:#0f172a;display:flex;justify-content:space-around;
-  padding:10px 0
+position:fixed;bottom:0;left:0;width:100%;
+background:#0f172a;display:flex;justify-content:space-around;padding:10px 0
 }
 .bottom-nav button{
-  background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
+background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 }
 .bottom-nav span{display:block;font-size:20px}
 </style>
@@ -57,7 +58,7 @@ tr.tp-3 td{background:#fecaca}
 <body>
 
 <div class="header">
-  <img src="logo..png">
+  <img src="logo.png">
 </div>
 
 <div class="container">
@@ -125,7 +126,8 @@ tr.tp-3 td{background:#fecaca}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, where, addDoc } 
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const app = initializeApp({
   apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
@@ -201,8 +203,11 @@ window.submitVote=async()=>{
 async function loadLeaderboardData(){
   const u=await getDocs(collection(db,"users"));
   const v=await getDocs(collection(db,"votes"));
+
   const map={};
-  v.forEach(x=>map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0));
+  v.forEach(x=>{
+    map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0);
+  });
 
   let rows=[];
   u.forEach(x=>{
@@ -212,23 +217,52 @@ async function loadLeaderboardData(){
   });
 
   rows.sort((a,b)=>b.total-a.total);
-  top3.innerHTML=""; allRanks.innerHTML="";
-  let rank=1,prev=null;
 
+  // GROUP BY RANK
+  const rankGroups={};
+  let rank=1,prev=null;
   rows.forEach(r=>{
     if(prev!==null && r.total<prev) rank++;
     if(rank<=3){
+      rankGroups[rank]=rankGroups[rank]||[];
+      rankGroups[rank].push(r);
+    }
+    prev=r.total;
+  });
+
+  top3.innerHTML="";
+  allRanks.innerHTML="";
+
+  // ROTATION STORE
+  const rot=JSON.parse(localStorage.getItem("topRotate")||"{}");
+
+  [1,2,3].forEach(rk=>{
+    const list=rankGroups[rk]||[];
+    if(!list.length) return;
+
+    const start=rot[rk]||0;
+    for(let i=0;i<Math.min(2,list.length);i++){
+      const p=list[(start+i)%list.length];
       top3.innerHTML+=`
-      <div class="tp-row tp-${rank}">
-        <div>${rank}</div><div>${r.name}</div><div>${r.total}</div>
+      <div class="tp-row tp-${rk}">
+        <div>${rk}</div><div>${p.name}</div><div>${p.total}</div>
       </div>`;
     }
-    let cls=rank<=3?`tp-${rank}`:"";
+    rot[rk]=(start+2)%list.length;
+  });
+
+  localStorage.setItem("topRotate",JSON.stringify(rot));
+
+  // FULL TABLE
+  let r=1,pr=null;
+  rows.forEach(x=>{
+    if(pr!==null && x.total<pr) r++;
+    let cls=r<=3?`tp-${r}`:"";
     allRanks.innerHTML+=`
     <tr class="${cls}">
-      <td>${rank}</td><td>${r.name}</td><td>${r.total}</td>
+      <td>${r}</td><td>${x.name}</td><td>${x.total}</td>
     </tr>`;
-    prev=r.total;
+    pr=x.total;
   });
 }
 
@@ -238,9 +272,12 @@ window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalen
 
 async function loadCalendar(){
   calendar.innerHTML="";
-  calTitle.innerText=new Date(curYear,curMonth).toLocaleString("default",{month:"long",year:"numeric"});
+  calTitle.innerText=new Date(curYear,curMonth)
+  .toLocaleString("default",{month:"long",year:"numeric"});
+
   const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
   const voted={}; s.forEach(d=>voted[d.data().date]=1);
+
   const days=new Date(curYear,curMonth+1,0).getDate();
   const today=new Date().toISOString().split("T")[0];
 
@@ -253,17 +290,24 @@ async function loadCalendar(){
     let cls="future";
     if(ds<today) cls=voted[ds]?"done":"missed";
     if(ds===today) cls=voted[ds]?"done":"pending";
-    calendar.innerHTML+=`<div class="day ${cls} ${ds===today?"today":""}">${i}</div>`;
+    calendar.innerHTML+=
+    `<div class="day ${cls} ${ds===today?"today":""}">${i}</div>`;
   }
 }
 
-window.showHome=()=>{homeSection.style.display="block";leaderboardSection.style.display="none";calendarSection.style.display="none";}
-window.showLeaderboard=()=>{homeSection.style.display="none";leaderboardSection.style.display="block";calendarSection.style.display="none";loadLeaderboardData();}
-window.showCalendar=()=>{homeSection.style.display="none";leaderboardSection.style.display="none";calendarSection.style.display="block";loadCalendar();}
+window.showHome=()=>{homeSection.style.display="block";
+leaderboardSection.style.display="none";calendarSection.style.display="none";}
+window.showLeaderboard=()=>{homeSection.style.display="none";
+leaderboardSection.style.display="block";calendarSection.style.display="none";
+loadLeaderboardData();}
+window.showCalendar=()=>{homeSection.style.display="none";
+leaderboardSection.style.display="none";calendarSection.style.display="block";
+loadCalendar();}
 window.openPlank=()=>window.open("https://forms.gle/27H48E8rNhN9nNz29","_blank");
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
-loadUser();loadPoints();loadTasks();loadLeaderboardData();loadCalendar();checkVoted();
+loadUser();loadPoints();loadTasks();
+loadLeaderboardData();loadCalendar();checkVoted();
 </script>
 
 </body>
