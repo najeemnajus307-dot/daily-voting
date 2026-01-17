@@ -27,9 +27,14 @@ button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;fon
 table{width:100%;border-collapse:collapse;margin-top:8px}
 th,td{border:1px solid #ddd;padding:6px;font-size:14px;text-align:center}
 th{background:#2563eb;color:#fff}
+tr.tp-1 td{background:#fde047}
+tr.tp-2 td{background:#e5e7eb}
+tr.tp-3 td{background:#fecaca}
 
 .cal-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-weight:bold}
 .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.week-head div{text-align:center;font-weight:bold;color:#1f2933}
+
 .day{height:38px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:14px;color:#fff}
 .done{background:#16a34a}
 .pending{background:#facc15;color:#000}
@@ -52,7 +57,7 @@ th{background:#2563eb;color:#fff}
 <body>
 
 <div class="header">
-  <img src="logo..png">
+  <img src="logo.png">
 </div>
 
 <div class="container">
@@ -83,7 +88,9 @@ th{background:#2563eb;color:#fff}
 <div id="leaderboardSection" style="display:none">
   <h3>🏆 Full Leaderboard</h3>
   <table>
-    <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
+    <thead>
+      <tr><th>Rank</th><th>Name</th><th>Points</th></tr>
+    </thead>
     <tbody id="allRanks"></tbody>
   </table>
 </div>
@@ -96,6 +103,12 @@ th{background:#2563eb;color:#fff}
     <span id="calTitle"></span>
     <button onclick="nextMonth()">▶</button>
   </div>
+
+  <div class="calendar week-head">
+    <div>Mon</div><div>Tue</div><div>Wed</div>
+    <div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+  </div>
+
   <div class="calendar" id="calendar"></div>
 </div>
 
@@ -124,7 +137,7 @@ const db = getFirestore(app);
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
 
-todayDate.innerText = "Today: " + new Date().toDateString();
+todayDate.innerText="Today: "+new Date().toDateString();
 
 function getVoteDate(){
   const d=new Date();
@@ -133,7 +146,7 @@ function getVoteDate(){
 }
 
 async function checkVoted(){
-  const s = await getDocs(query(
+  const s=await getDocs(query(
     collection(db,"votes"),
     where("phone","==",phone),
     where("date","==",getVoteDate())
@@ -151,6 +164,7 @@ async function loadUser(){
   const s=await getDocs(query(collection(db,"users"),where("phone","==",phone)));
   s.forEach(d=>userName.innerText="Hello, "+d.data().name);
 }
+
 async function loadPoints(){
   let t=0;
   const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
@@ -174,14 +188,14 @@ async function loadTasks(){
   });
 }
 
-window.submitVote = async ()=>{
+window.submitVote=async()=>{
   if(await checkVoted()) return;
   const checked=document.querySelectorAll("#taskBox input:checked");
   if(!checked.length) return alert("Select task");
   let pts=0; checked.forEach(c=>pts+=Number(c.dataset.points));
   await addDoc(collection(db,"votes"),{phone,points:pts,date:getVoteDate()});
-  loadPoints();loadLeaderboardData();loadCalendar();
   message.innerHTML="<div class='msg'>Vote submitted ✅</div>";
+  loadPoints();loadLeaderboardData();loadCalendar();
 };
 
 async function loadLeaderboardData(){
@@ -196,22 +210,24 @@ async function loadLeaderboardData(){
       rows.push({name:x.data().name,total:map[x.data().phone]});
     }
   });
-  rows.sort((a,b)=>b.total-a.total);
 
+  rows.sort((a,b)=>b.total-a.total);
   top3.innerHTML=""; allRanks.innerHTML="";
-  let rank=1,shown=0,prev=null;
+  let rank=1,prev=null;
 
   rows.forEach(r=>{
-    if(prev!==null && r.total<prev){rank++;shown=0;}
-    if(rank<=3 && shown<2){
+    if(prev!==null && r.total<prev) rank++;
+    if(rank<=3){
       top3.innerHTML+=`
       <div class="tp-row tp-${rank}">
         <div>${rank}</div><div>${r.name}</div><div>${r.total}</div>
       </div>`;
-      shown++;
     }
+    let cls=rank<=3?`tp-${rank}`:"";
     allRanks.innerHTML+=`
-    <tr><td>${rank}</td><td>${r.name}</td><td>${r.total}</td></tr>`;
+    <tr class="${cls}">
+      <td>${rank}</td><td>${r.name}</td><td>${r.total}</td>
+    </tr>`;
     prev=r.total;
   });
 }
@@ -227,6 +243,10 @@ async function loadCalendar(){
   const voted={}; s.forEach(d=>voted[d.data().date]=1);
   const days=new Date(curYear,curMonth+1,0).getDate();
   const today=new Date().toISOString().split("T")[0];
+
+  const firstDay=new Date(curYear,curMonth,1).getDay();
+  const start=(firstDay===0?6:firstDay-1);
+  for(let i=0;i<start;i++) calendar.innerHTML+="<div></div>";
 
   for(let i=1;i<=days;i++){
     const ds=new Date(curYear,curMonth,i).toISOString().split("T")[0];
