@@ -25,6 +25,13 @@ padding:8px;border-radius:6px;margin:6px 0;font-weight:bold}
 .tp-2{background:#e5e7eb}
 .tp-3{background:#fecaca}
 
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{border:1px solid #ddd;padding:6px;font-size:14px;text-align:center}
+th{background:#2563eb;color:#fff}
+tr.tp-1 td{background:#fde047}
+tr.tp-2 td{background:#e5e7eb}
+tr.tp-3 td{background:#fecaca}
+
 .cal-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-weight:bold}
 .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 .week-head div{text-align:center;font-weight:bold;color:#1f2933}
@@ -70,9 +77,48 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
+
+  <hr>
+  <h3>🏆 Top Performers</h3>
+  <div class="tp-row" style="background:#2563eb;color:#fff">
+    <div>Rank</div><div>Name</div><div>Points</div>
+  </div>
+  <div id="top3"></div>
+</div>
+
+<!-- LEADERBOARD -->
+<div id="leaderboardSection" style="display:none">
+  <h3>🏆 Full Leaderboard</h3>
+  <table>
+    <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
+    <tbody id="allRanks"></tbody>
+  </table>
+</div>
+
+<!-- CALENDAR -->
+<div id="calendarSection" style="display:none">
+  <h3>📅 Your Progress</h3>
+  <div class="cal-head">
+    <button onclick="prevMonth()">◀</button>
+    <span id="calTitle"></span>
+    <button onclick="nextMonth()">▶</button>
+  </div>
+
+  <div class="calendar week-head">
+    <div>Mon</div><div>Tue</div><div>Wed</div>
+    <div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+  </div>
+  <div class="calendar" id="calendar"></div>
 </div>
 
 </div>
+</div>
+
+<!-- NAV -->
+<div class="bottom-nav">
+  <button onclick="showHome()"><span>🏠</span>Home</button>
+  <button onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
+  <button onclick="showCalendar()"><span>📅</span>Calendar</button>
 </div>
 
 <script type="module">
@@ -98,11 +144,11 @@ function getVoteDate(){
   return d.toISOString().split("T")[0];
 }
 
-/* ===== TIMER LOGIC ===== */
+/* TIMER */
 function nextVoteTime(){
   const now=new Date();
   const t=new Date();
-  t.setHours(20,0,0,0); // 8 PM
+  t.setHours(20,0,0,0);
   if(now>=t) t.setDate(t.getDate()+1);
   return t;
 }
@@ -127,7 +173,7 @@ function startTimer(){
     const s=Math.floor(diff%6e4/1000);
     nextVoteBox.innerHTML=
     `Today voting is complete ✅<br>
-     Next voting is <b>tomorrow at 8:00 PM</b><br>
+     Next voting at <b>8:00 PM</b><br>
      ⏳ ${h}h ${m}m ${s}s`;
     setTimeout(tick,1000);
   };
@@ -185,6 +231,15 @@ window.submitVote=async()=>{
   loadPoints();
   startTimer();
 };
+
+window.showHome=()=>{homeSection.style.display="block";
+leaderboardSection.style.display="none";calendarSection.style.display="none";}
+window.showLeaderboard=()=>{homeSection.style.display="none";
+leaderboardSection.style.display="block";calendarSection.style.display="none";
+loadLeaderboardData();}
+window.showCalendar=()=>{homeSection.style.display="none";
+leaderboardSection.style.display="none";calendarSection.style.display="block";
+loadCalendar();}
 
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
