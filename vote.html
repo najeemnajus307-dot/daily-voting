@@ -114,9 +114,6 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   <div class="calendar" id="calendar"></div>
 </div>
 
-</div>
-</div>
-
 <!-- WORKOUT SECTION -->
 <div id="workoutSection" style="display:none">
   <h3>📚 Workout</h3>
@@ -128,13 +125,18 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 
 </div>
 
+  </div>
+</div>
+  
 <!-- NAV -->
 <div class="bottom-nav">
   <button onclick="showHome()"><span>🏠</span>Home</button>
   <button onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
   <button onclick="showCalendar()"><span>📅</span>Calendar</button>
   <button onclick="openPlank()"><span>🧍‍♂️</span>Plank</button>
-  <button onclick="openWorkout()"><span>📚</span>Workout</button>
+  <button onclick="showWorkout()">
+  <span>📚</span>Workout
+</button>
 
 </div>
 
@@ -363,6 +365,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
