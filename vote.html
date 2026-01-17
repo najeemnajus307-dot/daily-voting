@@ -64,6 +64,7 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 <div class="container">
 <div class="card">
 
+<!-- HOME -->
 <div id="homeSection">
   <h3 style="color:#16a34a">FAITH & FITNESS</h3>
   <div id="todayDate"></div>
@@ -85,6 +86,7 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   <div id="top3"></div>
 </div>
 
+<!-- LEADERBOARD -->
 <div id="leaderboardSection" style="display:none">
   <h3>🏆 Full Leaderboard</h3>
   <table>
@@ -95,6 +97,7 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   </table>
 </div>
 
+<!-- CALENDAR -->
 <div id="calendarSection" style="display:none">
   <h3>📅 Your Progress</h3>
   <div class="cal-head">
@@ -114,6 +117,7 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 </div>
 </div>
 
+<!-- NAV -->
 <div class="bottom-nav">
   <button onclick="showHome()"><span>🏠</span>Home</button>
   <button onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
@@ -144,6 +148,7 @@ function getVoteDate(){
   return d.toISOString().split("T")[0];
 }
 
+/* ===== TIMER ADD (NEW) ===== */
 function nextVoteTime(){
   const now=new Date();
   const t=new Date();
@@ -172,7 +177,7 @@ function startTimer(){
     const s=Math.floor(diff%6e4/1000);
     nextVoteBox.innerHTML=
     `Today voting is complete ✅<br>
-     Next voting at <b>8:00 PM</b><br>
+     Next voting is <b>tomorrow at 8:00 PM</b><br>
      ⏳ ${h}h ${m}m ${s}s`;
     setTimeout(tick,1000);
   };
@@ -186,10 +191,22 @@ async function checkVoted(){
     where("date","==",getVoteDate())
   ));
   if(!s.empty){
-    startTimer();
+    startTimer();   // ← changed
     return true;
   }
   return false;
+}
+
+async function loadUser(){
+  const s=await getDocs(query(collection(db,"users"),where("phone","==",phone)));
+  s.forEach(d=>userName.innerText="Hello, "+d.data().name);
+}
+
+async function loadPoints(){
+  let t=0;
+  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
+  s.forEach(d=>t+=Number(d.data().points||0));
+  userPoints.innerText="Your Points: "+t;
 }
 
 async function loadTasks(){
@@ -215,8 +232,74 @@ window.submitVote=async()=>{
   let pts=0; checked.forEach(c=>pts+=Number(c.dataset.points));
   await addDoc(collection(db,"votes"),{phone,points:pts,date:getVoteDate()});
   message.innerHTML="<div class='msg'>Vote submitted ✅</div>";
-  startTimer();
+  loadPoints();loadLeaderboardData();loadCalendar();
+  startTimer();   // ← added
 };
+
+async function loadLeaderboardData(){
+  const u=await getDocs(collection(db,"users"));
+  const v=await getDocs(collection(db,"votes"));
+
+  const map={};
+  v.forEach(x=>{
+    map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0);
+  });
+
+  let rows=[];
+  u.forEach(x=>{
+    if(map[x.data().phone]){
+      rows.push({name:x.data().name,total:map[x.data().phone]});
+    }
+  });
+
+  rows.sort((a,b)=>b.total-a.total);
+
+  const rankGroups={};
+  let rank=1,prev=null;
+  rows.forEach(r=>{
+    if(prev!==null && r.total<prev) rank++;
+    if(rank<=3){
+      rankGroups[rank]=rankGroups[rank]||[];
+      rankGroups[rank].push(r);
+    }
+    prev=r.total;
+  });
+
+  top3.innerHTML="";
+  allRanks.innerHTML="";
+  const rot=JSON.parse(localStorage.getItem("topRotate")||"{}");
+
+  [1,2,3].forEach(rk=>{
+    const list=rankGroups[rk]||[];
+    if(!list.length) return;
+    const start=rot[rk]||0;
+    for(let i=0;i<Math.min(2,list.length);i++){
+      const p=list[(start+i)%list.length];
+      top3.innerHTML+=`
+      <div class="tp-row tp-${rk}">
+        <div>${rk}</div><div>${p.name}</div><div>${p.total}</div>
+      </div>`;
+    }
+    rot[rk]=(start+2)%list.length;
+  });
+
+  localStorage.setItem("topRotate",JSON.stringify(rot));
+
+  let r=1,pr=null;
+  rows.forEach(x=>{
+    if(pr!==null && x.total<pr) r++;
+    let cls=r<=3?`tp-${r}`:"";
+    allRanks.innerHTML+=`
+    <tr class="${cls}">
+      <td>${r}</td><td>${x.name}</td><td>${x.total}</td>
+    </tr>`;
+    pr=x.total;
+  });
+}
+
+let curMonth=new Date().getMonth(),curYear=new Date().getFullYear();
+window.prevMonth=()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--;}loadCalendar();}
+window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalendar();}
 
 async function loadCalendar(){
   calendar.innerHTML="";
@@ -227,20 +310,7 @@ async function loadCalendar(){
   const voted={}; s.forEach(d=>voted[d.data().date]=1);
 
   const days=new Date(curYear,curMonth+1,0).getDate();
-
-  /* === 8 PM FIX (ONLY ADD) === */
-  const now=new Date();
-  const cutoff=new Date();
-  cutoff.setHours(20,0,0,0);
-
-  let today;
-  if(now < cutoff){
-    const y=new Date();
-    y.setDate(y.getDate()-1);
-    today=y.toISOString().split("T")[0];
-  }else{
-    today=now.toISOString().split("T")[0];
-  }
+  const today=new Date().toISOString().split("T")[0];
 
   const firstDay=new Date(curYear,curMonth,1).getDay();
   const start=(firstDay===0?6:firstDay-1);
@@ -256,9 +326,19 @@ async function loadCalendar(){
   }
 }
 
+window.showHome=()=>{homeSection.style.display="block";
+leaderboardSection.style.display="none";calendarSection.style.display="none";}
+window.showLeaderboard=()=>{homeSection.style.display="none";
+leaderboardSection.style.display="block";calendarSection.style.display="none";
+loadLeaderboardData();}
+window.showCalendar=()=>{homeSection.style.display="none";
+leaderboardSection.style.display="none";calendarSection.style.display="block";
+loadCalendar();}
+window.openPlank=()=>window.open("https://forms.gle/27H48E8rNhN9nNz29","_blank");
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
-loadTasks();checkVoted();
+loadUser();loadPoints();loadTasks();
+loadLeaderboardData();loadCalendar();checkVoted();
 </script>
 
 </body>
