@@ -73,7 +73,6 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 
   <div id="taskBox"></div>
   <div id="message"></div>
-  <div id="nextVoteBox" class="msg" style="display:none"></div>
 
   <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
   <button class="logout" onclick="logout()">Logout</button>
@@ -90,7 +89,9 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 <div id="leaderboardSection" style="display:none">
   <h3>🏆 Full Leaderboard</h3>
   <table>
-    <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
+    <thead>
+      <tr><th>Rank</th><th>Name</th><th>Points</th></tr>
+    </thead>
     <tbody id="allRanks"></tbody>
   </table>
 </div>
@@ -108,6 +109,7 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
     <div>Mon</div><div>Tue</div><div>Wed</div>
     <div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
   </div>
+
   <div class="calendar" id="calendar"></div>
 </div>
 
@@ -119,11 +121,12 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   <button onclick="showHome()"><span>🏠</span>Home</button>
   <button onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
   <button onclick="showCalendar()"><span>📅</span>Calendar</button>
+  <button onclick="openPlank()"><span>🧍‍♂️</span>Plank</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, addDoc }
+import { getFirestore, collection, getDocs, query, where, addDoc } 
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const app = initializeApp({
@@ -144,42 +147,6 @@ function getVoteDate(){
   return d.toISOString().split("T")[0];
 }
 
-/* TIMER */
-function nextVoteTime(){
-  const now=new Date();
-  const t=new Date();
-  t.setHours(20,0,0,0);
-  if(now>=t) t.setDate(t.getDate()+1);
-  return t;
-}
-
-function startTimer(){
-  nextVoteBox.style.display="block";
-  submitBtn.disabled=true;
-  submitBtn.classList.add("disabled");
-  taskBox.innerHTML="";
-
-  const tick=()=>{
-    const diff=nextVoteTime()-new Date();
-    if(diff<=0){
-      nextVoteBox.innerHTML="Voting is open ✅ Refresh page";
-      submitBtn.disabled=false;
-      submitBtn.classList.remove("disabled");
-      loadTasks();
-      return;
-    }
-    const h=Math.floor(diff/36e5);
-    const m=Math.floor(diff%36e5/6e4);
-    const s=Math.floor(diff%6e4/1000);
-    nextVoteBox.innerHTML=
-    `Today voting is complete ✅<br>
-     Next voting at <b>8:00 PM</b><br>
-     ⏳ ${h}h ${m}m ${s}s`;
-    setTimeout(tick,1000);
-  };
-  tick();
-}
-
 async function checkVoted(){
   const s=await getDocs(query(
     collection(db,"votes"),
@@ -187,7 +154,9 @@ async function checkVoted(){
     where("date","==",getVoteDate())
   ));
   if(!s.empty){
-    startTimer();
+    submitBtn.disabled=true;
+    submitBtn.classList.add("disabled");
+    message.innerHTML="<div class='msg'>Already voted ✅</div>";
     return true;
   }
   return false;
@@ -228,9 +197,103 @@ window.submitVote=async()=>{
   let pts=0; checked.forEach(c=>pts+=Number(c.dataset.points));
   await addDoc(collection(db,"votes"),{phone,points:pts,date:getVoteDate()});
   message.innerHTML="<div class='msg'>Vote submitted ✅</div>";
-  loadPoints();
-  startTimer();
+  loadPoints();loadLeaderboardData();loadCalendar();
 };
+
+async function loadLeaderboardData(){
+  const u=await getDocs(collection(db,"users"));
+  const v=await getDocs(collection(db,"votes"));
+
+  const map={};
+  v.forEach(x=>{
+    map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0);
+  });
+
+  let rows=[];
+  u.forEach(x=>{
+    if(map[x.data().phone]){
+      rows.push({name:x.data().name,total:map[x.data().phone]});
+    }
+  });
+
+  rows.sort((a,b)=>b.total-a.total);
+
+  // GROUP BY RANK
+  const rankGroups={};
+  let rank=1,prev=null;
+  rows.forEach(r=>{
+    if(prev!==null && r.total<prev) rank++;
+    if(rank<=3){
+      rankGroups[rank]=rankGroups[rank]||[];
+      rankGroups[rank].push(r);
+    }
+    prev=r.total;
+  });
+
+  top3.innerHTML="";
+  allRanks.innerHTML="";
+
+  // ROTATION STORE
+  const rot=JSON.parse(localStorage.getItem("topRotate")||"{}");
+
+  [1,2,3].forEach(rk=>{
+    const list=rankGroups[rk]||[];
+    if(!list.length) return;
+
+    const start=rot[rk]||0;
+    for(let i=0;i<Math.min(2,list.length);i++){
+      const p=list[(start+i)%list.length];
+      top3.innerHTML+=`
+      <div class="tp-row tp-${rk}">
+        <div>${rk}</div><div>${p.name}</div><div>${p.total}</div>
+      </div>`;
+    }
+    rot[rk]=(start+2)%list.length;
+  });
+
+  localStorage.setItem("topRotate",JSON.stringify(rot));
+
+  // FULL TABLE
+  let r=1,pr=null;
+  rows.forEach(x=>{
+    if(pr!==null && x.total<pr) r++;
+    let cls=r<=3?`tp-${r}`:"";
+    allRanks.innerHTML+=`
+    <tr class="${cls}">
+      <td>${r}</td><td>${x.name}</td><td>${x.total}</td>
+    </tr>`;
+    pr=x.total;
+  });
+}
+
+let curMonth=new Date().getMonth(),curYear=new Date().getFullYear();
+window.prevMonth=()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--;}loadCalendar();}
+window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalendar();}
+
+async function loadCalendar(){
+  calendar.innerHTML="";
+  calTitle.innerText=new Date(curYear,curMonth)
+  .toLocaleString("default",{month:"long",year:"numeric"});
+
+  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
+  const voted={}; s.forEach(d=>voted[d.data().date]=1);
+
+  const days=new Date(curYear,curMonth+1,0).getDate();
+  const today=new Date().toISOString().split("T")[0];
+
+  const firstDay=new Date(curYear,curMonth,1).getDay();
+  const start=(firstDay===0?6:firstDay-1);
+  for(let i=0;i<start;i++) calendar.innerHTML+="<div></div>";
+
+  for(let i=1;i<=days;i++){
+    const ds=new Date(curYear,curMonth,i).toISOString().split("T")[0];
+    let cls="future";
+    if(ds<today) cls=voted[ds]?"done":"missed";
+    if(ds===today) cls=voted[ds]?"done":"pending";
+    calendar.innerHTML+=
+    `<div class="day ${cls} ${ds===today?"today":""}">${i}</div>`;
+  }
+}
 
 window.showHome=()=>{homeSection.style.display="block";
 leaderboardSection.style.display="none";calendarSection.style.display="none";}
@@ -240,13 +303,11 @@ loadLeaderboardData();}
 window.showCalendar=()=>{homeSection.style.display="none";
 leaderboardSection.style.display="none";calendarSection.style.display="block";
 loadCalendar();}
-
+window.openPlank=()=>window.open("https://forms.gle/27H48E8rNhN9nNz29","_blank");
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
-loadUser();
-loadPoints();
-loadTasks();
-checkVoted();
+loadUser();loadPoints();loadTasks();
+loadLeaderboardData();loadCalendar();checkVoted();
 </script>
 
 </body>
