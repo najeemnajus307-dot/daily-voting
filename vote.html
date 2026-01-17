@@ -117,6 +117,17 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 </div>
 </div>
 
+<!-- WORKOUT SECTION -->
+<div id="workoutSection" style="display:none">
+  <h3>📚 Workout</h3>
+
+  <iframe width="100%" height="200"
+    src="https://www.youtube.com/embed/UcTifA8SqL4"
+    allowfullscreen>
+  </iframe>
+
+</div>
+
 <!-- NAV -->
 <div class="bottom-nav">
   <button onclick="showHome()"><span>🏠</span>Home</button>
@@ -337,11 +348,11 @@ window.showCalendar=()=>{homeSection.style.display="none";
 leaderboardSection.style.display="none";calendarSection.style.display="block";
 loadCalendar();}
 window.openPlank=()=>window.open("https://forms.gle/27H48E8rNhN9nNz29","_blank");
-window.openWorkout = () => {
-  window.open(
-    "https://youtube.com/shorts/UcTifA8SqL4?feature=share",
-    "_blank"
-  );
+window.showWorkout = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "none";
+  workoutSection.style.display = "block";
 };
 
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
@@ -352,6 +363,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
