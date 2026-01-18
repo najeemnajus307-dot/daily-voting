@@ -117,12 +117,12 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 <div id="plankSection" class="card" style="display:none">
   <h3>🧍‍♂️ Plank</h3>
 
-  <iframe
-    src="https://forms.gle/27H48E8rNhN9nNz29"
-    width="100%"
-    height="500"
-    style="border:none">
-  </iframe>
+ <iframe
+  src="https://docs.google.com/forms/d/e/1FAIpQLScr2gs6eYNndi0KVPryFeKPW0JgujjDR9EMCBbq96OIvvrqhw/viewform?embedded=true"
+  width="100%"
+  height="600"
+  style="border:none">
+</iframe>
 </div>
 
 <!-- WORKOUT SECTION -->
@@ -374,7 +374,14 @@ window.showWorkout = () => {
   calendarSection.style.display = "none";
   workoutSection.style.display = "block";
 };
-
+window.showPlank = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "none";
+  workoutSection.style.display = "none";
+  plankSection.style.display = "block";
+};
+ 
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
 loadUser();loadPoints();loadTasks();
@@ -383,6 +390,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
