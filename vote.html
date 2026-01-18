@@ -403,8 +403,9 @@ async function loadCalendar(){
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
   const yesterday = yesterdayDate.toISOString().split("T")[0];
 
+  // ⏰ yesterday deadline = 12 PM
   const cutoff = new Date();
-  cutoff.setHours(12,0,0,0); // 12 PM cutoff
+  cutoff.setHours(12,0,0,0);
 
   const firstDay = new Date(curYear,curMonth,1).getDay();
   const start = (firstDay === 0 ? 6 : firstDay - 1);
@@ -420,22 +421,23 @@ async function loadCalendar(){
     let cls = "future";
 
     if(voted[ds]){
-      cls = "done";
+      cls = "done";               // 🟢 vote done
     }
     else if(ds === today){
-      cls = "pending";
+      cls = "pending";            // 🟡 today
     }
     else if(ds === yesterday){
-      cls = now < cutoff ? "pending" : "missed";
+      cls = now < cutoff ? "pending" : "missed"; // 🟡 till 12 PM
     }
     else if(ds < yesterday){
-      cls = "missed";
+      cls = "missed";             // 🔴 old missed
     }
 
     calendar.innerHTML +=
       `<div class="day ${cls}">${i}</div>`;
   }
 }
+
 
 
 
@@ -490,6 +492,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
