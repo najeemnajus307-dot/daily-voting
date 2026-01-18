@@ -359,21 +359,32 @@ async function loadCalendar(){
   }
 }
 
-window.showHome=()=>{homeSection.style.display="block";
-leaderboardSection.style.display="none";calendarSection.style.display="none";}
-window.showLeaderboard=()=>{homeSection.style.display="none";
-leaderboardSection.style.display="block";calendarSection.style.display="none";
-loadLeaderboardData();}
-window.showCalendar=()=>{homeSection.style.display="none";
-leaderboardSection.style.display="none";calendarSection.style.display="block";
-loadCalendar();}
-window.openPlank=()=>window.open("https://forms.gle/27H48E8rNhN9nNz29","_blank");
-window.showWorkout = () => {
-  homeSection.style.display = "none";
+window.showHome = () => {
+  homeSection.style.display = "block";
   leaderboardSection.style.display = "none";
   calendarSection.style.display = "none";
-  workoutSection.style.display = "block";
+  plankSection.style.display = "none";
+  workoutSection.style.display = "none";
 };
+
+window.showLeaderboard = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "block";
+  calendarSection.style.display = "none";
+  plankSection.style.display = "none";
+  workoutSection.style.display = "none";
+  loadLeaderboardData();
+};
+
+window.showCalendar = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "block";
+  plankSection.style.display = "none";
+  workoutSection.style.display = "none";
+  loadCalendar();
+};
+
 window.showPlank = () => {
   homeSection.style.display = "none";
   leaderboardSection.style.display = "none";
@@ -381,6 +392,15 @@ window.showPlank = () => {
   workoutSection.style.display = "none";
   plankSection.style.display = "block";
 };
+
+window.showWorkout = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "none";
+  plankSection.style.display = "none";
+  workoutSection.style.display = "block";
+};
+
  
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
@@ -390,6 +410,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
