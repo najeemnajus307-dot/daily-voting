@@ -52,6 +52,33 @@ background:#0f172a;display:flex;justify-content:space-around;padding:10px 0
 background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 }
 .bottom-nav span{display:block;font-size:20px}
+
+  /* ===== Calendar Legend Style ===== */
+.calendar-legend{
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px 12px;
+  font-size:13px;
+}
+
+.calendar-legend div{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.calendar-legend .dot{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  display:inline-block;
+}
+
+.calendar-legend .done{background:#16a34a}
+.calendar-legend .missed{background:#ef4444}
+.calendar-legend .pending{background:#facc15}
+.calendar-legend .future{background:#374151}
 </style>
 </head>
 
@@ -114,15 +141,14 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 
   <div class="calendar" id="calendar"></div>
 
-  <!-- LEGEND -->
-  <div class="calendar-legend">
-    <div><span class="dot done"></span> Completed – Vote ചെയ്ത ദിവസം</div>
-    <div><span class="dot missed"></span> Missed – Vote miss ആയി</div>
-    <div><span class="dot pending"></span> Pending – ഇന്ന് vote ചെയ്യാം</div>
-    <div><span class="dot future"></span> Future – ഇനിയും വരാനുള്ള ദിവസം</div>
-  </div>
+ <!-- CALENDAR LEGEND -->
+<div class="calendar-legend">
+  <div><span class="dot done"></span> Completംe</div>
+  <div><span class="dot missed"></span> Missedി</div>
+  <div><span class="dot pending"></span> Pendingയാം</div>
+  <div><span class="dot future"></span> Futurംe</div>
 </div>
-
+</div>
   <!-- PLANK SECTION -->
 <div id="plankSection" class="card" style="display:none">
   <h3>🧍‍♂️ Plank</h3>
@@ -420,6 +446,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
