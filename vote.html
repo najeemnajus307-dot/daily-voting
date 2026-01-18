@@ -381,7 +381,7 @@ window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalen
 
   return d.toISOString().split("T")[0];
 }
-async function loadCalendar(){
+ async function loadCalendar(){
   calendar.innerHTML = "";
 
   calTitle.innerText = new Date(curYear,curMonth)
@@ -395,21 +395,7 @@ async function loadCalendar(){
   snap.forEach(d => voted[d.data().date] = true);
 
   const days = new Date(curYear,curMonth+1,0).getDate();
-
-  const now = new Date();
-
-  const effectiveToday = new Date(now);
-  if(now.getHours() < 20){
-    effectiveToday.setDate(effectiveToday.getDate() - 1);
-  }
-  const today = effectiveToday.toISOString().split("T")[0];
-
-  const yesterdayDate = new Date(effectiveToday);
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterday = yesterdayDate.toISOString().split("T")[0];
-
-  const cutoff = new Date(now);
-  cutoff.setHours(12,0,0,0);
+  const today = new Date().toISOString().split("T")[0];
 
   const firstDay = new Date(curYear,curMonth,1).getDay();
   const start = (firstDay === 0 ? 6 : firstDay - 1);
@@ -423,21 +409,18 @@ async function loadCalendar(){
     let cls = "future";
 
     if(voted[ds]){
-      cls = "done";          // green ONLY if Firebase has entry
+      cls = "done";       // 🟢 ONLY Firebase decides this
     }
     else if(ds === today){
-      cls = "pending";       // yellow
+      cls = "pending";    // 🟡 today only
     }
-    else if(ds === yesterday){
-      cls = now < cutoff ? "pending" : "missed";
-    }
-    else if(ds < yesterday){
-      cls = "missed";
+    else if(ds < today){
+      cls = "missed";     // 🔴 past without vote
     }
 
     calendar.innerHTML += `<div class="day ${cls}">${i}</div>`;
   }
-}
+ }
 
 
 
@@ -493,6 +476,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
