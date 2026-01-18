@@ -381,31 +381,63 @@ window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalen
 
   return d.toISOString().split("T")[0];
 }
-
 async function loadCalendar(){
-  calendar.innerHTML="";
-  calTitle.innerText=new Date(curYear,curMonth)
-  .toLocaleString("default",{month:"long",year:"numeric"});
+  calendar.innerHTML = "";
 
-  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
-  const voted={}; s.forEach(d=>voted[d.data().date]=1);
+  calTitle.innerText = new Date(curYear,curMonth)
+    .toLocaleString("default",{month:"long",year:"numeric"});
 
-  const days=new Date(curYear,curMonth+1,0).getDate();
-  const today = getEffectiveToday();
+  const snap = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
 
-  const firstDay=new Date(curYear,curMonth,1).getDay();
-  const start=(firstDay===0?6:firstDay-1);
-  for(let i=0;i<start;i++) calendar.innerHTML+="<div></div>";
+  const voted = {};
+  snap.forEach(d => voted[d.data().date] = true);
+
+  const days = new Date(curYear,curMonth+1,0).getDate();
+
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = yesterdayDate.toISOString().split("T")[0];
+
+  const cutoff = new Date();
+  cutoff.setHours(12,0,0,0); // 12 PM cutoff
+
+  const firstDay = new Date(curYear,curMonth,1).getDay();
+  const start = (firstDay === 0 ? 6 : firstDay - 1);
+
+  for(let i=0;i<start;i++){
+    calendar.innerHTML += "<div></div>";
+  }
 
   for(let i=1;i<=days;i++){
-    const ds=new Date(curYear,curMonth,i).toISOString().split("T")[0];
-    let cls="future";
-    if(ds<today) cls=voted[ds]?"done":"missed";
-    if(ds===today) cls=voted[ds]?"done":"pending";
-    calendar.innerHTML+=
-    `<div class="day ${cls} ${ds===today?"today":""}">${i}</div>`;
+    const ds = new Date(curYear,curMonth,i)
+      .toISOString().split("T")[0];
+
+    let cls = "future";
+
+    if(voted[ds]){
+      cls = "done";
+    }
+    else if(ds === today){
+      cls = "pending";
+    }
+    else if(ds === yesterday){
+      cls = now < cutoff ? "pending" : "missed";
+    }
+    else if(ds < yesterday){
+      cls = "missed";
+    }
+
+    calendar.innerHTML +=
+      `<div class="day ${cls}">${i}</div>`;
   }
 }
+
+
 
 window.showHome = () => {
   homeSection.style.display = "block";
@@ -458,6 +490,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
