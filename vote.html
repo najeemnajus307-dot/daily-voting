@@ -97,9 +97,10 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   </table>
 </div>
 
-<!-- CALENDAR -->
+<!-- CALENDAR SECTION -->
 <div id="calendarSection" style="display:none">
   <h3>📅 Your Progress</h3>
+
   <div class="cal-head">
     <button onclick="prevMonth()">◀</button>
     <span id="calTitle"></span>
@@ -110,7 +111,16 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
     <div>Mon</div><div>Tue</div><div>Wed</div>
     <div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
   </div>
-<div class="calendar" id="calendar"></div>
+
+  <div class="calendar" id="calendar"></div>
+
+  <!-- COLOR LEGEND -->
+  <div style="margin-top:12px;font-size:13px;text-align:left">
+    <div>🟢 <b>Completed</b> – Vote ചെയ്ത ദിവസം</div>
+    <div>🔴 <b>Missed</b> – Vote miss ആയി</div>
+    <div>🟡 <b>Pending</b> – ഇന്ന് vote ചെയ്യാം</div>
+    <div>⚫ <b>Future</b> – ഇനിയും വരാനുള്ള ദിവസം</div>
+  </div>
 </div>
 
   <!-- PLANK SECTION -->
@@ -410,6 +420,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
