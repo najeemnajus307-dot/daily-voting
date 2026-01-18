@@ -397,22 +397,24 @@ async function loadCalendar(){
   const days = new Date(curYear,curMonth+1,0).getDate();
 
   const now = new Date();
-  const today = now.toISOString().split("T")[0];
 
-  const yesterdayDate = new Date(now);
+  const effectiveToday = new Date(now);
+  if(now.getHours() < 20){
+    effectiveToday.setDate(effectiveToday.getDate() - 1);
+  }
+  const today = effectiveToday.toISOString().split("T")[0];
+
+  const yesterdayDate = new Date(effectiveToday);
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
   const yesterday = yesterdayDate.toISOString().split("T")[0];
 
-  // ⏰ yesterday deadline = 12 PM
-  const cutoff = new Date();
+  const cutoff = new Date(now);
   cutoff.setHours(12,0,0,0);
 
   const firstDay = new Date(curYear,curMonth,1).getDay();
   const start = (firstDay === 0 ? 6 : firstDay - 1);
 
-  for(let i=0;i<start;i++){
-    calendar.innerHTML += "<div></div>";
-  }
+  for(let i=0;i<start;i++) calendar.innerHTML += "<div></div>";
 
   for(let i=1;i<=days;i++){
     const ds = new Date(curYear,curMonth,i)
@@ -421,20 +423,19 @@ async function loadCalendar(){
     let cls = "future";
 
     if(voted[ds]){
-      cls = "done";               // 🟢 vote done
+      cls = "done";          // green ONLY if Firebase has entry
     }
     else if(ds === today){
-      cls = "pending";            // 🟡 today
+      cls = "pending";       // yellow
     }
     else if(ds === yesterday){
-      cls = now < cutoff ? "pending" : "missed"; // 🟡 till 12 PM
+      cls = now < cutoff ? "pending" : "missed";
     }
     else if(ds < yesterday){
-      cls = "missed";             // 🔴 old missed
+      cls = "missed";
     }
 
-    calendar.innerHTML +=
-      `<div class="day ${cls}">${i}</div>`;
+    calendar.innerHTML += `<div class="day ${cls}">${i}</div>`;
   }
 }
 
@@ -492,6 +493,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
