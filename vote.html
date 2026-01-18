@@ -370,6 +370,18 @@ let curMonth=new Date().getMonth(),curYear=new Date().getFullYear();
 window.prevMonth=()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--;}loadCalendar();}
 window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalendar();}
 
+  function getEffectiveToday(){
+  const now = new Date();
+  const d = new Date(now);
+
+  // രാത്രി 8 PM-ന് മുമ്പാണെങ്കിൽ
+  if(now.getHours() < 20){
+    d.setDate(d.getDate() - 1);
+  }
+
+  return d.toISOString().split("T")[0];
+}
+
 async function loadCalendar(){
   calendar.innerHTML="";
   calTitle.innerText=new Date(curYear,curMonth)
@@ -379,7 +391,7 @@ async function loadCalendar(){
   const voted={}; s.forEach(d=>voted[d.data().date]=1);
 
   const days=new Date(curYear,curMonth+1,0).getDate();
-  const today=new Date().toISOString().split("T")[0];
+  const today = getEffectiveToday();
 
   const firstDay=new Date(curYear,curMonth,1).getDay();
   const start=(firstDay===0?6:firstDay-1);
@@ -446,6 +458,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
