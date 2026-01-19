@@ -234,6 +234,28 @@ const app = initializeApp({
   projectId:"daily-voting-793ee"
 });
 const db = getFirestore(app);
+  // ===== FIX: GET ALL HTML ELEMENTS =====
+const homeSection = document.getElementById("homeSection");
+const leaderboardSection = document.getElementById("leaderboardSection");
+const calendarSection = document.getElementById("calendarSection");
+const workoutSection = document.getElementById("workoutSection");
+const settingsSection = document.getElementById("settingsSection");
+
+const taskBox = document.getElementById("taskBox");
+const message = document.getElementById("message");
+const nextVoteBox = document.getElementById("nextVoteBox");
+const submitBtn = document.getElementById("submitBtn");
+
+const calendar = document.getElementById("calendar");
+const calTitle = document.getElementById("calTitle");
+
+const top3 = document.getElementById("top3");
+const allRanks = document.getElementById("allRanks");
+
+const userName = document.getElementById("userName");
+const userPoints = document.getElementById("userPoints");
+const todayDate = document.getElementById("todayDate");
+
 
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
@@ -495,6 +517,59 @@ window.showSettings = () => {
   workoutSection.style.display = "none";
   settingsSection.style.display = "block";
 };
+import { doc, updateDoc } from 
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+window.saveName = async () => {
+  const nameInput = document.querySelector("#settingsSection input[type='text']");
+  const newName = nameInput.value.trim();
+  if(!newName) return alert("Name empty");
+
+  const q = query(collection(db,"users"), where("phone","==",phone));
+  const snap = await getDocs(q);
+  snap.forEach(async d=>{
+    await updateDoc(doc(db,"users",d.id),{ name:newName });
+  });
+
+  alert("Name updated ✅");
+  loadUser();
+};
+window.savePhone = async () => {
+  const phoneInput = document.querySelectorAll("#settingsSection input")[1];
+  const newPhone = phoneInput.value.trim();
+  if(!newPhone) return alert("Phone empty");
+
+  const q = query(collection(db,"users"), where("phone","==",phone));
+  const snap = await getDocs(q);
+  snap.forEach(async d=>{
+    await updateDoc(doc(db,"users",d.id),{ phone:newPhone });
+  });
+
+  localStorage.setItem("userPhone",newPhone);
+  alert("Phone updated ✅");
+};
+window.saveReminder = () => {
+  const time = document.querySelector("#settingsSection input[type='time']").value;
+  if(!time) return;
+  localStorage.setItem("reminderTime",time);
+  alert("Reminder saved ⏰");
+};
+const r = localStorage.getItem("reminderTime");
+if(r){
+  document.querySelector("#settingsSection input[type='time']").value = r;
+}
+window.setTheme = (mode) => {
+  if(mode==="dark"){
+    document.body.style.background="#020617";
+    document.body.style.color="#fff";
+  }else{
+    document.body.style.background="#f1f5f9";
+    document.body.style.color="#000";
+  }
+  localStorage.setItem("theme",mode);
+};
+const t = localStorage.getItem("theme");
+if(t) setTheme(t);
 
 
  
@@ -506,6 +581,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
