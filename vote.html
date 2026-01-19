@@ -166,6 +166,48 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
     src="https://www.youtube.com/embed/gT_Whh3uYuo"
     allowfullscreen></iframe>
 </div>
+<!-- SETTINGS SECTION -->
+<div id="settingsSection" class="card" style="display:none">
+  <h3>⚙️ Settings</h3>
+
+  <!-- NAME -->
+  <div class="task">
+    <label><b>Name</b></label>
+    <input type="text" placeholder="Your name"
+      style="width:100%;padding:8px;margin-top:6px">
+    <button class="submit" style="margin-top:6px">Save Name</button>
+  </div>
+
+  <!-- PHONE -->
+  <div class="task">
+    <label><b>Phone Number</b></label>
+    <input type="text" placeholder="Phone number"
+      style="width:100%;padding:8px;margin-top:6px">
+    <button class="submit" style="margin-top:6px">Update Phone</button>
+  </div>
+
+  <!-- REMINDER -->
+  <div class="task">
+    <label><b>Reminder Time</b></label>
+    <input type="time"
+      style="width:100%;padding:8px;margin-top:6px">
+    <div style="font-size:12px;color:#555;margin-top:4px">
+      Daily reminder for voting
+    </div>
+  </div>
+
+  <!-- DARK MODE -->
+  <div class="task">
+    <label><b>Theme</b></label>
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button style="flex:1;padding:10px">☀️ Light</button>
+      <button style="flex:1;padding:10px">🌙 Dark</button>
+    </div>
+  </div>
+
+  <!-- LOGOUT -->
+  <button class="logout" style="margin-top:14px">Logout</button>
+</div>
 
 
   </div>
@@ -176,9 +218,8 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   <button onclick="showHome()"><span>🏠</span>Home</button>
   <button onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
   <button onclick="showCalendar()"><span>📅</span>Calendar</button>
-  <button onclick="showWorkout()">
-  <span>📚</span>Workout
-</button>
+  <button onclick="showWorkout()"><span>📚</span>Workout</button>
+  <button onclick="showSettings()"><span>⚙️</span>Settings</button>
 
 </div>
 
@@ -417,7 +458,8 @@ window.showHome = () => {
   homeSection.style.display = "block";
   leaderboardSection.style.display = "none";
   calendarSection.style.display = "none";
-   workoutSection.style.display = "none";
+  workoutSection.style.display = "none";
+  settingsSection.style.display = "none";
 };
 
 window.showLeaderboard = () => {
@@ -425,6 +467,7 @@ window.showLeaderboard = () => {
   leaderboardSection.style.display = "block";
   calendarSection.style.display = "none";
   workoutSection.style.display = "none";
+  settingsSection.style.display = "none";
   loadLeaderboardData();
 };
 
@@ -433,21 +476,26 @@ window.showCalendar = () => {
   leaderboardSection.style.display = "none";
   calendarSection.style.display = "block";
   workoutSection.style.display = "none";
+  settingsSection.style.display = "none";
   loadCalendar();
 };
 
-window.showPlank = () => {
-  homeSection.style.display = "none";
-  leaderboardSection.style.display = "none";
-  calendarSection.style.display = "none";
-  workoutSection.style.display = "none";
-  
 window.showWorkout = () => {
   homeSection.style.display = "none";
   leaderboardSection.style.display = "none";
   calendarSection.style.display = "none";
   workoutSection.style.display = "block";
+  settingsSection.style.display = "none";
 };
+
+window.showSettings = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "none";
+  workoutSection.style.display = "none";
+  settingsSection.style.display = "block";
+};
+
 
  
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
@@ -458,6 +506,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
