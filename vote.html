@@ -149,6 +149,17 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   <div><span class="dot future"></span> Future</div>
 </div>
 </div>
+  <!-- PLANK SECTION -->
+<div id="plankSection" class="card" style="display:none">
+  <h3>🧍‍♂️ Plank</h3>
+
+ <iframe
+  src="https://docs.google.com/forms/d/e/1FAIpQLScr2gs6eYNndi0KVPryFeKPW0JgujjDR9EMCBbq96OIvvrqhw/viewform?embedded=true"
+  width="100%"
+  height="600"
+  style="border:none">
+</iframe>
+</div>
 
 <!-- WORKOUT SECTION -->
 <div id="workoutSection" class="card" style="display:none">
@@ -166,53 +177,6 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
     src="https://www.youtube.com/embed/gT_Whh3uYuo"
     allowfullscreen></iframe>
 </div>
-<!-- SETTINGS SECTION -->
-<div id="settingsSection" class="card" style="display:none">
-  <h3>⚙️ Settings</h3>
-
-  <!-- NAME -->
-  <div class="task">
-    <label><b>Name</b></label>
-    <input type="text" placeholder="Your name"
-      style="width:100%;padding:8px;margin-top:6px">
-   <button class="submit" style="margin-top:6px" onclick="saveName()">Save Name</button>
-</div>
-
-  <!-- PHONE -->
-  <div class="task">
-    <label><b>Phone Number</b></label>
-    <input type="text" placeholder="Phone number"
-      style="width:100%;padding:8px;margin-top:6px">
-    <button class="submit" style="margin-top:6px" onclick="savePhone()">Update Phone</button>
-  </div>
-
-  <!-- REMINDER -->
-  <div class="task">
-    <label><b>Reminder Time</b></label>
-    <input type="time"
-      style="width:100%;padding:8px;margin-top:6px">
-    <div style="font-size:12px;color:#555;margin-top:4px">
-      Daily reminder for voting
-      <button class="submit" style="margin-top:6px" onclick="saveReminder()">
-  Save Reminder
-</button>
-
-    </div>
-  </div>
-
-  <!-- DARK MODE -->
-  <div class="task">
-    <label><b>Theme</b></label>
-    <div style="display:flex;gap:10px;margin-top:6px">
-      <button style="flex:1;padding:10px" onclick="setTheme('light')">☀️ Light</button>
-      <button style="flex:1;padding:10px" onclick="setTheme('dark')">🌙 Dark</button>
-
-    </div>
-  </div>
-
-  <!-- LOGOUT -->
-  <button class="logout" style="margin-top:14px">Logout</button>
-</div>
 
 
   </div>
@@ -223,8 +187,10 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   <button onclick="showHome()"><span>🏠</span>Home</button>
   <button onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
   <button onclick="showCalendar()"><span>📅</span>Calendar</button>
-  <button onclick="showWorkout()"><span>📚</span>Workout</button>
-  <button onclick="showSettings()"><span>⚙️</span>Settings</button>
+  <button onclick="showPlank()"><span>🧍‍♂️</span>Plank</button>
+  <button onclick="showWorkout()">
+  <span>📚</span>Workout
+</button>
 
 </div>
 
@@ -239,28 +205,6 @@ const app = initializeApp({
   projectId:"daily-voting-793ee"
 });
 const db = getFirestore(app);
-  // ===== FIX: GET ALL HTML ELEMENTS =====
-const homeSection = document.getElementById("homeSection");
-const leaderboardSection = document.getElementById("leaderboardSection");
-const calendarSection = document.getElementById("calendarSection");
-const workoutSection = document.getElementById("workoutSection");
-const settingsSection = document.getElementById("settingsSection");
-
-const taskBox = document.getElementById("taskBox");
-const message = document.getElementById("message");
-const nextVoteBox = document.getElementById("nextVoteBox");
-const submitBtn = document.getElementById("submitBtn");
-
-const calendar = document.getElementById("calendar");
-const calTitle = document.getElementById("calTitle");
-
-const top3 = document.getElementById("top3");
-const allRanks = document.getElementById("allRanks");
-
-const userName = document.getElementById("userName");
-const userPoints = document.getElementById("userPoints");
-const todayDate = document.getElementById("todayDate");
-
 
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
@@ -369,9 +313,6 @@ async function loadLeaderboardData(){
   v.forEach(x=>{
     map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0);
   });
-
-}
-
 
   let rows=[];
   u.forEach(x=>{
@@ -488,16 +429,16 @@ window.showHome = () => {
   homeSection.style.display = "block";
   leaderboardSection.style.display = "none";
   calendarSection.style.display = "none";
+  plankSection.style.display = "none";
   workoutSection.style.display = "none";
-  settingsSection.style.display = "none";
 };
 
 window.showLeaderboard = () => {
   homeSection.style.display = "none";
   leaderboardSection.style.display = "block";
   calendarSection.style.display = "none";
+  plankSection.style.display = "none";
   workoutSection.style.display = "none";
-  settingsSection.style.display = "none";
   loadLeaderboardData();
 };
 
@@ -505,82 +446,26 @@ window.showCalendar = () => {
   homeSection.style.display = "none";
   leaderboardSection.style.display = "none";
   calendarSection.style.display = "block";
+  plankSection.style.display = "none";
   workoutSection.style.display = "none";
-  settingsSection.style.display = "none";
   loadCalendar();
+};
+
+window.showPlank = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "none";
+  workoutSection.style.display = "none";
+  plankSection.style.display = "block";
 };
 
 window.showWorkout = () => {
   homeSection.style.display = "none";
   leaderboardSection.style.display = "none";
   calendarSection.style.display = "none";
+  plankSection.style.display = "none";
   workoutSection.style.display = "block";
-  settingsSection.style.display = "none";
 };
-
-window.showSettings = () => {
-  homeSection.style.display = "none";
-  leaderboardSection.style.display = "none";
-  calendarSection.style.display = "none";
-  workoutSection.style.display = "none";
-  settingsSection.style.display = "block";
-  loadSettings(); // ✅ ADD THIS
-};
-
-import { doc, updateDoc } from 
-"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-window.saveName = async () => {
-  const nameInput = document.querySelector("#settingsSection input[type='text']");
-  const newName = nameInput.value.trim();
-  if(!newName) return alert("Name empty");
-
-  const q = query(collection(db,"users"), where("phone","==",phone));
-  const snap = await getDocs(q);
-  snap.forEach(async d=>{
-    await updateDoc(doc(db,"users",d.id),{ name:newName });
-  });
-
-  alert("Name updated ✅");
-  loadUser();
-};
-window.savePhone = async () => {
-  const phoneInput = document.querySelectorAll("#settingsSection input")[1];
-  const newPhone = phoneInput.value.trim();
-  if(!newPhone) return alert("Phone empty");
-
-  const q = query(collection(db,"users"), where("phone","==",phone));
-  const snap = await getDocs(q);
-  snap.forEach(async d=>{
-    await updateDoc(doc(db,"users",d.id),{ phone:newPhone });
-  });
-
-  localStorage.setItem("userPhone",newPhone);
-  alert("Phone updated ✅");
-};
-window.saveReminder = () => {
-  const time = document.querySelector("#settingsSection input[type='time']").value;
-  if(!time) return;
-  localStorage.setItem("reminderTime",time);
-  alert("Reminder saved ⏰");
-};
-const r = localStorage.getItem("reminderTime");
-if(r){
-  document.querySelector("#settingsSection input[type='time']").value = r;
-}
-window.setTheme = (mode) => {
-  if(mode==="dark"){
-    document.body.style.background="#020617";
-    document.body.style.color="#fff";
-  }else{
-    document.body.style.background="#f1f5f9";
-    document.body.style.color="#000";
-  }
-  localStorage.setItem("theme",mode);
-};
-const t = localStorage.getItem("theme");
-if(t) setTheme(t);
-
 
  
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
@@ -591,27 +476,3 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
