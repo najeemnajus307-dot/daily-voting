@@ -599,16 +599,47 @@ function scheduleReminders(){
   clearReminders();
   if(!reminderToggle.checked) return;
 
-  const now=new Date();
-  const t8=new Date();t8.setHours(20,0,0,0);
-  const t10=new Date();t10.setHours(22,0,0,0);
+  const now = new Date();
 
-  if(now<t8) reminderTimers.push(setTimeout(
-    ()=>notify("8 PM reminder: Please vote"),t8-now));
+  // 🕗 Today 8:00 PM
+  const t8 = new Date();
+  t8.setHours(20,0,0,0);
 
-  if(now<t10) reminderTimers.push(setTimeout(
-    ()=>notify("Only 2 hours left to vote"),t10-now));
+  // 🕙 Today 10:00 PM
+  const t10 = new Date();
+  t10.setHours(22,0,0,0);
+
+  // 🌅 Tomorrow 10:00 AM
+  const tNext10 = new Date();
+  tNext10.setDate(tNext10.getDate() + 1);
+  tNext10.setHours(10,0,0,0);
+
+  // 1️⃣ 8 PM – voting started (everyone)
+  if(now < t8){
+    reminderTimers.push(setTimeout(()=>{
+      notify("🗳️ Today voting is started. Please vote now 🙏");
+    }, t8 - now));
+  }
+
+  // 2️⃣ 10 PM – ONLY if not voted
+  if(now < t10){
+    reminderTimers.push(setTimeout(async ()=>{
+      if(!(await checkVoted())){
+        notify("⏰ Voting started 2 hours ago. Please vote now 🙏");
+      }
+    }, t10 - now));
+  }
+
+  // 3️⃣ Next day 10 AM – ONLY if not voted
+  if(now < tNext10){
+    reminderTimers.push(setTimeout(async ()=>{
+      if(!(await checkVoted())){
+        notify("⚠️ Only 2 hours left to vote. Please vote immediately 🙏");
+      }
+    }, tNext10 - now));
+  }
 }
+
 
 window.submitVote=async()=>{
   if(await checkVoted()) return;
@@ -791,6 +822,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
