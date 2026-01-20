@@ -1042,6 +1042,774 @@ loadLeaderboardData();loadCalendar();checkVoted();
 </html>
 
 
+NEW CODSE 4
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faith & Fitness – Vote</title>
+
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;padding-bottom:80px}
+.header{background:#fff;text-align:center;padding:8px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.header img{height:110px}
+.container{display:flex;justify-content:center;padding:20px}
+.card{background:#fff;max-width:380px;width:100%;padding:20px;border-radius:12px;box-shadow:0 6px 14px rgba(0,0,0,.15);text-align:center}
+
+.task{border:1px solid #ddd;padding:10px;border-radius:8px;margin:8px 0;text-align:left}
+.msg{background:#fef3c7;padding:10px;border-radius:8px;margin-top:10px;font-size:14px}
+button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;font-size:15px;cursor:pointer}
+.submit{background:#16a34a;color:#fff}
+.disabled{background:#9ca3af;cursor:not-allowed}
+.logout{background:#dc2626;color:#fff}
+
+.tp-row{display:grid;grid-template-columns:70px 1fr 60px;align-items:center;
+padding:8px;border-radius:6px;margin:6px 0;font-weight:bold}
+.tp-1{background:#fde047}
+.tp-2{background:#e5e7eb}
+.tp-3{background:#fecaca}
+
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{border:1px solid #ddd;padding:6px;font-size:14px;text-align:center}
+th{background:#2563eb;color:#fff}
+tr.tp-1 td{background:#fde047}
+tr.tp-2 td{background:#e5e7eb}
+tr.tp-3 td{background:#fecaca}
+
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-weight:bold}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.week-head div{text-align:center;font-weight:bold;color:#1f2933}
+
+.day{height:38px;display:flex;align-items:center;justify-content:center;
+border-radius:50%;font-size:14px;color:#fff}
+.done{background:#16a34a}
+.pending{background:#facc15;color:#000}
+.missed{background:#ef4444}
+.future{background:#374151}
+.today{outline:3px solid #3b82f6}
+
+.bottom-nav{
+position:fixed;bottom:0;left:0;width:100%;
+background:#0f172a;display:flex;justify-content:space-around;padding:10px 0
+}
+.bottom-nav button{
+background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
+}
+.bottom-nav span{display:block;font-size:20px}
+
+  /* ===== Calendar Legend Style ===== */
+.calendar-legend{
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px 12px;
+  font-size:13px;
+}
+
+.calendar-legend div{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.calendar-legend .dot{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  display:inline-block;
+}
+
+.calendar-legend .done{background:#16a34a}
+.calendar-legend .missed{background:#ef4444}
+.calendar-legend .pending{background:#facc15}
+.calendar-legend .future{background:#374151}
+  /* ===== DARK MODE ===== */
+body.dark{
+  background:#020617;
+  color:#e5e7eb;
+}
+
+/* ===== DARK MODE FULL SUPPORT ===== */
+body.dark{
+  background:#020617;
+  color:#e5e7eb;
+}
+
+/* Header */
+body.dark .header{
+  background:#020617;
+}
+body.dark .header h3,
+body.dark .header div{
+  color:#e5e7eb;
+}
+
+/* Cards */
+body.dark .card{
+  background:#020617;
+  box-shadow:0 6px 14px rgba(0,0,0,.6);
+}
+
+/* Text */
+body.dark h3,
+body.dark b,
+body.dark label,
+body.dark span,
+body.dark div{
+  color:#e5e7eb;
+}
+
+/* Tasks & Boxes */
+body.dark .task{
+  background:#020617;
+  border:1px solid #334155;
+}
+
+/* Message box */
+body.dark .msg{
+  background:#1e293b;
+  color:#e5e7eb;
+}
+
+/* Tables */
+body.dark table{
+  background:#020617;
+}
+body.dark th{
+  background:#1e3a8a;
+  color:#fff;
+}
+body.dark td{
+  background:#020617;
+  color:#e5e7eb;
+  border-color:#334155;
+}
+
+/* Calendar */
+body.dark .day.future{background:#020617}
+body.dark .day.pending{background:#ca8a04;color:#000}
+body.dark .day.done{background:#16a34a}
+body.dark .day.missed{background:#b91c1c}
+
+/* Buttons */
+body.dark button.submit{
+  background:#15803d;
+}
+body.dark button.logout{
+  background:#991b1b;
+}
+body.dark button.disabled{
+  background:#475569;
+}
+
+/* Bottom Nav */
+body.dark .bottom-nav{
+  background:#020617;
+}
+body.dark .bottom-nav button{
+  color:#e5e7eb;
+}
+
+</style>
+</head>
+
+<body>
+<div class="header">
+  <img src="logo..png">
+</div>
+
+<div class="container">
+<div class="card">
+
+<!-- HOME -->
+<div id="homeSection">
+  <h3 style="color:#16a34a">FAITH & FITNESS</h3>
+  <div id="todayDate"></div>
+  <div id="userName"></div>
+  <div id="userPoints"></div>
+
+  <div id="taskBox"></div>
+  <div id="message"></div>
+  <div id="nextVoteBox" class="msg" style="display:none"></div>
+
+  <button id="submitBtn" class="submit" onclick="submitVote()">Submit Vote</button>
+
+  <hr>
+  <h3>🏆 Top Performers</h3>
+  <div class="tp-row" style="background:#2563eb;color:#fff">
+    <div>Rank</div><div>Name</div><div>Points</div>
+  </div>
+  <div id="top3"></div>
+</div>
+
+<!-- LEADERBOARD -->
+<div id="leaderboardSection" style="display:none">
+  <h3>🏆 Full Leaderboard</h3>
+  <table>
+    <thead>
+      <tr><th>Rank</th><th>Name</th><th>Points</th></tr>
+    </thead>
+    <tbody id="allRanks"></tbody>
+  </table>
+</div>
+
+<!-- CALENDAR -->
+<div id="calendarSection" style="display:none">
+  <h3>📅 Your Progress</h3>
+
+  <div class="cal-head">
+    <button onclick="prevMonth()">◀</button>
+    <span id="calTitle"></span>
+    <button onclick="nextMonth()">▶</button>
+  </div>
+
+  <div class="calendar week-head">
+    <div>Mon</div><div>Tue</div><div>Wed</div>
+    <div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+  </div>
+
+  <div class="calendar" id="calendar"></div>
+
+ <!-- CALENDAR LEGEND -->
+<div class="calendar-legend">
+  <div><span class="dot done"></span> Complete</div>
+  <div><span class="dot missed"></span> Missed</div>
+  <div><span class="dot pending"></span> Pending</div>
+  <div><span class="dot future"></span> Future</div>
+</div>
+</div>
+ 
+<!-- WORKOUT SECTION -->
+<div id="workoutSection" class="card" style="display:none">
+  <h3>📚 Workout</h3>
+
+  <iframe width="100%" height="200"
+    src="https://www.youtube.com/embed/bKt5FjGBj_U"
+    allowfullscreen></iframe>
+
+  <iframe width="100%" height="200"
+    src="https://www.youtube.com/embed/dlNvxbSDMpc"
+    allowfullscreen></iframe>
+
+  <iframe width="100%" height="200"
+    src="https://www.youtube.com/embed/gT_Whh3uYuo"
+    allowfullscreen></iframe>
+</div>
+<!-- SETTINGS -->
+<div id="settingsSection" style="display:none">
+  <h3>⚙️ Settings</h3>
+
+  <!-- NAME -->
+  <div class="task">
+    <b>Current Name:</b>
+    <span id="settingsName"></span>
+  </div>
+
+  <div class="task">
+    <label>Edit Name</label>
+    <input id="editName" style="width:100%;padding:8px">
+  </div>
+
+  <!-- PHONE -->
+  <div class="task">
+    <b>Phone:</b>
+    <span id="settingsPhone"></span>
+  </div>
+
+  <!-- REMINDER ON/OFF -->
+  <div class="task">
+    <label>
+      <input type="checkbox" id="reminderToggle">
+      Voting Reminder
+    </label>
+  </div>
+
+  <!-- REMINDER TYPE -->
+  <div class="task">
+    <b>Reminder Type</b><br>
+    <label><input type="checkbox" id="notifyType"> Notification</label><br>
+    <label><input type="checkbox" id="soundType"> Sound</label><br>
+    <label><input type="checkbox" id="vibrateType"> Vibration</label>
+  </div>
+
+  <!-- DARK MODE -->
+  <div class="task">
+    <label>
+      <input type="checkbox" id="darkModeToggle">
+      Dark Mode 🌙
+    </label>
+  </div>
+
+  <!-- LANGUAGE -->
+  <div class="task">
+    <label>Language</label>
+    <select id="langSelect" style="width:100%;padding:8px">
+      <option value="en">English</option>
+      <option value="ml">Malayalam</option>
+    </select>
+  </div>
+
+  <button class="submit" onclick="saveSettings()">Save Settings</button>
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+  
+<!-- NAV -->
+<div class="bottom-nav">
+  <button onclick="showHome()"><span>🏠</span>Home</button>
+  <button onclick="showLeaderboard()"><span>🏆</span>Leaderboard</button>
+  <button onclick="showCalendar()"><span>📅</span>Calendar</button>
+  <button onclick="showWorkout()">
+  <span>📚</span>Workout
+</button>
+<button onclick="showSettings()">
+  <span>⚙️</span>Settings
+</button>
+</div>
+
+<script type="module">
+  const LANG = {
+  en: {
+    home: "Home",
+    leaderboard: "Leaderboard",
+    calendar: "Calendar",
+    workout: "Workout",
+    settings: "Settings",
+    submitVote: "Submit Vote",
+    topPerformers: "Top Performers",
+    save: "Save Settings",
+    logout: "Logout",
+    todayVotingComplete: "Today voting is complete",
+    nextVoting: "Next voting is tomorrow at 8:00 PM"
+  },
+  ml: {
+    home: "ഹോം",
+    leaderboard: "ലീഡർബോർഡ്",
+    calendar: "കലണ്ടർ",
+    workout: "വർക്ക്‌ഔട്ട്",
+    settings: "സെറ്റിംഗ്സ്",
+    submitVote: "വോട്ട് സമർപ്പിക്കുക",
+    topPerformers: "മികച്ച പ്രകടകർ",
+    save: "സേവ് ചെയ്യുക",
+    logout: "ലോഗ് ഔട്ട്",
+    todayVotingComplete: "ഇന്നത്തെ വോട്ടിംഗ് പൂർത്തിയായി",
+    nextVoting: "അടുത്ത വോട്ടിംഗ് നാളെ രാത്രി 8:00-ന്"
+  }
+};
+
+import { updateDoc }
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getFirestore, collection, getDocs, query, where, addDoc }
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+  authDomain:"daily-voting-793ee.firebaseapp.com",
+  projectId:"daily-voting-793ee"
+});
+const db = getFirestore(app);
+  if ("Notification" in window) {
+  Notification.requestPermission();
+}
+
+
+const phone = localStorage.getItem("userPhone");
+if(!phone) location.replace("index.html");
+
+todayDate.innerText="Today: "+new Date().toDateString();
+
+function getVoteDate(){
+  const d=new Date();
+  if(d.getHours()<20) d.setDate(d.getDate()-1);
+  return d.toISOString().split("T")[0];
+}
+
+/* ===== TIMER ADD (NEW) ===== */
+function nextVoteTime(){
+  const now=new Date();
+  const t=new Date();
+  t.setHours(20,0,0,0);
+  if(now>=t) t.setDate(t.getDate()+1);
+  return t;
+}
+
+function startTimer(){
+  nextVoteBox.style.display="block";
+  submitBtn.disabled=true;
+  submitBtn.classList.add("disabled");
+  taskBox.innerHTML="";
+
+  const tick=()=>{
+    const diff=nextVoteTime()-new Date();
+    if(diff<=0){
+      nextVoteBox.innerHTML="Voting is open ✅ Refresh page";
+      submitBtn.disabled=false;
+      submitBtn.classList.remove("disabled");
+      loadTasks();
+      return;
+    }
+    const h=Math.floor(diff/36e5);
+    const m=Math.floor(diff%36e5/6e4);
+    const s=Math.floor(diff%6e4/1000);
+    nextVoteBox.innerHTML=
+    `Today voting is complete ✅<br>
+     Next voting is <b>tomorrow at 8:00 PM</b><br>
+     ⏳ ${h}h ${m}m ${s}s`;
+    setTimeout(tick,1000);
+  };
+  tick();
+}
+
+async function checkVoted(){
+  const s=await getDocs(query(
+    collection(db,"votes"),
+    where("phone","==",phone),
+    where("date","==",getVoteDate())
+  ));
+  if(!s.empty){
+    startTimer();   // ← changed
+    return true;
+  }
+  return false;
+}
+
+async function loadPoints(){
+  let t=0;
+  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
+  s.forEach(d=>t+=Number(d.data().points||0));
+  userPoints.innerText="Your Points: "+t;
+}
+
+async function loadTasks(){
+  if(await checkVoted()) return;
+  const s=await getDocs(collection(db,"tasks"));
+  taskBox.innerHTML="";
+  s.forEach(d=>{
+    const t=d.data();
+    taskBox.innerHTML+=`
+    <div class="task">
+      <label>
+        <input type="checkbox" data-points="${t.points}">
+        ${t.text} (${t.points} pts)
+      </label>
+    </div>`;
+  });
+}
+let userRef = null;
+
+/* LOAD USER SETTINGS */
+async function loadUser(){
+  const snap = await getDocs(
+    query(collection(db,"users"), where("phone","==",phone))
+  );
+  if(snap.empty) return;
+
+  const d = snap.docs[0];
+  userRef = d.ref;
+  const data = d.data();
+
+  userName.innerText = "Hello, " + data.name;
+  settingsName.innerText = data.name;
+  settingsPhone.innerText = phone;
+
+  editName.value = data.name || "";
+  reminderToggle.checked = data.reminder !== false;
+
+  notifyType.checked   = data.reminderType?.notify ?? true;
+  soundType.checked    = data.reminderType?.sound ?? false;
+  vibrateType.checked  = data.reminderType?.vibrate ?? false;
+
+  darkModeToggle.checked = data.darkMode === true;
+  langSelect.value = data.language || "en";
+
+  applyDarkMode();
+  applyLanguage();
+
+  setTimeout(scheduleReminders,1000);
+}
+
+/* SAVE SETTINGS */
+window.saveSettings = async ()=>{
+  if(!userRef) return alert("User not loaded");
+
+  await updateDoc(userRef,{
+    name: editName.value,
+    reminder: reminderToggle.checked,
+    reminderType:{
+      notify: notifyType.checked,
+      sound: soundType.checked,
+      vibrate: vibrateType.checked
+    },
+    darkMode: darkModeToggle.checked,
+    language: langSelect.value
+  });
+
+  applyDarkMode();
+  applyLanguage();
+
+  alert("Settings saved ✅");
+};
+
+/* DARK MODE */
+function applyDarkMode(){
+  document.body.classList.toggle("dark", darkModeToggle.checked);
+}
+
+/* LANGUAGE */
+const TEXT = {
+  en:{ save:"Save Settings", logout:"Logout" },
+  ml:{ save:"സേവ് ചെയ്യുക", logout:"ലോഗ് ഔട്ട്" }
+};
+
+function applyLanguage(){
+  const t = LANG[langSelect.value];
+
+  // Bottom navigation
+  const navBtns = document.querySelectorAll(".bottom-nav button");
+  navBtns[0].innerHTML = `<span>🏠</span>${t.home}`;
+  navBtns[1].innerHTML = `<span>🏆</span>${t.leaderboard}`;
+  navBtns[2].innerHTML = `<span>📅</span>${t.calendar}`;
+  navBtns[3].innerHTML = `<span>📚</span>${t.workout}`;
+  navBtns[4].innerHTML = `<span>⚙️</span>${t.settings}`;
+
+  // Home section
+  submitBtn.innerText = t.submitVote;
+  document.querySelector("#homeSection h3:nth-of-type(2)").innerText =
+    "🏆 " + t.topPerformers;
+
+  // Settings buttons
+  document.querySelector("#settingsSection .submit").innerText = t.save;
+  document.querySelector("#settingsSection .logout").innerText = t.logout;
+}
+
+
+/* REMINDER SYSTEM */
+let reminderTimers=[];
+
+function clearReminders(){
+  reminderTimers.forEach(t=>clearTimeout(t));
+  reminderTimers=[];
+}
+
+function notify(msg){
+  if(notifyType.checked && Notification.permission==="granted"){
+    new Notification("Faith & Fitness",{body:msg});
+  }
+  if(soundType.checked){
+    new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+  }
+  if(vibrateType.checked && navigator.vibrate){
+    navigator.vibrate(400);
+  }
+}
+
+function scheduleReminders(){
+  clearReminders();
+  if(!reminderToggle.checked) return;
+
+  const now=new Date();
+  const t8=new Date();t8.setHours(20,0,0,0);
+  const t10=new Date();t10.setHours(22,0,0,0);
+
+  if(now<t8) reminderTimers.push(setTimeout(
+    ()=>notify("8 PM reminder: Please vote"),t8-now));
+
+  if(now<t10) reminderTimers.push(setTimeout(
+    ()=>notify("Only 2 hours left to vote"),t10-now));
+}
+
+window.submitVote=async()=>{
+  if(await checkVoted()) return;
+  const checked=document.querySelectorAll("#taskBox input:checked");
+  if(!checked.length) return alert("Select task");
+  let pts=0; checked.forEach(c=>pts+=Number(c.dataset.points));
+  await addDoc(collection(db,"votes"),{phone,points:pts,date:getVoteDate()});
+  message.innerHTML="<div class='msg'>Vote submitted ✅</div>";
+  loadPoints();loadLeaderboardData();loadCalendar();
+  startTimer();   // ← added
+  clearReminders(); // ✅ FINAL FIX
+};
+
+async function loadLeaderboardData(){
+  const u=await getDocs(collection(db,"users"));
+  const v=await getDocs(collection(db,"votes"));
+
+  const map={};
+  v.forEach(x=>{
+    map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0);
+  });
+
+  let rows=[];
+  u.forEach(x=>{
+    if(map[x.data().phone]){
+      rows.push({name:x.data().name,total:map[x.data().phone]});
+    }
+  });
+
+  rows.sort((a,b)=>b.total-a.total);
+
+  const rankGroups={};
+  let rank=1,prev=null;
+  rows.forEach(r=>{
+    if(prev!==null && r.total<prev) rank++;
+    if(rank<=3){
+      rankGroups[rank]=rankGroups[rank]||[];
+      rankGroups[rank].push(r);
+    }
+    prev=r.total;
+  });
+
+  top3.innerHTML="";
+  allRanks.innerHTML="";
+  const rot=JSON.parse(localStorage.getItem("topRotate")||"{}");
+
+  [1,2,3].forEach(rk=>{
+    const list=rankGroups[rk]||[];
+    if(!list.length) return;
+    const start=rot[rk]||0;
+    for(let i=0;i<Math.min(2,list.length);i++){
+      const p=list[(start+i)%list.length];
+      top3.innerHTML+=`
+      <div class="tp-row tp-${rk}">
+        <div>${rk}</div><div>${p.name}</div><div>${p.total}</div>
+      </div>`;
+    }
+    rot[rk]=(start+2)%list.length;
+  });
+
+  localStorage.setItem("topRotate",JSON.stringify(rot));
+
+  let r=1,pr=null;
+  rows.forEach(x=>{
+    if(pr!==null && x.total<pr) r++;
+    let cls=r<=3?`tp-${r}`:"";
+    allRanks.innerHTML+=`
+    <tr class="${cls}">
+      <td>${r}</td><td>${x.name}</td><td>${x.total}</td>
+    </tr>`;
+    pr=x.total;
+  });
+}
+
+let curMonth=new Date().getMonth(),curYear=new Date().getFullYear();
+window.prevMonth=()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--;}loadCalendar();}
+window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalendar();}
+
+  function getEffectiveToday(){
+  const now = new Date();
+  const d = new Date(now);
+
+  // രാത്രി 8 PM-ന് മുമ്പാണെങ്കിൽ
+  if(now.getHours() < 20){
+    d.setDate(d.getDate() - 1);
+  }
+
+  return d.toISOString().split("T")[0];
+}
+ async function loadCalendar(){
+  calendar.innerHTML = "";
+
+  calTitle.innerText = new Date(curYear,curMonth)
+    .toLocaleString("default",{month:"long",year:"numeric"});
+
+  const snap = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
+
+  const voted = {};
+  snap.forEach(d => voted[d.data().date] = true);
+
+  const days = new Date(curYear,curMonth+1,0).getDate();
+  const today = new Date().toISOString().split("T")[0];
+
+  const firstDay = new Date(curYear,curMonth,1).getDay();
+  const start = (firstDay === 0 ? 6 : firstDay - 1);
+
+  for(let i=0;i<start;i++) calendar.innerHTML += "<div></div>";
+
+  for(let i=1;i<=days;i++){
+    const ds = new Date(curYear,curMonth,i)
+      .toISOString().split("T")[0];
+
+    let cls = "future";
+
+    if(voted[ds]){
+      cls = "done";       // 🟢 ONLY Firebase decides this
+    }
+    else if(ds === today){
+      cls = "pending";    // 🟡 today only
+    }
+    else if(ds < today){
+      cls = "missed";     // 🔴 past without vote
+    }
+
+    calendar.innerHTML += `<div class="day ${cls}">${i}</div>`;
+  }
+ }
+
+
+
+
+window.showHome = () => {
+  homeSection.style.display = "block";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "none";
+  workoutSection.style.display = "none";
+  settingsSection.style.display = "none";
+  };
+window.showLeaderboard = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "block";
+  calendarSection.style.display = "none";
+  workoutSection.style.display = "none";
+  settingsSection.style.display = "none";
+  loadLeaderboardData();
+};
+
+window.showCalendar = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "block";
+  workoutSection.style.display = "none";
+  settingsSection.style.display = "none";
+  loadCalendar();
+};
+window.showWorkout = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "none";
+  workoutSection.style.display = "block";
+  settingsSection.style.display = "none";
+};
+window.showSettings = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "none";
+  workoutSection.style.display = "none";
+  settingsSection.style.display = "block";
+
+  settingsPhone.innerText = phone;
+};
+ 
+window.logout=()=>{localStorage.clear();location.replace("index.html");};
+
+loadUser();loadPoints();loadTasks();
+loadLeaderboardData();loadCalendar();checkVoted();
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
 
 
 
