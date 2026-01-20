@@ -444,10 +444,26 @@ const TEXT = {
 };
 
 function applyLanguage(){
-  const t = TEXT[langSelect.value];
+  const t = LANG[langSelect.value];
+
+  // Bottom navigation
+  const navBtns = document.querySelectorAll(".bottom-nav button");
+  navBtns[0].innerHTML = `<span>🏠</span>${t.home}`;
+  navBtns[1].innerHTML = `<span>🏆</span>${t.leaderboard}`;
+  navBtns[2].innerHTML = `<span>📅</span>${t.calendar}`;
+  navBtns[3].innerHTML = `<span>📚</span>${t.workout}`;
+  navBtns[4].innerHTML = `<span>⚙️</span>${t.settings}`;
+
+  // Home section
+  submitBtn.innerText = t.submitVote;
+  document.querySelector("#homeSection h3:nth-of-type(2)").innerText =
+    "🏆 " + t.topPerformers;
+
+  // Settings buttons
   document.querySelector("#settingsSection .submit").innerText = t.save;
   document.querySelector("#settingsSection .logout").innerText = t.logout;
 }
+
 
 /* REMINDER SYSTEM */
 let reminderTimers=[];
@@ -665,6 +681,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
