@@ -145,11 +145,10 @@ th{background:var(--pri);color:#fff}
 
 </main>
 
-<!-- BOTTOM NAV -->
 <div class="admin-bottom-nav">
-  <button class="active" onclick="showPage('dash')">🏠<br>Dash</button>
-  <button onclick="showPage('task')">📊<br>Tasks</button>
-  <button onclick="showPage('user')">👤<br>Users</button>
+  <button class="active" onclick="showPage('dash', this)">🏠<br>Dash</button>
+  <button onclick="showPage('task', this)">📊<br>Tasks</button>
+  <button onclick="showPage('user', this)">👤<br>Users</button>
   <button onclick="location.href='task-editor.html'">✏️<br>Edit</button>
 </div>
 
@@ -167,13 +166,19 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-window.showPage=(p)=>{
-  document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
-  document.getElementById("page-"+p).classList.remove("hidden");
+window.showPage = (p, btn) => {
+  document.querySelectorAll("section")
+    .forEach(s => s.classList.add("hidden"));
+
+  document.getElementById("page-" + p)
+    .classList.remove("hidden");
+
   document.querySelectorAll(".admin-bottom-nav button")
-    .forEach(b=>b.classList.remove("active"));
-  event.target.classList.add("active");
+    .forEach(b => b.classList.remove("active"));
+
+  btn.classList.add("active");
 };
+
 
 const today=()=>new Date().toISOString().split("T")[0];
 
@@ -242,3 +247,4 @@ dashLoad(); taskInit(); userInit();
 
 </body>
 </html>
+
