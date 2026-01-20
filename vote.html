@@ -85,10 +85,86 @@ body.dark{
   color:#e5e7eb;
 }
 
-body.dark .card{background:#020617}
-body.dark .header{background:#020617}
-body.dark .task{border-color:#334155}
-body.dark .bottom-nav{background:#020617}
+/* ===== DARK MODE FULL SUPPORT ===== */
+body.dark{
+  background:#020617;
+  color:#e5e7eb;
+}
+
+/* Header */
+body.dark .header{
+  background:#020617;
+}
+body.dark .header h3,
+body.dark .header div{
+  color:#e5e7eb;
+}
+
+/* Cards */
+body.dark .card{
+  background:#020617;
+  box-shadow:0 6px 14px rgba(0,0,0,.6);
+}
+
+/* Text */
+body.dark h3,
+body.dark b,
+body.dark label,
+body.dark span,
+body.dark div{
+  color:#e5e7eb;
+}
+
+/* Tasks & Boxes */
+body.dark .task{
+  background:#020617;
+  border:1px solid #334155;
+}
+
+/* Message box */
+body.dark .msg{
+  background:#1e293b;
+  color:#e5e7eb;
+}
+
+/* Tables */
+body.dark table{
+  background:#020617;
+}
+body.dark th{
+  background:#1e3a8a;
+  color:#fff;
+}
+body.dark td{
+  background:#020617;
+  color:#e5e7eb;
+  border-color:#334155;
+}
+
+/* Calendar */
+body.dark .day.future{background:#020617}
+body.dark .day.pending{background:#ca8a04;color:#000}
+body.dark .day.done{background:#16a34a}
+body.dark .day.missed{background:#b91c1c}
+
+/* Buttons */
+body.dark button.submit{
+  background:#15803d;
+}
+body.dark button.logout{
+  background:#991b1b;
+}
+body.dark button.disabled{
+  background:#475569;
+}
+
+/* Bottom Nav */
+body.dark .bottom-nav{
+  background:#020617;
+}
+body.dark .bottom-nav button{
+  color:#e5e7eb;
+}
 
 </style>
 </head>
@@ -681,6 +757,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
