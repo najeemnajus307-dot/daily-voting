@@ -139,7 +139,34 @@ body.dark td{
   background:#020617;
   color:#e5e7eb;
   border-color:#334155;
+  
 }
+  /* ===== DARK MODE : TOP PERFORMERS FIX ===== */
+
+/* Top performer rows text clarity */
+body.dark .tp-row{
+  color:#020617 !important;   /* dark text */
+  font-weight:700;
+}
+
+/* Each cell inside top performers */
+body.dark .tp-row div{
+  color:#020617 !important;
+}
+
+/* Rank table (full leaderboard) */
+body.dark tr.tp-1 td,
+body.dark tr.tp-2 td,
+body.dark tr.tp-3 td{
+  color:#020617 !important;
+  font-weight:700;
+}
+
+/* Header row should stay white text */
+body.dark .tp-row[style*="background:#2563eb"] div{
+  color:#ffffff !important;
+}
+
 
 /* Calendar */
 body.dark .day.future{background:#020617}
@@ -757,6 +784,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
