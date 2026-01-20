@@ -154,18 +154,25 @@ body.dark .tp-row div{
   color:#020617 !important;
 }
 
-/* Rank table (full leaderboard) */
-body.dark tr.tp-1 td,
-body.dark tr.tp-2 td,
-body.dark tr.tp-3 td{
-  color:#020617 !important;
-  font-weight:700;
-}
-
 /* Header row should stay white text */
 body.dark .tp-row[style*="background:#2563eb"] div{
   color:#ffffff !important;
 }
+  /* ===== DARK MODE : FULL LEADERBOARD TOP 3 FIX ===== */
+
+/* Rank number + name + points visibility */
+body.dark tr.tp-1 td,
+body.dark tr.tp-2 td,
+body.dark tr.tp-3 td{
+  color:#020617 !important;   /* dark text */
+  font-weight:700;
+}
+
+/* Keep original medal colors */
+body.dark tr.tp-1 td{ background:#fde047 !important; } /* Gold */
+body.dark tr.tp-2 td{ background:#e5e7eb !important; } /* Silver */
+body.dark tr.tp-3 td{ background:#fecaca !important; } /* Bronze */
+
 
 
 /* Calendar */
@@ -784,6 +791,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
