@@ -248,6 +248,35 @@ body.dark .bottom-nav{background:#020617}
 </div>
 
 <script type="module">
+  const LANG = {
+  en: {
+    home: "Home",
+    leaderboard: "Leaderboard",
+    calendar: "Calendar",
+    workout: "Workout",
+    settings: "Settings",
+    submitVote: "Submit Vote",
+    topPerformers: "Top Performers",
+    save: "Save Settings",
+    logout: "Logout",
+    todayVotingComplete: "Today voting is complete",
+    nextVoting: "Next voting is tomorrow at 8:00 PM"
+  },
+  ml: {
+    home: "ഹോം",
+    leaderboard: "ലീഡർബോർഡ്",
+    calendar: "കലണ്ടർ",
+    workout: "വർക്ക്‌ഔട്ട്",
+    settings: "സെറ്റിംഗ്സ്",
+    submitVote: "വോട്ട് സമർപ്പിക്കുക",
+    topPerformers: "മികച്ച പ്രകടകർ",
+    save: "സേവ് ചെയ്യുക",
+    logout: "ലോഗ് ഔട്ട്",
+    todayVotingComplete: "ഇന്നത്തെ വോട്ടിംഗ് പൂർത്തിയായി",
+    nextVoting: "അടുത്ത വോട്ടിംഗ് നാളെ രാത്രി 8:00-ന്"
+  }
+};
+
 import { updateDoc }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
@@ -636,6 +665,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
