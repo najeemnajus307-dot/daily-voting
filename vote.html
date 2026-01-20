@@ -149,18 +149,7 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   <div><span class="dot future"></span> Future</div>
 </div>
 </div>
-  <!-- PLANK SECTION -->
-<div id="plankSection" class="card" style="display:none">
-  <h3>🧍‍♂️ Plank</h3>
-
- <iframe
-  src="https://docs.google.com/forms/d/e/1FAIpQLScr2gs6eYNndi0KVPryFeKPW0JgujjDR9EMCBbq96OIvvrqhw/viewform?embedded=true"
-  width="100%"
-  height="600"
-  style="border:none">
-</iframe>
-</div>
-
+ 
 <!-- WORKOUT SECTION -->
 <div id="workoutSection" class="card" style="display:none">
   <h3>📚 Workout</h3>
@@ -177,7 +166,20 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
     src="https://www.youtube.com/embed/gT_Whh3uYuo"
     allowfullscreen></iframe>
 </div>
+<!-- SETTINGS -->
+<div id="settingsSection" style="display:none">
+  <h3>⚙️ Settings</h3>
 
+  <div class="task">
+    <b>Name:</b> <span id="settingsName"></span>
+  </div>
+
+  <div class="task">
+    <b>Phone:</b> <span id="settingsPhone"></span>
+  </div>
+
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
 
   </div>
 </div>
@@ -190,7 +192,9 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   <button onclick="showWorkout()">
   <span>📚</span>Workout
 </button>
-
+<button onclick="showSettings()">
+  <span>⚙️</span>Settings
+</button>
 </div>
 
 <script type="module">
@@ -267,7 +271,12 @@ async function checkVoted(){
 
 async function loadUser(){
   const s=await getDocs(query(collection(db,"users"),where("phone","==",phone)));
-  s.forEach(d=>userName.innerText="Hello, "+d.data().name);
+s.forEach(d=>{
+  const name = d.data().name;
+  userName.innerText = "Hello, " + name;
+  settingsName.innerText = name;
+});
+
 }
 
 async function loadPoints(){
@@ -428,16 +437,15 @@ window.showHome = () => {
   homeSection.style.display = "block";
   leaderboardSection.style.display = "none";
   calendarSection.style.display = "none";
-  plankSection.style.display = "none";
   workoutSection.style.display = "none";
-};
-
+  settingsSection.style.display = "none";
+  };
 window.showLeaderboard = () => {
   homeSection.style.display = "none";
   leaderboardSection.style.display = "block";
   calendarSection.style.display = "none";
-  plankSection.style.display = "none";
   workoutSection.style.display = "none";
+  settingsSection.style.display = "none";
   loadLeaderboardData();
 };
 
@@ -445,27 +453,26 @@ window.showCalendar = () => {
   homeSection.style.display = "none";
   leaderboardSection.style.display = "none";
   calendarSection.style.display = "block";
-  plankSection.style.display = "none";
   workoutSection.style.display = "none";
+  settingsSection.style.display = "none";
   loadCalendar();
 };
-
-window.showPlank = () => {
-  homeSection.style.display = "none";
-  leaderboardSection.style.display = "none";
-  calendarSection.style.display = "none";
-  workoutSection.style.display = "none";
-  plankSection.style.display = "block";
-};
-
 window.showWorkout = () => {
   homeSection.style.display = "none";
   leaderboardSection.style.display = "none";
   calendarSection.style.display = "none";
-  plankSection.style.display = "none";
   workoutSection.style.display = "block";
+  settingsSection.style.display = "none";
 };
+window.showSettings = () => {
+  homeSection.style.display = "none";
+  leaderboardSection.style.display = "none";
+  calendarSection.style.display = "none";
+  workoutSection.style.display = "none";
+  settingsSection.style.display = "block";
 
+  settingsPhone.innerText = phone;
+};
  
 window.logout=()=>{localStorage.clear();location.replace("index.html");};
 
@@ -475,4 +482,5 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
