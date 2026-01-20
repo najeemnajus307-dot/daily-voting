@@ -330,7 +330,7 @@ async function loadUser(){
   setTimeout(scheduleReminders, 1000);
 }
 
-async function saveSettings(){
+window.saveSettings = async () => {
   if(!userRef) return alert("User not loaded");
 
   await updateDoc(userRef,{
@@ -340,7 +340,7 @@ async function saveSettings(){
 
   alert("Settings saved ✅");
   loadUser();
-}
+};
 
 // ===== REMINDER SYSTEM =====
 if("Notification" in window){
@@ -574,6 +574,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
