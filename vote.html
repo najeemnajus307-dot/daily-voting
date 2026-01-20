@@ -171,18 +171,31 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
   <h3>⚙️ Settings</h3>
 
   <div class="task">
-    <b>Name:</b> <span id="settingsName"></span>
+    <b>Current Name:</b>
+    <span id="settingsName"></span>
+  </div>
+
+  <div class="task">
+    <label>Edit Name</label>
+    <input id="editName" style="width:100%;padding:8px">
   </div>
 
   <div class="task">
     <b>Phone:</b> <span id="settingsPhone"></span>
   </div>
 
+  <div class="task">
+    <label>
+      <input type="checkbox" id="reminderToggle">
+      Voting Reminder
+    </label>
+  </div>
+
+  <button class="submit" onclick="saveSettings()">Save Settings</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
 
-  </div>
-</div>
+
   
 <!-- NAV -->
 <div class="bottom-nav">
@@ -198,7 +211,10 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { updateDoc }
+from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getFirestore, collection, getDocs, query, where, addDoc }
 from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
@@ -269,16 +285,6 @@ async function checkVoted(){
   return false;
 }
 
-async function loadUser(){
-  const s=await getDocs(query(collection(db,"users"),where("phone","==",phone)));
-s.forEach(d=>{
-  const name = d.data().name;
-  userName.innerText = "Hello, " + name;
-  settingsName.innerText = name;
-});
-
-}
-
 async function loadPoints(){
   let t=0;
   const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
@@ -301,6 +307,91 @@ async function loadTasks(){
     </div>`;
   });
 }
+// ===== SETTINGS DATA =====
+let userRef = null;
+
+async function loadUser(){
+  const snap = await getDocs(
+    query(collection(db,"users"), where("phone","==",phone))
+  );
+  if(snap.empty) return;
+
+  const d = snap.docs[0];
+  userRef = d.ref;
+  const data = d.data();
+
+  userName.innerText = "Hello, " + data.name;
+  settingsName.innerText = data.name;
+  settingsPhone.innerText = phone;
+
+  editName.value = data.name || "";
+  reminderToggle.checked = data.reminder !== false;
+
+  setTimeout(scheduleReminders, 1000);
+}
+
+async function saveSettings(){
+  if(!userRef) return alert("User not loaded");
+
+  await updateDoc(userRef,{
+    name: editName.value,
+    reminder: reminderToggle.checked
+  });
+
+  alert("Settings saved ✅");
+  loadUser();
+}
+
+// ===== REMINDER SYSTEM =====
+if("Notification" in window){
+  Notification.requestPermission();
+}
+
+let reminderTimers = [];
+
+function notify(msg){
+  if(Notification.permission === "granted"){
+    new Notification("Faith & Fitness", { body: msg });
+  }
+}
+
+function clearReminders(){
+  reminderTimers.forEach(t => clearTimeout(t));
+  reminderTimers = [];
+}
+
+function scheduleReminders(){
+  clearReminders();
+  if(!reminderToggle.checked) return;
+
+  const now = new Date();
+
+  const t8 = new Date(); t8.setHours(20,0,0,0);
+  const t10 = new Date(); t10.setHours(22,0,0,0);
+
+  const tomorrow10 = new Date();
+  tomorrow10.setDate(tomorrow10.getDate()+1);
+  tomorrow10.setHours(10,0,0,0);
+
+  if(now < t8){
+    reminderTimers.push(setTimeout(
+      ()=>notify("8 PM reminder: Please vote"),
+      t8-now
+    ));
+  }
+
+  if(now < t10){
+    reminderTimers.push(setTimeout(
+      ()=>notify("Only 2 hours left to vote"),
+      t10-now
+    ));
+  }
+
+  reminderTimers.push(setTimeout(
+    ()=>notify("Only 25 hours left. Please vote"),
+    tomorrow10-now
+  ));
+}
 
 window.submitVote=async()=>{
   if(await checkVoted()) return;
@@ -311,6 +402,7 @@ window.submitVote=async()=>{
   message.innerHTML="<div class='msg'>Vote submitted ✅</div>";
   loadPoints();loadLeaderboardData();loadCalendar();
   startTimer();   // ← added
+  clearReminders(); // ✅ FINAL FIX
 };
 
 async function loadLeaderboardData(){
@@ -482,5 +574,6 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
