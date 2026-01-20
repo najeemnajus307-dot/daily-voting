@@ -79,11 +79,21 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 .calendar-legend .missed{background:#ef4444}
 .calendar-legend .pending{background:#facc15}
 .calendar-legend .future{background:#374151}
+  /* ===== DARK MODE ===== */
+body.dark{
+  background:#020617;
+  color:#e5e7eb;
+}
+
+body.dark .card{background:#020617}
+body.dark .header{background:#020617}
+body.dark .task{border-color:#334155}
+body.dark .bottom-nav{background:#020617}
+
 </style>
 </head>
 
 <body>
-
 <div class="header">
   <img src="logo..png">
 </div>
@@ -169,6 +179,7 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
 <div id="settingsSection" style="display:none">
   <h3>⚙️ Settings</h3>
 
+  <!-- NAME -->
   <div class="task">
     <b>Current Name:</b>
     <span id="settingsName"></span>
@@ -179,10 +190,13 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
     <input id="editName" style="width:100%;padding:8px">
   </div>
 
+  <!-- PHONE -->
   <div class="task">
-    <b>Phone:</b> <span id="settingsPhone"></span>
+    <b>Phone:</b>
+    <span id="settingsPhone"></span>
   </div>
 
+  <!-- REMINDER ON/OFF -->
   <div class="task">
     <label>
       <input type="checkbox" id="reminderToggle">
@@ -190,10 +204,34 @@ background:none;border:none;color:#cbd5f5;font-size:13px;cursor:pointer
     </label>
   </div>
 
+  <!-- REMINDER TYPE -->
+  <div class="task">
+    <b>Reminder Type</b><br>
+    <label><input type="checkbox" id="notifyType"> Notification</label><br>
+    <label><input type="checkbox" id="soundType"> Sound</label><br>
+    <label><input type="checkbox" id="vibrateType"> Vibration</label>
+  </div>
+
+  <!-- DARK MODE -->
+  <div class="task">
+    <label>
+      <input type="checkbox" id="darkModeToggle">
+      Dark Mode 🌙
+    </label>
+  </div>
+
+  <!-- LANGUAGE -->
+  <div class="task">
+    <label>Language</label>
+    <select id="langSelect" style="width:100%;padding:8px">
+      <option value="en">English</option>
+      <option value="ml">Malayalam</option>
+    </select>
+  </div>
+
   <button class="submit" onclick="saveSettings()">Save Settings</button>
   <button class="logout" onclick="logout()">Logout</button>
 </div>
-
 
   
 <!-- NAV -->
@@ -223,6 +261,10 @@ const app = initializeApp({
   projectId:"daily-voting-793ee"
 });
 const db = getFirestore(app);
+  if ("Notification" in window) {
+  Notification.requestPermission();
+}
+
 
 const phone = localStorage.getItem("userPhone");
 if(!phone) location.replace("index.html");
@@ -306,9 +348,9 @@ async function loadTasks(){
     </div>`;
   });
 }
-// ===== SETTINGS DATA =====
 let userRef = null;
 
+/* LOAD USER SETTINGS */
 async function loadUser(){
   const snap = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
@@ -326,70 +368,91 @@ async function loadUser(){
   editName.value = data.name || "";
   reminderToggle.checked = data.reminder !== false;
 
-  setTimeout(scheduleReminders, 1000);
+  notifyType.checked   = data.reminderType?.notify ?? true;
+  soundType.checked    = data.reminderType?.sound ?? false;
+  vibrateType.checked  = data.reminderType?.vibrate ?? false;
+
+  darkModeToggle.checked = data.darkMode === true;
+  langSelect.value = data.language || "en";
+
+  applyDarkMode();
+  applyLanguage();
+
+  setTimeout(scheduleReminders,1000);
 }
 
-window.saveSettings = async () => {
+/* SAVE SETTINGS */
+window.saveSettings = async ()=>{
   if(!userRef) return alert("User not loaded");
 
   await updateDoc(userRef,{
     name: editName.value,
-    reminder: reminderToggle.checked
+    reminder: reminderToggle.checked,
+    reminderType:{
+      notify: notifyType.checked,
+      sound: soundType.checked,
+      vibrate: vibrateType.checked
+    },
+    darkMode: darkModeToggle.checked,
+    language: langSelect.value
   });
 
+  applyDarkMode();
+  applyLanguage();
+
   alert("Settings saved ✅");
-  loadUser();
 };
 
-// ===== REMINDER SYSTEM =====
-if("Notification" in window){
-  Notification.requestPermission();
+/* DARK MODE */
+function applyDarkMode(){
+  document.body.classList.toggle("dark", darkModeToggle.checked);
 }
 
-let reminderTimers = [];
+/* LANGUAGE */
+const TEXT = {
+  en:{ save:"Save Settings", logout:"Logout" },
+  ml:{ save:"സേവ് ചെയ്യുക", logout:"ലോഗ് ഔട്ട്" }
+};
 
-function notify(msg){
-  if(Notification.permission === "granted"){
-    new Notification("Faith & Fitness", { body: msg });
-  }
+function applyLanguage(){
+  const t = TEXT[langSelect.value];
+  document.querySelector("#settingsSection .submit").innerText = t.save;
+  document.querySelector("#settingsSection .logout").innerText = t.logout;
 }
+
+/* REMINDER SYSTEM */
+let reminderTimers=[];
 
 function clearReminders(){
-  reminderTimers.forEach(t => clearTimeout(t));
-  reminderTimers = [];
+  reminderTimers.forEach(t=>clearTimeout(t));
+  reminderTimers=[];
+}
+
+function notify(msg){
+  if(notifyType.checked && Notification.permission==="granted"){
+    new Notification("Faith & Fitness",{body:msg});
+  }
+  if(soundType.checked){
+    new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+  }
+  if(vibrateType.checked && navigator.vibrate){
+    navigator.vibrate(400);
+  }
 }
 
 function scheduleReminders(){
   clearReminders();
   if(!reminderToggle.checked) return;
 
-  const now = new Date();
+  const now=new Date();
+  const t8=new Date();t8.setHours(20,0,0,0);
+  const t10=new Date();t10.setHours(22,0,0,0);
 
-  const t8 = new Date(); t8.setHours(20,0,0,0);
-  const t10 = new Date(); t10.setHours(22,0,0,0);
+  if(now<t8) reminderTimers.push(setTimeout(
+    ()=>notify("8 PM reminder: Please vote"),t8-now));
 
-  const tomorrow10 = new Date();
-  tomorrow10.setDate(tomorrow10.getDate()+1);
-  tomorrow10.setHours(10,0,0,0);
-
-  if(now < t8){
-    reminderTimers.push(setTimeout(
-      ()=>notify("8 PM reminder: Please vote"),
-      t8-now
-    ));
-  }
-
-  if(now < t10){
-    reminderTimers.push(setTimeout(
-      ()=>notify("Only 2 hours left to vote"),
-      t10-now
-    ));
-  }
-
-  reminderTimers.push(setTimeout(
-    ()=>notify("Only 25 hours left. Please vote"),
-    tomorrow10-now
-  ));
+  if(now<t10) reminderTimers.push(setTimeout(
+    ()=>notify("Only 2 hours left to vote"),t10-now));
 }
 
 window.submitVote=async()=>{
@@ -573,6 +636,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
