@@ -358,9 +358,6 @@ body.dark .bottom-nav button{
 </div>
 
 <script type="module">
-  import { getMessaging, getToken, onMessage }
-from "https://www.gstatic.com/firebasejs/12.7.0/firebase-messaging.js";
-
   const LANG = {
   en: {
     home: "Home",
@@ -405,12 +402,6 @@ const app = initializeApp({
 const db = getFirestore(app);
   if ("Notification" in window) {
   Notification.requestPermission();
-}
-// 🔔 FCM INIT
-const messaging = getMessaging(app);
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/daily-voting/firebase-messaging-sw.js");
 }
 
 
@@ -499,19 +490,6 @@ async function loadTasks(){
 let userRef = null;
 
 /* LOAD USER SETTINGS */
-async function initFCM(){
-  const permission = await Notification.requestPermission();
-  if(permission !== "granted") return;
-
-  const token = await getToken(messaging,{
-    vapidKey:"BKIGPXFbPybxBpiIFawNRuivEOVz8HVuj7Yfa95Sw6lZDYXyPQZFr7XqvFcFlCwr22TVErvfamU9BNIdAIus_5g"
-  });
-
-  if(token && userRef){
-    await updateDoc(userRef,{ fcmToken: token });
-    console.log("✅ FCM token saved");
-  }
-}
 async function loadUser(){
   const snap = await getDocs(
     query(collection(db,"users"), where("phone","==",phone))
@@ -537,10 +515,9 @@ async function loadUser(){
   langSelect.value = data.language || "en";
 
   applyDarkMode();
-applyLanguage();
+  applyLanguage();
 
-setTimeout(scheduleReminders,1000);
-setTimeout(initFCM,1000); // 🔔 FCM START
+  setTimeout(scheduleReminders,1000);
 }
 
 /* SAVE SETTINGS */
@@ -845,9 +822,6 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
-
-
-
 
 
 
