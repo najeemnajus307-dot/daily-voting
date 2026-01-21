@@ -410,7 +410,7 @@ const db = getFirestore(app);
 const messaging = getMessaging(app);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("firebase-messaging-sw.js");
+  navigator.serviceWorker.register("/daily-voting/firebase-messaging-sw.js");
 }
 
 
@@ -845,6 +845,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
