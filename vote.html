@@ -474,20 +474,31 @@ async function loadPoints(){
 
 async function loadTasks(){
   if(await checkVoted()) return;
-  const s=await getDocs(collection(db,"tasks"));
+
+  const now = Date.now();
+  const s = await getDocs(collection(db,"tasks"));
   taskBox.innerHTML="";
+
   s.forEach(d=>{
-    const t=d.data();
-    taskBox.innerHTML+=`
-    <div class="task">
-      <label>
-        <input type="checkbox" data-points="${t.points}">
-        ${t.text} (${t.points} pts)
-      </label>
-    </div>`;
+    const t = d.data();
+
+    const start = new Date(t.start).getTime();
+    const end   = new Date(t.end).getTime();
+
+    // ⛔ 8 PM kazhinjilla / end kazhinju
+    if(now < start || now > end) return;
+
+    taskBox.innerHTML += `
+      <div class="task">
+        <label>
+          <input type="checkbox" data-points="${t.points}">
+          ${t.text} (${t.points} pts)
+        </label>
+      </div>
+    `;
   });
-}
-let userRef = null;
+  }
+  let userRef = null;
 
 /* LOAD USER SETTINGS */
 async function loadUser(){
@@ -822,6 +833,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
