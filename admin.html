@@ -213,8 +213,14 @@ document.querySelectorAll(".nav a[data-page]").forEach(a=>{
     a.classList.add("active");
     document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
     document.getElementById("page-"+a.dataset.page).classList.remove("hidden");
+
+    // 🔥 AUTO LOAD SETTINGS
+    if(a.dataset.page === "settings"){
+      settingsLoad();
+    }
   }
 });
+
 
 const today = ()=> new Date().toISOString().split("T")[0];
 
@@ -430,6 +436,7 @@ dashLoad(); taskInit(); userInit();
 </script>
 </body>
 </html>
+
 
 
 
