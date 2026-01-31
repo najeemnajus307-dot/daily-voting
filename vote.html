@@ -466,10 +466,18 @@ async function checkVoted(){
 }
 
 async function loadPoints(){
-  let t=0;
-  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
-  s.forEach(d=>t+=Number(d.data().points||0));
-  userPoints.innerText="Your Points: "+t;
+  let t = 0;
+  const s = await getDocs(
+    query(collection(db,"votes"), where("phone","==",phone))
+  );
+
+  s.forEach(d=>{
+    const x = d.data();
+    if(x.source === "admin") return; // admin ignore
+    t += Number(x.points || 0);
+  });
+
+  userPoints.innerText = "Your Points: " + t;
 }
 
 async function loadTasks(){
@@ -665,22 +673,29 @@ window.submitVote=async()=>{
 };
 
 async function loadLeaderboardData(){
-  const u=await getDocs(collection(db,"users"));
-  const v=await getDocs(collection(db,"votes"));
+  const u = await getDocs(collection(db,"users"));
+  const v = await getDocs(collection(db,"votes"));
 
-  const map={};
+  const map = {}; // ✅ MUST
+
   v.forEach(x=>{
-    map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0);
+    const d = x.data();
+    if(d.source === "admin") return; // ignore admin
+    map[d.phone] = (map[d.phone] || 0) + Number(d.points || 0);
   });
 
   let rows=[];
   u.forEach(x=>{
     if(map[x.data().phone]){
-      rows.push({name:x.data().name,total:map[x.data().phone]});
+      rows.push({
+        name: x.data().name,
+        total: map[x.data().phone]
+      });
     }
   });
 
   rows.sort((a,b)=>b.total-a.total);
+  ...
 
   const rankGroups={};
   let rank=1,prev=null;
@@ -833,6 +848,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
