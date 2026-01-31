@@ -128,25 +128,36 @@ input,select{padding:6px}
 
 <!-- USER REPORT -->
 <section id="page-user" class="hidden">
+
   <div class="hrow">
     <div class="card">
       User:
       <select id="u_user"></select>
+
+      From:
+      <input type="date" id="u_from">
+      To:
+      <input type="date" id="u_to">
+
       <button class="btn" onclick="userLoad()">View</button>
     </div>
   </div>
 
   <div class="card">
     <table>
-      <thead><tr><th>Date</th><th>Points</th><th>Source</th><th>Delete</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Points</th>
+          <th>Source</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
       <tbody id="u_body"></tbody>
     </table>
   </div>
+
 </section>
-
-</main>
-</div>
-
 <script type="module">
 /* ADMIN PASSWORD */
 if(prompt("Admin password")!=="5") location.replace("index.html");
@@ -276,30 +287,52 @@ async function userInit(){
     u_user.innerHTML+=`<option value="${d.data().phone}">${d.data().name}</option>`;
   });
 }
-window.userLoad=async()=>{
-  const phone=u_user.value;
-  const votes=await getDocs(collection(db,"votes"));
-  u_body.innerHTML="";
-  votes.forEach(v=>{
-    const x=v.data();
-    if(x.phone===phone){
-      u_body.innerHTML+=`
-        <tr>
-          <td>${x.date||"-"}</td>
-          <td>${x.points}</td>
-          <td>${x.source||"user"}</td>
-          <td><button class="btn del" onclick="delVote('${v.id}')">X</button></td>
-        </tr>`;
+window.userLoad = async () => {
+  const phone = u_user.value;
+  const from  = u_from.value;
+  const to    = u_to.value;
+
+  const votesSnap = await getDocs(collection(db,"votes"));
+  let rows = [];
+
+  votesSnap.forEach(v=>{
+    const x = v.data();
+    if(x.phone !== phone) return;
+
+    // date filter
+    if(from){
+      if(!x.date) return;
+      if(x.date < from) return;
+      if(to && x.date > to) return;
     }
+
+    rows.push({
+      id: v.id,
+      date: x.date || "",
+      points: x.points,
+      source: x.source || "user"
+    });
+  });
+
+  // 🔥 ORDER BY DATE (latest first)
+  rows.sort((a,b)=> (b.date || "").localeCompare(a.date || ""));
+
+  u_body.innerHTML = "";
+  rows.forEach(r=>{
+    u_body.innerHTML += `
+      <tr>
+        <td>${r.date || "-"}</td>
+        <td>${r.points}</td>
+        <td>${r.source}</td>
+        <td>
+          <button class="btn del" onclick="delVote('${r.id}')">X</button>
+        </td>
+      </tr>`;
   });
 };
-window.delVote=async(id)=>{
-  await deleteDoc(doc(db,"votes",id));
-  userLoad(); dashLoad();
-};
-
 /* INIT */
 dashLoad(); taskInit(); userInit();
 </script>
 </body>
 </html>
+
