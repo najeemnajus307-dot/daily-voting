@@ -466,18 +466,10 @@ async function checkVoted(){
 }
 
 async function loadPoints(){
-  let t = 0;
-  const s = await getDocs(
-    query(collection(db,"votes"), where("phone","==",phone))
-  );
-
-  s.forEach(d=>{
-    const x = d.data();
-    if(x.source === "admin") return; // admin ignore
-    t += Number(x.points || 0);
-  });
-
-  userPoints.innerText = "Your Points: " + t;
+  let t=0;
+  const s=await getDocs(query(collection(db,"votes"),where("phone","==",phone)));
+  s.forEach(d=>t+=Number(d.data().points||0));
+  userPoints.innerText="Your Points: "+t;
 }
 
 async function loadTasks(){
@@ -673,88 +665,65 @@ window.submitVote=async()=>{
 };
 
 async function loadLeaderboardData(){
-  const u = await getDocs(collection(db,"users"));
-  const v = await getDocs(collection(db,"votes"));
+  const u=await getDocs(collection(db,"users"));
+  const v=await getDocs(collection(db,"votes"));
 
-  const map = {}; // phone -> total points (user only)
-
-  // 1️⃣ collect points (❌ admin points ignore)
-  v.forEach(doc=>{
-    const d = doc.data();
-    if(d.source === "admin") return;   // IMPORTANT
-    map[d.phone] = (map[d.phone] || 0) + Number(d.points || 0);
+  const map={};
+  v.forEach(x=>{
+    map[x.data().phone]=(map[x.data().phone]||0)+Number(x.data().points||0);
   });
 
-  // 2️⃣ build rows from users
-  let rows = [];
-  u.forEach(doc=>{
-    const phone = doc.data().phone;
-    if(map[phone]){
-      rows.push({
-        name: doc.data().name,
-        total: map[phone]
-      });
+  let rows=[];
+  u.forEach(x=>{
+    if(map[x.data().phone]){
+      rows.push({name:x.data().name,total:map[x.data().phone]});
     }
   });
 
-  // 3️⃣ sort by points desc
-  rows.sort((a,b)=>b.total - a.total);
+  rows.sort((a,b)=>b.total-a.total);
 
-  // 4️⃣ rank grouping
-  const rankGroups = {};
-  let rank = 1, prev = null;
-
+  const rankGroups={};
+  let rank=1,prev=null;
   rows.forEach(r=>{
-    if(prev !== null && r.total < prev) rank++;
-    if(rank <= 3){
-      rankGroups[rank] = rankGroups[rank] || [];
+    if(prev!==null && r.total<prev) rank++;
+    if(rank<=3){
+      rankGroups[rank]=rankGroups[rank]||[];
       rankGroups[rank].push(r);
     }
-    prev = r.total;
+    prev=r.total;
   });
 
-  // 5️⃣ render TOP 3 (Home)
-  top3.innerHTML = "";
-  const rot = JSON.parse(localStorage.getItem("topRotate") || "{}");
+  top3.innerHTML="";
+  allRanks.innerHTML="";
+  const rot=JSON.parse(localStorage.getItem("topRotate")||"{}");
 
   [1,2,3].forEach(rk=>{
-    const list = rankGroups[rk] || [];
+    const list=rankGroups[rk]||[];
     if(!list.length) return;
-
-    const start = rot[rk] || 0;
-    const p = list[start % list.length];
-
-    top3.innerHTML += `
+    const start=rot[rk]||0;
+    for(let i=0;i<Math.min(2,list.length);i++){
+      const p=list[(start+i)%list.length];
+      top3.innerHTML+=`
       <div class="tp-row tp-${rk}">
-        <div>${rk}</div>
-        <div>${p.name}</div>
-        <div>${p.total}</div>
-      </div>
-    `;
-
-    rot[rk] = (start + 1) % list.length;
+        <div>${rk}</div><div>${p.name}</div><div>${p.total}</div>
+      </div>`;
+    }
+    rot[rk]=(start+2)%list.length;
   });
 
-  localStorage.setItem("topRotate", JSON.stringify(rot));
+  localStorage.setItem("topRotate",JSON.stringify(rot));
 
-  // 6️⃣ render FULL leaderboard
-  allRanks.innerHTML = "";
-  let r = 1, pr = null;
-
+  let r=1,pr=null;
   rows.forEach(x=>{
-    if(pr !== null && x.total < pr) r++;
-    const cls = r <= 3 ? `tp-${r}` : "";
-    allRanks.innerHTML += `
-      <tr class="${cls}">
-        <td>${r}</td>
-        <td>${x.name}</td>
-        <td>${x.total}</td>
-      </tr>
-    `;
-    pr = x.total;
+    if(pr!==null && x.total<pr) r++;
+    let cls=r<=3?`tp-${r}`:"";
+    allRanks.innerHTML+=`
+    <tr class="${cls}">
+      <td>${r}</td><td>${x.name}</td><td>${x.total}</td>
+    </tr>`;
+    pr=x.total;
   });
 }
-
 
 let curMonth=new Date().getMonth(),curYear=new Date().getFullYear();
 window.prevMonth=()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--;}loadCalendar();}
@@ -864,9 +833,6 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
-
-
-
 
 
 
