@@ -363,7 +363,7 @@ window.userLoad = async () => {
 };
   window.settingsLoad = async () => {
   const from = s_from.value;
-  const to   = s_to.value || from;
+  const to   = s_to.value;
 
   const usersSnap = await getDocs(collection(db,"users"));
   const votesSnap = await getDocs(collection(db,"votes"));
@@ -378,21 +378,26 @@ window.userLoad = async () => {
   votesSnap.forEach(v=>{
     const x = v.data();
 
-    // ❌ ADMIN ADD IGNORE
+    // ❌ admin points hide
     if(x.source === "admin") return;
 
-    // 📅 DATE FILTER
+    // 📅 optional date filter
     if(from){
       if(!x.date) return;
-      if(x.date < from || x.date > to) return;
+      if(x.date < from) return;
+      if(to && x.date > to) return;
     }
 
-    pointMap[x.phone] = (pointMap[x.phone] || 0) + Number(x.points || 0);
+    pointMap[x.phone] =
+      (pointMap[x.phone] || 0) + Number(x.points || 0);
   });
 
   let rows=[];
   for(const p in pointMap){
-    rows.push({ name: nameMap[p] || "Unknown", points: pointMap[p] });
+    rows.push({
+      name: nameMap[p] || "Unknown",
+      points: pointMap[p]
+    });
   }
 
   rows.sort((a,b)=>b.points-a.points);
@@ -405,14 +410,18 @@ window.userLoad = async () => {
     if(prev===null || r.points < prev) rank++;
     prev = r.points;
 
+    const cls =
+      rank===1 ? "rank1" :
+      rank===2 ? "rank2" :
+      rank===3 ? "rank3" : "";
+
     s_body.innerHTML += `
-      <tr>
+      <tr class="${cls}">
         <td>${sl}</td>
         <td>${rank}</td>
         <td>${r.name}</td>
         <td>${r.points}</td>
-      </tr>
-    `;
+      </tr>`;
   });
 };
 
@@ -421,5 +430,6 @@ dashLoad(); taskInit(); userInit();
 </script>
 </body>
 </html>
+
 
 
