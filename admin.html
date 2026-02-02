@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -429,22 +430,13 @@ window.userLoad = async () => {
         <td>${r.points}</td>
       </tr>`;
   });
- // DELETE A VOTE
-window.delVote = async (id) => {
-  if (!confirm("Are you sure you want to delete this vote?")) return;
-
-  await deleteDoc(doc(db, "votes", id));
-
-  alert("Vote deleted");
-  userLoad();   // refresh user-wise table
-  dashLoad();   // refresh dashboard points
+};
 
 /* INIT */
 dashLoad(); taskInit(); userInit();
 </script>
 </body>
 </html>
-
 
 
 
