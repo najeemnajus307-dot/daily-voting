@@ -77,7 +77,17 @@ button{
 
   <input id="taskText" placeholder="Task text (eg: No challenge completed)">
   <input id="taskPoints" type="number" placeholder="Points (0 allowed)">
-  
+  <label>Working Days</label>
+<div id="daysBox">
+  <label><input type="checkbox" value="1"> Mon</label>
+  <label><input type="checkbox" value="2"> Tue</label>
+  <label><input type="checkbox" value="3"> Wed</label>
+  <label><input type="checkbox" value="4"> Thu</label>
+  <label><input type="checkbox" value="5"> Fri</label>
+  <label><input type="checkbox" value="6"> Sat</label>
+  <label><input type="checkbox" value="0"> Sun</label>
+</div>
+
   <label>Start Date & Time</label>
   <input id="startTime" type="datetime-local">
 
@@ -140,15 +150,17 @@ async function loadTasks(){
           End: ${new Date(t.end).toLocaleString()}
         </span>
         <div class="row">
-          <button class="edit"
-            onclick="editTask(
-              '${d.id}',
-              '${t.text.replace(/'/g,"\\'")}',
-              ${t.points},
-              '${t.start}',
-              '${t.end}'
-            )">Edit</button>
-          <button class="del"
+         <button class="edit"
+ onclick="editTask(
+  '${d.id}',
+  '${t.text.replace(/'/g,"\\'")}',
+  ${t.points},
+  '${t.start}',
+  '${t.end}',
+  ${JSON.stringify(t.days || [])}
+ )">Edit</button>
+
+        <button class="del"
             onclick="deleteTask('${d.id}')">Delete</button>
         </div>
       </div>
@@ -164,21 +176,29 @@ window.saveTask = async ()=>{
   const start = startTime.value;
   const end   = endTime.value;
 
-  if(!text || points < 0 || !start || !end){
-    alert("Fill all fields (points can be 0)");
+  const days = [...document.querySelectorAll(
+    "#daysBox input:checked"
+  )].map(d => Number(d.value));
+
+  if(!text || points < 0 || !start || !end || days.length === 0){
+    alert("Fill all fields & select working days");
     return;
   }
 
+  const data = {
+    text,
+    points,
+    start,
+    end,
+    days
+  };
+
   if(editId){
-    // ✏️ UPDATE
-    await updateDoc(doc(db,"tasks",editId),{
-      text, points, start, end
-    });
+    await updateDoc(doc(db,"tasks",editId), data);
     editId = null;
   }else{
-    // ➕ ADD
     await addDoc(collection(db,"tasks"),{
-      text, points, start, end,
+      ...data,
       createdAt:new Date().toISOString()
     });
   }
@@ -187,17 +207,24 @@ window.saveTask = async ()=>{
   taskPoints.value="";
   startTime.value="";
   endTime.value="";
+  document.querySelectorAll("#daysBox input")
+    .forEach(c=>c.checked=false);
 
   loadTasks();
 };
 
 /* ✏️ EDIT TASK */
-window.editTask = (id,text,points,start,end)=>{
+window.editTask = (id,text,points,start,end,days=[])=>{
   editId = id;
   taskText.value = text;
   taskPoints.value = points;
   startTime.value = start;
   endTime.value = end;
+
+  document.querySelectorAll("#daysBox input")
+    .forEach(c=>{
+      c.checked = days.includes(Number(c.value));
+    });
 };
 
 /* ❌ DELETE TASK */
