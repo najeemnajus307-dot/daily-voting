@@ -410,11 +410,6 @@ if(!phone) location.replace("index.html");
 
 todayDate.innerText="Today: "+new Date().toDateString();
 
-function getVoteDate(){
-  const d=new Date();
-  if(d.getHours()<20) d.setDate(d.getDate()-1);
-  return d.toISOString().split("T")[0];
-}
 
 /* ===== TIMER ADD (NEW) ===== */
 function nextVoteTime(){
@@ -749,21 +744,9 @@ let curMonth=new Date().getMonth(),curYear=new Date().getFullYear();
 window.prevMonth=()=>{curMonth--;if(curMonth<0){curMonth=11;curYear--;}loadCalendar();}
 window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalendar();}
 
-  function getEffectiveToday(){
-  const now = new Date();
-  const d = new Date(now);
-
-  // രാത്രി 8 PM-ന് മുമ്പാണെങ്കിൽ
-  if(now.getHours() < 20){
-    d.setDate(d.getDate() - 1);
-  }
-
-  return d.toISOString().split("T")[0];
-}
-  function getVoteDate(){
+function getVoteDate(){
   const now = new Date();
 
-  // IST safe local date (no UTC shift)
   const local = new Date(
     now.getFullYear(),
     now.getMonth(),
@@ -772,19 +755,52 @@ window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalen
 
   const h = now.getHours();
 
-  // 🕗 8 PM → 11:59 PM  → Today
+  // 8 PM → Today
   if(h >= 20){
     return local.toISOString().split("T")[0];
   }
 
-  // 🌙 12 AM → 11:59 AM → Yesterday
+  // 12 AM → 11:59 AM → Yesterday
   if(h < 12){
     local.setDate(local.getDate() - 1);
     return local.toISOString().split("T")[0];
   }
 
-  // ☀️ 12 PM → 7:59 PM → Today (new cycle not started)
+  // 12 PM → 7:59 PM → Today
   return local.toISOString().split("T")[0];
+}
+
+function getDayStatus(dateStr, votedMap){
+  const now = new Date();
+
+  // Voting day (8 PM system)
+  const votingDay = new Date(now);
+  if(now.getHours() < 20) votingDay.setDate(votingDay.getDate() - 1);
+  const votingDayStr = votingDay.toISOString().split("T")[0];
+
+  // Deadline day (next day 12 PM)
+  const deadlineDay = new Date(votingDay);
+  deadlineDay.setDate(deadlineDay.getDate() + 1);
+  const deadlineStr = deadlineDay.toISOString().split("T")[0];
+
+  // If voted → GREEN
+  if(votedMap[dateStr]) return "done";
+
+  const h = now.getHours();
+
+  // Current voting window (8PM → next day 12PM)
+  if(dateStr === votingDayStr || dateStr === deadlineStr){
+    if(h >= 20 || h < 12){
+      return "pending";   // Yellow until vote
+    }
+    return "missed";      // Red after 12 PM
+  }
+
+  // Future → BLACK
+  if(dateStr > deadlineStr) return "future";
+
+  // Past missed → RED
+  return "missed";
 }
 
  async function loadCalendar(){
@@ -870,6 +886,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
