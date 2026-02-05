@@ -471,22 +471,41 @@ async function loadPoints(){
   s.forEach(d=>t+=Number(d.data().points||0));
   userPoints.innerText="Your Points: "+t;
 }
+function isTaskActive(task){
+  const now = new Date();
+  const today = now.getDay();
+  const yesterday = (today + 6) % 7;
 
+  const [sh, sm] = task.start.split(":").map(Number);
+  const [eh, em] = task.end.split(":").map(Number);
+
+  const startMin = sh*60 + sm;
+  const endMin   = eh*60 + em;
+  const nowMin   = now.getHours()*60 + now.getMinutes();
+
+  // same day (10AM → 6PM)
+  if(endMin > startMin){
+    return task.days?.includes(today) &&
+           nowMin >= startMin &&
+           nowMin <= endMin;
+  }
+
+  // cross midnight (8PM → next day)
+  return (
+    (task.days?.includes(today) && nowMin >= startMin) ||
+    (task.days?.includes(yesterday) && nowMin <= endMin)
+  );
+}
 async function loadTasks(){
   if(await checkVoted()) return;
 
-  const now = Date.now();
-  const s = await getDocs(collection(db,"tasks"));
-  taskBox.innerHTML="";
+  const snap = await getDocs(collection(db,"tasks"));
+  taskBox.innerHTML = "";
 
-  s.forEach(d=>{
+  snap.forEach(d=>{
     const t = d.data();
 
-    const start = new Date(t.start).getTime();
-    const end   = new Date(t.end).getTime();
-
-    // ⛔ 8 PM kazhinjilla / end kazhinju
-    if(now < start || now > end) return;
+    if(!isTaskActive(t)) return;   // only active tasks
 
     taskBox.innerHTML += `
       <div class="task">
@@ -497,7 +516,8 @@ async function loadTasks(){
       </div>
     `;
   });
-  }
+}
+
   let userRef = null;
 
 /* LOAD USER SETTINGS */
@@ -833,6 +853,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
