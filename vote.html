@@ -768,27 +768,28 @@ window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalen
   if(now.getHours() < 20) votingDay.setDate(votingDay.getDate() - 1);
   const votingDayStr = votingDay.toISOString().split("T")[0];
 
-  // Tomorrow (future)
-  const tomorrow = new Date(votingDay);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+  // Tomorrow (deadline day)
+  const deadlineDay = new Date(votingDay);
+  deadlineDay.setDate(deadlineDay.getDate() + 1);
+  const deadlineStr = deadlineDay.toISOString().split("T")[0];
 
-  // Future days → black
-  if(dateStr > tomorrowStr) return "future";
-
-  // If voted → green
+  // If voted → Green
   if(votedMap[dateStr]) return "done";
 
   const h = now.getHours();
-  const m = now.getMinutes();
 
-  // Current voting window (8 PM → next day 12 PM)
-  if(dateStr === votingDayStr || dateStr === tomorrowStr){
-    if(h >= 20 || h < 12) return "pending";
-    return "missed";
+  // Current voting period (8 PM → next day 12 PM)
+  if(dateStr === votingDayStr || dateStr === deadlineStr){
+    if(h >= 20 || h < 12){
+      return "pending";   // Yellow until vote
+    }
+    return "missed";      // Red after 12 PM
   }
 
-  // Past without vote → red
+  // Future days → Black
+  if(dateStr > deadlineStr) return "future";
+
+  // Past without vote → Red
   return "missed";
 }
 
@@ -875,6 +876,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
