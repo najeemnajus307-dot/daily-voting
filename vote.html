@@ -285,27 +285,6 @@ body.dark .bottom-nav button{
     src="https://www.youtube.com/embed/gT_Whh3uYuo"
     allowfullscreen></iframe>
 </div>
-  <!-- COMPETITION SECTION -->
-<div id="competitionSection" style="display:none">
-
-  <h3>🏆 Competition</h3>
-
-  <button onclick="openForm()"
-    style="background:#2563eb;color:#fff;padding:10px;border:none;border-radius:6px;width:100%">
-    Open Competition Form
-  </button>
-
-  <div id="formBox" style="margin-top:10px;display:none">
-    <iframe
-      id="formFrame"
-      width="100%"
-      height="600"
-      style="border:none;border-radius:8px">
-    </iframe>
-  </div>
-
-</div>
-
 <!-- SETTINGS -->
 <div id="settingsSection" style="display:none">
   <h3>⚙️ Settings</h3>
@@ -373,9 +352,6 @@ body.dark .bottom-nav button{
   <button onclick="showWorkout()">
   <span>📚</span>Workout
 </button>
-  <button onclick="showCompetition()">
-  <span>🏆</span>Competition
-  </button>
 <button onclick="showSettings()">
   <span>⚙️</span>Settings
 </button>
@@ -435,21 +411,10 @@ if(!phone) location.replace("index.html");
 todayDate.innerText="Today: "+new Date().toDateString();
 
 function getVoteDate(){
-  const now = new Date();
-
-  const local = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate()
-  );
-
-  if(now.getHours() < 20){
-    local.setDate(local.getDate() - 1);
-  }
-
-  return local.toISOString().split("T")[0];
+  const d=new Date();
+  if(d.getHours()<20) d.setDate(d.getDate()-1);
+  return d.toISOString().split("T")[0];
 }
-
 
 /* ===== TIMER ADD (NEW) ===== */
 function nextVoteTime(){
@@ -580,12 +545,11 @@ async function loadUser(){
   darkModeToggle.checked = data.darkMode === true;
   langSelect.value = data.language || "en";
 
- applyDarkMode();
-applyLanguage();
+  applyDarkMode();
+  applyLanguage();
 
-clearReminders();
-setTimeout(scheduleReminders,1000);
-
+  setTimeout(scheduleReminders,1000);
+}
 
 /* SAVE SETTINGS */
 window.saveSettings = async ()=>{
@@ -626,11 +590,10 @@ function applyLanguage(){
   // Bottom navigation
   const navBtns = document.querySelectorAll(".bottom-nav button");
   navBtns[0].innerHTML = `<span>🏠</span>${t.home}`;
-navBtns[1].innerHTML = `<span>🏆</span>${t.leaderboard}`;
-navBtns[2].innerHTML = `<span>📅</span>${t.calendar}`;
-navBtns[3].innerHTML = `<span>📚</span>${t.workout}`;
-navBtns[4].innerHTML = `<span>🏆</span>Competition`;
-navBtns[5].innerHTML = `<span>⚙️</span>${t.settings}`;
+  navBtns[1].innerHTML = `<span>🏆</span>${t.leaderboard}`;
+  navBtns[2].innerHTML = `<span>📅</span>${t.calendar}`;
+  navBtns[3].innerHTML = `<span>📚</span>${t.workout}`;
+  navBtns[4].innerHTML = `<span>⚙️</span>${t.settings}`;
 
   // Home section
   submitBtn.innerText = t.submitVote;
@@ -797,7 +760,7 @@ window.nextMonth=()=>{curMonth++;if(curMonth>11){curMonth=0;curYear++;}loadCalen
 
   return d.toISOString().split("T")[0];
 }
-async function loadCalendar(){
+ async function loadCalendar(){
   calendar.innerHTML = "";
 
   calTitle.innerText = new Date(curYear,curMonth)
@@ -811,7 +774,7 @@ async function loadCalendar(){
   snap.forEach(d => voted[d.data().date] = true);
 
   const days = new Date(curYear,curMonth+1,0).getDate();
-  const today = getEffectiveToday();   // ← 8PM system
+  const today = new Date().toISOString().split("T")[0];
 
   const firstDay = new Date(curYear,curMonth,1).getDay();
   const start = (firstDay === 0 ? 6 : firstDay - 1);
@@ -819,30 +782,24 @@ async function loadCalendar(){
   for(let i=0;i<start;i++) calendar.innerHTML += "<div></div>";
 
   for(let i=1;i<=days;i++){
-   const dLocal = new Date(curYear,curMonth,i);
-
-const ds = new Date(
-  dLocal.getFullYear(),
-  dLocal.getMonth(),
-  dLocal.getDate()
-).toISOString().split("T")[0];
+    const ds = new Date(curYear,curMonth,i)
+      .toISOString().split("T")[0];
 
     let cls = "future";
 
     if(voted[ds]){
-      cls = "done";           // 🟢 voted
+      cls = "done";       // 🟢 ONLY Firebase decides this
     }
     else if(ds === today){
-      cls = "pending";        // 🟡 current voting window
+      cls = "pending";    // 🟡 today only
     }
     else if(ds < today){
-      cls = "missed";         // 🔴 missed
+      cls = "missed";     // 🔴 past without vote
     }
 
     calendar.innerHTML += `<div class="day ${cls}">${i}</div>`;
   }
-}
-
+ }
 
 
 
@@ -878,33 +835,6 @@ window.showWorkout = () => {
   workoutSection.style.display = "block";
   settingsSection.style.display = "none";
 };
-  window.showCompetition = () => {
-  homeSection.style.display = "none";
-  leaderboardSection.style.display = "none";
-  calendarSection.style.display = "none";
-  workoutSection.style.display = "none";
-  settingsSection.style.display = "none";
-  competitionSection.style.display = "block";
-};
-window.openForm = () => {
-  const link = "https://forms.gle/AtPzEEib37gGUXDq9ATHIL";
-
-  const frame = document.getElementById("formFrame");
-  const box   = document.getElementById("formBox");
-
-  frame.src = link;
-  box.style.display = "block";
-
-  // if iframe blocked → open same tab after 2s
-  setTimeout(()=>{
-    if(!frame.contentWindow){
-      window.location.href = link;
-    }
-  },2000);
-};
-
-
-
 window.showSettings = () => {
   homeSection.style.display = "none";
   leaderboardSection.style.display = "none";
@@ -923,8 +853,6 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
-
-
 
 
 
