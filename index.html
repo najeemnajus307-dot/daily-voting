@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Faith & Fitness – Login / Signup</title>
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -15,7 +14,6 @@ body{
   align-items:center;
   min-height:100vh;
 }
-
 .box{
   background:#fff;
   padding:25px;
@@ -23,19 +21,13 @@ body{
   border-radius:12px;
   box-shadow:0 0 12px rgba(0,0,0,.15);
 }
-
-h3{
-  text-align:center;
-  margin-bottom:10px;
-}
-
+h3{text-align:center;margin-bottom:10px;}
 input,button{
   width:100%;
   padding:10px;
   margin:8px 0;
   font-size:15px;
 }
-
 button{
   background:#16a34a;
   color:#fff;
@@ -43,11 +35,6 @@ button{
   border-radius:6px;
   cursor:pointer;
 }
-
-button:active{
-  transform:scale(0.98);
-}
-
 .link{
   text-align:center;
   margin-top:12px;
@@ -56,10 +43,7 @@ button:active{
   font-weight:bold;
   cursor:pointer;
 }
-
-.hide{
-  display:none;
-}
+.hide{display:none;}
 </style>
 </head>
 
@@ -67,127 +51,178 @@ button:active{
 
 <div class="box">
 
-  <!-- 🔐 LOGIN -->
-  <div id="loginBox">
-    <h3>WELCOME<br>FAITH & FITNESS</h3>
+<!-- LOGIN -->
+<div id="loginBox">
+<h3>WELCOME<br>FAITH & FITNESS</h3>
 
-    <input id="loginPhone" placeholder="Phone number">
-    <input id="loginPass" type="password" placeholder="Password">
+<input id="loginPhone" placeholder="Phone number">
+<input id="loginPass" type="password" placeholder="Password">
 
-    <button onclick="login()">Login</button>
+<p style="text-align:right;margin-top:6px">
+<a href="#" onclick="showReset()">Forgot Password?</a>
+</p>
 
-    <!-- ✅ SIGNUP LINK (VISIBLE) -->
-    <div class="link" onclick="showSignup()">New user? Signup</div>
-  </div>
+<button onclick="login()">Login</button>
 
-  <!-- 📝 SIGNUP -->
-  <div id="signupBox" class="hide">
-    <h3>Create Account</h3>
+<!-- RESET PASSWORD BOX -->
+<div id="resetBox" style="display:none;margin-top:10px">
+<input id="resetPhone" placeholder="Enter Phone Number">
+<input id="newPass" type="password" placeholder="New Password">
+<button onclick="resetPassword()">Reset Password</button>
+</div>
 
-    <input id="name" placeholder="Full name">
-    <input id="phone" placeholder="Phone number">
-    <input id="pass" type="password" placeholder="Password">
+<div class="link" onclick="showSignup()">New user? Signup</div>
+</div>
 
-    <button onclick="signup()">Create Account</button>
 
-    <div class="link" onclick="showLogin()">Already user? Login</div>
-  </div>
+<!-- SIGNUP -->
+<div id="signupBox" class="hide">
+<h3>Create Account</h3>
+
+<input id="name" placeholder="Full name">
+<input id="phone" placeholder="Phone number">
+<input id="pass" type="password" placeholder="Password">
+
+<button onclick="signup()">Create Account</button>
+
+<div class="link" onclick="showLogin()">Already user? Login</div>
+</div>
 
 </div>
 
+
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+
+/* FIREBASE */
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+getFirestore, collection, addDoc,
+query, where, getDocs, updateDoc
+} from
+"https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
-const firebaseConfig = {
-  apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
-  authDomain: "daily-voting-793ee.firebaseapp.com",
-  projectId: "daily-voting-793ee"
-};
+const app = initializeApp({
+apiKey:"AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+authDomain:"daily-voting-793ee.firebaseapp.com",
+projectId:"daily-voting-793ee"
+});
 
-const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔁 AUTO REDIRECT IF LOGGED */
+
+/* AUTO LOGIN */
 if(localStorage.getItem("userPhone")){
-  location.replace("vote.html");
+location.replace("vote.html");
 }
 
-/* 🔄 TOGGLE */
+
+/* TOGGLE */
 window.showSignup = ()=>{
-  document.getElementById("loginBox").classList.add("hide");
-  document.getElementById("signupBox").classList.remove("hide");
+loginBox.classList.add("hide");
+signupBox.classList.remove("hide");
 };
 
 window.showLogin = ()=>{
-  document.getElementById("signupBox").classList.add("hide");
-  document.getElementById("loginBox").classList.remove("hide");
+signupBox.classList.add("hide");
+loginBox.classList.remove("hide");
 };
 
-/* 📝 SIGNUP */
+window.showReset = ()=>{
+document.getElementById("resetBox").style.display="block";
+};
+
+
+/* SIGNUP */
 window.signup = async ()=>{
-  const name  = document.getElementById("name").value.trim();
-  const phone = document.getElementById("phone").value.trim();
-  const pass  = document.getElementById("pass").value.trim();
+const name  = nameInput("name");
+const phone = nameInput("phone");
+const pass  = nameInput("pass");
 
-  if(!name || !phone || !pass){
-    alert("All fields required");
-    return;
-  }
+if(!name || !phone || !pass){
+alert("All fields required");
+return;
+}
 
-  const q = query(collection(db,"users"), where("phone","==",phone));
-  const snap = await getDocs(q);
+const snap = await getDocs(
+query(collection(db,"users"), where("phone","==",phone))
+);
 
-  if(!snap.empty){
-    alert("User already exists");
-    return;
-  }
+if(!snap.empty){
+alert("User already exists");
+return;
+}
 
-  await addDoc(collection(db,"users"),{
-    name,
-    phone,
-    password: pass,
-    createdAt: new Date().toISOString()
-  });
+await addDoc(collection(db,"users"),{
+name,
+phone,
+password: pass,
+createdAt:new Date().toISOString()
+});
 
-  alert("Signup successful ✅");
-  showLogin();
+alert("Signup successful ✅");
+showLogin();
 };
 
-/* 🔐 LOGIN */
+
+/* LOGIN */
 window.login = async ()=>{
-  const phone = document.getElementById("loginPhone").value.trim();
-  const pass  = document.getElementById("loginPass").value.trim();
+const phone = nameInput("loginPhone");
+const pass  = nameInput("loginPass");
 
-  if(!phone || !pass){
-    alert("Enter phone & password");
-    return;
-  }
+if(!phone || !pass){
+alert("Enter phone & password");
+return;
+}
 
-  const q = query(
-    collection(db,"users"),
-    where("phone","==",phone),
-    where("password","==",pass)
-  );
+const snap = await getDocs(
+query(collection(db,"users"),
+where("phone","==",phone),
+where("password","==",pass))
+);
 
-  const snap = await getDocs(q);
+if(snap.empty){
+alert("Wrong phone or password ❌");
+return;
+}
 
-  if(snap.empty){
-    alert("Invalid login ❌");
-    return;
-  }
-
-  localStorage.setItem("userPhone", phone);
-  location.replace("vote.html");
+localStorage.setItem("userPhone",phone);
+location.replace("vote.html");
 };
+
+
+/* RESET PASSWORD */
+window.resetPassword = async ()=>{
+const phone = nameInput("resetPhone");
+const newPass = nameInput("newPass");
+
+if(!phone || !newPass){
+alert("Enter phone & new password");
+return;
+}
+
+const snap = await getDocs(
+query(collection(db,"users"), where("phone","==",phone))
+);
+
+if(snap.empty){
+alert("User not found ❌");
+return;
+}
+
+await updateDoc(snap.docs[0].ref,{ password:newPass });
+
+alert("Password reset successful ✅ Now login");
+document.getElementById("resetBox").style.display="none";
+};
+
+
+/* HELPER */
+function nameInput(id){
+return document.getElementById(id).value.trim();
+}
+
 </script>
 
 </body>
