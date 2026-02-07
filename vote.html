@@ -867,10 +867,12 @@ window.showWorkout = () => {
   competitionSection.style.display = "block";
 };
 window.openForm = () => {
-  const link = https://docs.google.com/forms/d/e/1FAIpQLScr2gs6eYNndi0KVPryFeKPW0JgujjDR9EMCBbq96OIvvrqhw/viewform
+  const link = "https://docs.google.com/forms/d/e/1FAIpQLScr2gs6eYNndi0KVPryFeKPW0JgujjDR9EMCBbq96OIvvrqhw/viewform?embedded=true";
+
   document.getElementById("formFrame").src = link;
   document.getElementById("formBox").style.display = "block";
 };
+
 
 window.showSettings = () => {
   homeSection.style.display = "none";
@@ -890,6 +892,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
