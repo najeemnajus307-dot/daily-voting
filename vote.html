@@ -614,10 +614,11 @@ function applyLanguage(){
   // Bottom navigation
   const navBtns = document.querySelectorAll(".bottom-nav button");
   navBtns[0].innerHTML = `<span>🏠</span>${t.home}`;
-  navBtns[1].innerHTML = `<span>🏆</span>${t.leaderboard}`;
-  navBtns[2].innerHTML = `<span>📅</span>${t.calendar}`;
-  navBtns[3].innerHTML = `<span>📚</span>${t.workout}`;
-  navBtns[4].innerHTML = `<span>⚙️</span>${t.settings}`;
+navBtns[1].innerHTML = `<span>🏆</span>${t.leaderboard}`;
+navBtns[2].innerHTML = `<span>📅</span>${t.calendar}`;
+navBtns[3].innerHTML = `<span>📚</span>${t.workout}`;
+navBtns[4].innerHTML = `<span>🏆</span>Competition`;
+navBtns[5].innerHTML = `<span>⚙️</span>${t.settings}`;
 
   // Home section
   submitBtn.innerText = t.submitVote;
@@ -892,6 +893,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
