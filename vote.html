@@ -435,33 +435,54 @@ if(!phone) location.replace("index.html");
 todayDate.innerText="Today: "+new Date().toDateString();
 
 function getVoteDate(){
-  const d=new Date();
-  if(d.getHours()<20) d.setDate(d.getDate()-1);
+  const d = new Date();
+  const hour = d.getHours();
+
+  // If before 12PM, vote belongs to yesterday (because session started at 8PM)
+  if(hour < 12){
+    d.setDate(d.getDate() - 1);
+  }
+
   return d.toISOString().split("T")[0];
 }
-
-/* ===== TIMER ADD (NEW) ===== */
+/* ===== TIMER ADD (FIXED) ===== */
 function nextVoteTime(){
-  const now=new Date();
-  const t=new Date();
-  t.setHours(20,0,0,0);
-  if(now>=t) t.setDate(t.getDate()+1);
+  const now = new Date();
+  const t = new Date();
+  const hour = now.getHours();
+
+  // If closed time (12PM – 7:59PM)
+  if(hour >= 12 && hour < 20){
+    t.setHours(20,0,0,0); // today 8PM
+  } else {
+    // If open time → next open tomorrow 8PM
+    t.setDate(t.getDate() + 1);
+    t.setHours(20,0,0,0);
+  }
   return t;
 }
-
 function startTimer(){
+  const now = new Date();
+  const hour = now.getHours();
+
+  // 🟢 OPEN: 8PM–11:59PM OR 12AM–11:59AM
+  if(hour >= 20 || hour < 12){
+    nextVoteBox.style.display="none";
+    submitBtn.disabled=false;
+    submitBtn.classList.remove("disabled");
+    loadTasks();
+    return;
+  }
+  // 🔴 CLOSED: 12PM–7:59PM
   nextVoteBox.style.display="block";
   submitBtn.disabled=true;
   submitBtn.classList.add("disabled");
   taskBox.innerHTML="";
-
+  
   const tick=()=>{
     const diff=nextVoteTime()-new Date();
     if(diff<=0){
-      nextVoteBox.innerHTML="Voting is open ✅ Refresh page";
-      submitBtn.disabled=false;
-      submitBtn.classList.remove("disabled");
-      loadTasks();
+      location.reload();
       return;
     }
     const h=Math.floor(diff/36e5);
@@ -469,12 +490,55 @@ function startTimer(){
     const s=Math.floor(diff%6e4/1000);
     nextVoteBox.innerHTML=
     `Today voting is complete ✅<br>
-     Next voting is <b>tomorrow at 8:00 PM</b><br>
+     Next voting is <b>today at 8:00 PM</b><br>
      ⏳ ${h}h ${m}m ${s}s`;
+
     setTimeout(tick,1000);
+    
   };
   tick();
 }
+//   function getVoteDate(){
+//   const d=new Date();
+//   if(d.getHours()<20) d.setDate(d.getDate()-1);
+//   return d.toISOString().split("T")[0];
+// }
+
+// /* ===== TIMER ADD (NEW) ===== */
+// function nextVoteTime(){
+//   const now=new Date();
+//   const t=new Date();
+//   t.setHours(20,0,0,0);
+//   if(now>=t) t.setDate(t.getDate()+1);
+//   return t;
+// }
+
+// function startTimer(){
+//   nextVoteBox.style.display="block";
+//   submitBtn.disabled=true;
+//   submitBtn.classList.add("disabled");
+//   taskBox.innerHTML="";
+
+//   const tick=()=>{
+//     const diff=nextVoteTime()-new Date();
+//     if(diff<=0){
+//       nextVoteBox.innerHTML="Voting is open ✅ Refresh page";
+//       submitBtn.disabled=false;
+//       submitBtn.classList.remove("disabled");
+//       loadTasks();
+//       return;
+//     }
+//     const h=Math.floor(diff/36e5);
+//     const m=Math.floor(diff%36e5/6e4);
+//     const s=Math.floor(diff%6e4/1000);
+//     nextVoteBox.innerHTML=
+//     `Today voting is complete ✅<br>
+//      Next voting is <b>tomorrow at 8:00 PM</b><br>
+//      ⏳ ${h}h ${m}m ${s}s`;
+//     setTimeout(tick,1000);
+//   };
+//   tick();
+// }
 
 async function checkVoted(){
   const s=await getDocs(query(
@@ -893,6 +957,7 @@ loadLeaderboardData();loadCalendar();checkVoted();
 
 </body>
 </html>
+
 
 
 
