@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Faith & Fitness - Integrating spiritual devotion with physical strength. Elevate your leaderboard rank, log daily achievements, and join a premium wellness community.">
+    <meta name="theme-color" content="#1b5c38">
+    <title>Faith & Fitness | Loading...</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+    
+    <!-- Link Global CSS -->
+    <link rel="stylesheet" href="assets/global.css">
+
+    <style>
+        :root {
+            --primary: #1b5c38;
+            --secondary: #e69d45;
+            --bg-dark: #0e291b;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1b5c38 0%, #0c2b1a 100%);
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Subtle animated background shapes */
+        .bg-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(230, 157, 69, 0.12) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulseGlow 8s infinite alternate ease-in-out;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @keyframes pulseGlow {
+            0% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.9); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        .container {
+            text-align: center;
+            z-index: 2;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            animation: fadeIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .logo-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 25px;
+        }
+
+        /* Glowing ring around logo */
+        .logo-ring {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: 2px solid rgba(230, 157, 69, 0.4);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spinRing 2s linear infinite;
+        }
+
+        .logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #ffffff;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            transition: all 0.5s ease;
+        }
+
+        @keyframes spinRing {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin: 10px 0 5px 0;
+            background: linear-gradient(135deg, #ffffff 30%, #e69d45 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        p {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.7);
+            letter-spacing: 0.5px;
+            margin-bottom: 35px;
+            font-weight: 500;
+            animation: pulseText 2s infinite alternate ease-in-out;
+        }
+
+        @keyframes pulseText {
+            0% { opacity: 0.6; }
+            100% { opacity: 0.9; }
+        }
+
+        /* Premium Minimalist Loader */
+        .loader-bar-container {
+            width: 180px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            margin: 0 auto;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loader-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary), #ffc885, var(--secondary));
+            position: absolute;
+            left: -100%;
+            animation: loadingProgress 1.8s infinite ease-in-out;
+            border-radius: 2px;
+        }
+
+        @keyframes loadingProgress {
+            0% { left: -100%; }
+            50% { left: 0; }
+            100% { left: 100%; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Fallback Link for accessibility */
+        .fallback-btn {
+            margin-top: 30px;
+            display: inline-block;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            text-decoration: underline;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .fallback-btn:hover {
+            color: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+
+    <main class="container" id="main-content">
+        <div class="logo-wrapper">
+            <div class="logo-ring"></div>
+            <img src="photo/logo.png" alt="Faith & Fitness Logo" class="logo" onerror="this.src='https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=200&auto=format&fit=crop'">
+        </div>
+        <h1>Faith & Fitness</h1>
+        <p id="status-text">Connecting to your profile...</p>
+        
+        <div class="loader-bar-container" aria-label="Loading progress">
+            <div class="loader-bar"></div>
+        </div>
+
+        <span class="fallback-btn" role="button" onclick="executeRedirect(true)" id="fallback-link">
+            Click here if you are not automatically redirected
+        </span>
+    </main>
+
+    <script>
+        // Redirect Logic
+        function executeRedirect(force = false) {
+            try {
+                const phone = localStorage.getItem("userPhone");
+                const statusText = document.getElementById("status-text");
+
+                if (phone) {
+                    if (statusText) statusText.textContent = "Welcome back! Redirecting to App...";
+                    setTimeout(() => {
+                        window.location.replace("user/voting.html");
+                    }, force ? 0 : 800);
+                } else {
+                    if (statusText) statusText.textContent = "Redirecting to Login...";
+                    setTimeout(() => {
+                        window.location.replace("auth/login.html");
+                    }, force ? 0 : 800);
+                }
+            } catch (error) {
+                console.error("Redirection error:", error);
+                // Fallback direct path
+                window.location.replace("auth/login.html");
+            }
+        }
+
+        // Run on load
+        window.addEventListener("DOMContentLoaded", () => {
+            executeRedirect(false);
+        });
+    </script>
+</body>
+</html>
