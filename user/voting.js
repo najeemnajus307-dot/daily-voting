@@ -75,12 +75,7 @@ async function getDocsByPhone(collectionName, phoneVal, extraQueries = []) {
 const phone = localStorage.getItem("userPhone");
 if (!phone) location.replace("../auth/login.html");
 
-// Register Service Worker for Mobile Native Lockscreen/Pull-Down Statusbar Notifications
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('../sw.js')
-        .then(reg => console.log('Service Worker Registered successfully', reg.scope))
-        .catch(err => console.error('Service Worker registration failed:', err));
-}
+// Background Push Notifications service worker is registered inside registerFCMToken()
 
 const LANG = {
     en: { home: "Home", leaderboard: "Leaderboard", calendar: "Progress", workout: "Workout", settings: "Settings", submitVote: "Submit Vote", topPerformers: "Top Performers", save: "Save Settings", logout: "Logout" },
