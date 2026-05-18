@@ -45,7 +45,11 @@ async function registerFCMToken() {
         const card = document.getElementById("notificationOptInCard");
         if (card) card.style.display = "none";
 
-        const swReg = await navigator.serviceWorker.register('/faith-and-fitnesss/firebase-messaging-sw.js', { scope: '/faith-and-fitnesss/' });
+        const isGitHub = location.hostname.includes('github.io');
+        const swPath = isGitHub ? '/faith-and-fitnesss/firebase-messaging-sw.js' : '../firebase-messaging-sw.js';
+        const swScope = isGitHub ? '/faith-and-fitnesss/' : '../';
+
+        const swReg = await navigator.serviceWorker.register(swPath, { scope: swScope });
         const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
         if (!token) return;
 
