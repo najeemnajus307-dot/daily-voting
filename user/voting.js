@@ -34,12 +34,19 @@ const LANG = {
 };
 
 // Global Helpers
+// Returns local date as YYYY-MM-DD (avoids UTC timezone shift bugs)
+window.localDateStr = (d) => {
+    return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+};
+
 window.getVoteDate = () => {
     const now = new Date();
     const hrs = now.getHours();
     const d = new Date(now);
     if (hrs < 12) d.setDate(d.getDate() - 1); // Before Noon is for yesterday
-    return d.toISOString().split("T")[0];
+    return localDateStr(d);
 };
 
 window.showSection = (id) => {
@@ -203,7 +210,7 @@ async function loadHome() {
     
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
+    const sevenDaysAgoStr = localDateStr(sevenDaysAgo); // use local date to avoid UTC shift
 
     const votesSnap = await getDocsByPhone("votes", phone);
     votesSnap.forEach(d => {
@@ -708,17 +715,17 @@ async function loadLeaderboard() {
     
     const now = new Date();
     
-    // Monday to Sunday logic
+    // Monday to Sunday logic — use LOCAL date to avoid UTC timezone shift (IST = UTC+5:30)
     const dayOfWeek = now.getDay(); // 0 is Sun, 1 is Mon
     const diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() + diffToMon);
-    startOfWeek.setHours(0,0,0,0);
-    const weekStr = startOfWeek.toISOString().split("T")[0];
+    startOfWeek.setHours(0, 0, 0, 0);
+    const weekStr = localDateStr(startOfWeek); // LOCAL date — fixes IST timezone bug
 
-    // 1st of the Month logic
+    // 1st of the Month logic — use LOCAL date
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthStr = startOfMonth.toISOString().split("T")[0];
+    const monthStr = localDateStr(startOfMonth); // LOCAL date — fixes IST timezone bug
 
     const mapTotal = {};
     const mapWeekly = {};
@@ -872,7 +879,7 @@ async function renderCalendar() {
 
     for (let i = 1; i <= days; i++) {
         const dDate = new Date(curYear, curMonth, i);
-        const ds = dDate.toISOString().split("T")[0];
+        const ds = localDateStr(dDate); // LOCAL date — fixes IST timezone bug
         
         // Logic for Colors
         let cls = "future";
