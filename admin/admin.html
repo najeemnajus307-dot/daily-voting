@@ -104,6 +104,16 @@
                     </div>
                 </div>
 
+                <!-- Weekly Reset Reminder Banner -->
+                <div id="weeklyResetBanner" style="display: none; background: linear-gradient(135deg, #7f1d1d, #9f1239); color: white; padding: 14px 20px; border-radius: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(220,38,38,0.3); animation: fadeIn 0.5s ease;">
+                    <div>
+                        <b style="font-size: 1rem;">🔄 Weekly Reset Due!</b>
+                        <p style="margin: 4px 0 0 0; font-size: 0.82rem; opacity: 0.9;">A new week has started. Go to <b>Settings → Weekly Leaderboard Reset</b> to wipe points and restart the competition.</p>
+                    </div>
+                    <button onclick="showPage('settings')" style="background: white; color: #9f1239; border: none; border-radius: 10px; padding: 8px 16px; font-weight: 700; font-size: 0.82rem; cursor: pointer; white-space: nowrap; margin-left: 16px;">Go Reset →</button>
+                </div>
+
+
                 <div class="panel" style="padding: 0; overflow-x: auto;">
                     <table>
                         <thead>
@@ -113,6 +123,7 @@
                     </table>
                 </div>
             </section>
+
 
             <!-- TASK REPORT -->
             <section id="page-task">
@@ -191,6 +202,7 @@
                 
                 <div class="panel" style="padding: 20px; margin-bottom: 30px;">
                     <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <input type="hidden" id="edit_msg_id" value="">
                         <div>
                             <label style="font-weight:600; font-size:0.85rem; color:var(--primary);">Message Text</label>
                             <textarea id="msg_text" placeholder="e.g. 🌿 Don't forget to submit your workout votes today to maintain your daily streak!" style="width:100%; height:80px; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #ddd; font-family:inherit; font-size:0.9rem;"></textarea>
@@ -215,7 +227,10 @@
                             <label style="font-weight:600; font-size:0.85rem; color:var(--primary);">Schedule Time (Local Daily Time)</label><br>
                             <input type="time" id="msg_sched_time" value="20:00" style="width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #ddd;">
                         </div>
-                        <button class="btn-primary" style="width: auto; padding: 12px 25px; font-size:0.9rem;" onclick="saveMessage()">Broadcast Message</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="save_msg_btn" class="btn-primary" style="width: auto; padding: 12px 25px; font-size:0.9rem;" onclick="saveMessage()">Broadcast Message</button>
+                            <button id="cancel_msg_edit_btn" class="btn-secondary" style="display: none; width: auto; padding: 12px 25px; font-size:0.9rem;" onclick="cancelMessageEdit()">Cancel Edit</button>
+                        </div>
                     </div>
                 </div>
 
@@ -223,6 +238,25 @@
                     <h3 class="font-serif" style="margin-bottom: 15px; font-size:1.1rem; color:var(--primary);">Recent Broadcasts</h3>
                     <div id="recent_messages_list" style="display:flex; flex-direction:column; gap:10px;">
                         <!-- Recent broadcasts will load here -->
+                    </div>
+                </div>
+
+                <!-- WEEKLY RESET PANEL -->
+                <h1 class="font-serif" style="margin-bottom: 20px; margin-top: 40px;">⚠️ Weekly Leaderboard Reset</h1>
+                <div class="panel" style="padding: 24px; margin-bottom: 30px; border: 2px solid #fca5a5; background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);">
+                    <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <h3 style="margin: 0 0 8px 0; color: #9f1239; font-family: 'Playfair Display', serif; font-size: 1.1rem;">Reset All User Points to Zero</h3>
+                            <p style="font-size: 0.85rem; color: #6b7280; margin: 0 0 12px 0; line-height: 1.6;">This will reset <b>every user's total points</b> to 0, archiving this week's final scores before the new week begins. The leaderboard restarts fresh. This action <b>cannot be undone</b>.</p>
+                            <div id="lastResetInfo" style="font-size: 0.8rem; color: #475569; background: white; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block; margin-bottom: 12px;">Loading last reset info...</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-end; min-width: 180px;">
+                            <button id="weeklyResetBtn" class="btn-primary" style="background: linear-gradient(135deg, #dc2626, #9f1239); border: none; padding: 14px 24px; font-size: 0.95rem; font-weight: 700; border-radius: 12px; width: 100%; box-shadow: 0 4px 15px rgba(220,38,38,0.3); cursor: pointer;" onclick="triggerWeeklyReset()">🔄 Reset Weekly Points</button>
+                            <button class="btn-secondary" style="font-size: 0.8rem; padding: 8px 14px; width: 100%; border-radius: 10px; cursor: pointer;" onclick="loadResetHistory()">📋 View Reset History</button>
+                        </div>
+                    </div>
+                    <div id="resetHistoryList" style="display: none; margin-top: 16px; border-top: 1px solid #fca5a5; padding-top: 16px;">
+                        <!-- Reset history rows load here -->
                     </div>
                 </div>
 

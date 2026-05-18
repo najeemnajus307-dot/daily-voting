@@ -697,6 +697,11 @@ async function sendFCMPushToAll(title, body) {
         usersSnap.forEach(u => { (u.data().fcmTokens || []).forEach(t => tokens.push(t)); });
         if (tokens.length === 0) { console.log('No FCM tokens yet'); return; }
 
+        const basePath = location.pathname.substring(0, location.pathname.indexOf('/admin/')) || '';
+        const appRootUrl = location.origin + basePath;
+        const iconUrl = `${appRootUrl}/photo/logo.png`;
+        const clickUrl = `${appRootUrl}/user/voting.html`;
+
         let sent = 0;
         for (const token of tokens) {
             try {
@@ -707,8 +712,8 @@ async function sendFCMPushToAll(title, body) {
                         token,
                         notification: { title, body },
                         webpush: {
-                            notification: { title, body, icon: 'https://najeemnajus307-dot.github.io/faith-and-fitnesss/photo/logo.png', requireInteraction: true },
-                            fcm_options: { link: 'https://najeemnajus307-dot.github.io/faith-and-fitnesss/user/voting.html' }
+                            notification: { title, body, icon: iconUrl, requireInteraction: true },
+                            fcm_options: { link: clickUrl }
                         }
                     }})
                 });
@@ -724,28 +729,45 @@ window.saveMessage = async () => {
     const type      = document.getElementById("msg_type").value;
     const schedType = document.getElementById("msg_sched_type").value;
     const schedTime = document.getElementById("msg_sched_time").value;
+    const editId    = document.getElementById("edit_msg_id").value;
 
     if (!text) return alert("Write a message first");
 
     try {
-        await addDoc(collection(db, "messages"), {
-            text, type, schedType,
-            schedTime: schedType === "scheduled" ? schedTime : "",
-            timestamp: new Date().toISOString()
-        });
+        if (editId) {
+            // Update existing broadcast
+            await updateDoc(doc(db, "messages", editId), {
+                text, type, schedType,
+                schedTime: schedType === "scheduled" ? schedTime : "",
+                timestamp: new Date().toISOString()
+            });
+            alert("Broadcast message updated successfully! ✅");
+        } else {
+            // Add new broadcast
+            await addDoc(collection(db, "messages"), {
+                text, type, schedType,
+                schedTime: schedType === "scheduled" ? schedTime : "",
+                timestamp: new Date().toISOString()
+            });
 
-        // Send FCM push immediately (even if scheduled — still notifies)
-        await sendFCMPushToAll('\uD83D\uDD4A\uFE0F Faith & Fitness', text);
+            // Send FCM push immediately (even if scheduled — still notifies)
+            await sendFCMPushToAll('\uD83D\uDD4A\uFE0F Faith & Fitness', text);
+            alert("Message broadcasted + Push notifications sent! \uD83C\uDF89");
+        }
 
-        alert("Message broadcasted + Push notifications sent! \uD83C\uDF89");
+        // Reset form
         document.getElementById("msg_text").value = "";
+        document.getElementById("edit_msg_id").value = "";
+        document.getElementById("save_msg_btn").textContent = "Broadcast Message";
+        const cancelBtn = document.getElementById("cancel_msg_edit_btn");
+        if (cancelBtn) cancelBtn.style.display = "none";
+
         loadRecentMessages();
     } catch (e) {
         console.error("Save message failed:", e);
         alert("Error: " + e.message);
     }
 };
-
 
 window.loadRecentMessages = async () => {
     try {
@@ -762,22 +784,56 @@ window.loadRecentMessages = async () => {
             const timeInfo = m.schedType === "scheduled" ? `⏰ Daily at ${m.schedTime}` : "⚡ Immediate";
             const typeInfo = m.type === "announcement" ? "📢 Announcement" : "⏳ Reminder";
             
+            const escapedText = m.text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
             list.innerHTML += `
                 <div style="padding:12px; border:1px solid var(--border-light); border-radius:8px; display:flex; justify-content:space-between; align-items:center; background:#fafafa; margin-bottom: 5px;">
-                    <div style="max-width:80%;">
+                    <div style="max-width:70%;">
                         <div style="font-size:0.85rem; font-weight:600;">${m.text}</div>
                         <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
                             <span style="background:var(--primary); color:white; padding:2px 6px; border-radius:4px; font-size:0.65rem; font-weight:bold; margin-right:4px;">${typeInfo}</span> 
                             <span>${timeInfo}</span>
                         </div>
                     </div>
-                    <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); padding:4px 8px; font-size:0.75rem;" onclick="deleteMessage('${d.id}')">Delete</button>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn-secondary btn-sm" style="padding:4px 8px; font-size:0.75rem;" onclick="editMessage('${d.id}', '${escapedText}', '${m.type}', '${m.schedType}', '${m.schedTime || '20:00'}')">Edit</button>
+                        <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); padding:4px 8px; font-size:0.75rem;" onclick="deleteMessage('${d.id}')">Delete</button>
+                    </div>
                 </div>
             `;
         });
     } catch (e) {
         console.error("Load broadcasts failed:", e);
     }
+};
+
+window.editMessage = (id, text, type, schedType, schedTime) => {
+    document.getElementById("edit_msg_id").value = id;
+    document.getElementById("msg_text").value = text;
+    document.getElementById("msg_type").value = type;
+    document.getElementById("msg_sched_type").value = schedType;
+    document.getElementById("msg_sched_time").value = schedTime || "20:00";
+    
+    document.getElementById("sched_time_wrapper").style.display = schedType === "scheduled" ? "block" : "none";
+    document.getElementById("save_msg_btn").textContent = "Update Broadcast";
+    
+    const cancelBtn = document.getElementById("cancel_msg_edit_btn");
+    if (cancelBtn) cancelBtn.style.display = "block";
+    
+    document.getElementById("msg_text").scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+window.cancelMessageEdit = () => {
+    document.getElementById("edit_msg_id").value = "";
+    document.getElementById("msg_text").value = "";
+    document.getElementById("msg_type").value = "announcement";
+    document.getElementById("msg_sched_type").value = "immediate";
+    document.getElementById("msg_sched_time").value = "20:00";
+    document.getElementById("sched_time_wrapper").style.display = "none";
+    
+    document.getElementById("save_msg_btn").textContent = "Broadcast Message";
+    const cancelBtn = document.getElementById("cancel_msg_edit_btn");
+    if (cancelBtn) cancelBtn.style.display = "none";
 };
 
 window.deleteMessage = async (id) => {

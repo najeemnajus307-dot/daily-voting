@@ -45,11 +45,10 @@ async function registerFCMToken() {
         const card = document.getElementById("notificationOptInCard");
         if (card) card.style.display = "none";
 
-        const isGitHub = location.hostname.includes('github.io');
-        const swPath = isGitHub ? '/faith-and-fitnesss/firebase-messaging-sw.js' : '../firebase-messaging-sw.js';
-        const swScope = isGitHub ? '/faith-and-fitnesss/' : '../';
+        const basePath = location.pathname.substring(0, location.pathname.indexOf('/user/')) || '';
+        const swPath = `${basePath}/firebase-messaging-sw.js`;
 
-        const swReg = await navigator.serviceWorker.register(swPath, { scope: swScope });
+        const swReg = await navigator.serviceWorker.register(swPath);
         const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
         if (!token) return;
 
@@ -101,7 +100,9 @@ if (messaging) {
             const title = payload.notification?.title || '🕊️ Faith & Fitness';
             const body  = payload.notification?.body  || '';
             if (Notification.permission === 'granted') {
-                new Notification(title, { body, icon: '../photo/logo.png' });
+                const basePath = location.pathname.substring(0, location.pathname.indexOf('/user/')) || '';
+                const iconUrl = location.origin + basePath + '/photo/logo.png';
+                new Notification(title, { body, icon: iconUrl });
             }
         });
     } catch (e) {
@@ -587,12 +588,14 @@ async function checkBroadcastMessages() {
 
             // Native Browser Notifications (using Service Worker for Mobile Android lockscreen/pull-down native drawers!)
             if (isUnread && typeof Notification !== "undefined" && Notification.permission === "granted" && !localStorage.getItem("notified_" + m.id)) {
+                const basePath = location.pathname.substring(0, location.pathname.indexOf('/user/')) || '';
+                const iconUrl = location.origin + basePath + '/photo/logo.png';
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.ready.then(registration => {
                         registration.showNotification(typeLabel, {
                             body: m.text,
-                            icon: '../photo/logo.png',
-                            badge: '../photo/logo.png',
+                            icon: iconUrl,
+                            badge: iconUrl,
                             vibrate: [200, 100, 200],
                             tag: m.id,
                             requireInteraction: true
@@ -601,7 +604,7 @@ async function checkBroadcastMessages() {
                 } else {
                     new Notification(typeLabel, {
                         body: m.text,
-                        icon: "../photo/logo.png"
+                        icon: iconUrl
                     });
                 }
                 localStorage.setItem("notified_" + m.id, "true");
