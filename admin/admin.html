@@ -66,6 +66,7 @@
                 <div class="nav-link" onclick="showPage('task')">📋 Task Report</div>
                 <div class="nav-link" onclick="showPage('user')">👤 User Report</div>
                 <div class="nav-link" onclick="showPage('lib')">📚 Library Edit</div>
+                <div class="nav-link" onclick="showPage('announcement')">📢 Announcements</div>
                 <div class="nav-link" onclick="showPage('settings')">⚙️ Settings</div>
                 <a href="task-editor.html" class="nav-link" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">📝 Task Editor</a>
                 <a href="../user/voting.html" class="nav-link" style="margin-top: 5px; background: rgba(0,0,0,0.2); border-radius: 12px; display: flex; align-items: center; gap: 8px;">📱 Back to App</a>
@@ -196,9 +197,9 @@
                 </div>
             </section>
 
-            <!-- SETTINGS -->
-            <section id="page-settings">
-                <h1 class="font-serif" style="margin-bottom: 20px;">Message & Reminder Scheduler</h1>
+            <!-- ANNOUNCEMENTS -->
+            <section id="page-announcement">
+                <h1 class="font-serif" style="margin-bottom: 20px;">📢 Message & Announcement History</h1>
                 
                 <div class="panel" style="padding: 20px; margin-bottom: 30px;">
                     <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -235,14 +236,17 @@
                 </div>
 
                 <div class="panel" style="padding: 20px; margin-bottom: 30px;">
-                    <h3 class="font-serif" style="margin-bottom: 15px; font-size:1.1rem; color:var(--primary);">Recent Broadcasts</h3>
+                    <h3 class="font-serif" style="margin-bottom: 15px; font-size:1.1rem; color:var(--primary);">Recent Broadcasts & History</h3>
                     <div id="recent_messages_list" style="display:flex; flex-direction:column; gap:10px;">
                         <!-- Recent broadcasts will load here -->
                     </div>
                 </div>
+            </section>
 
+            <!-- SETTINGS -->
+            <section id="page-settings">
                 <!-- WEEKLY RESET PANEL -->
-                <h1 class="font-serif" style="margin-bottom: 20px; margin-top: 40px;">⚠️ Weekly Leaderboard Reset</h1>
+                <h1 class="font-serif" style="margin-bottom: 20px;">⚠️ Weekly Leaderboard Reset</h1>
                 <div class="panel" style="padding: 24px; margin-bottom: 30px; border: 2px solid #fca5a5; background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);">
                     <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
                         <div style="flex: 1; min-width: 200px;">

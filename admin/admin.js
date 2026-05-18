@@ -61,8 +61,10 @@ window.showPage = (id) => {
     if(id === 'task') taskInit();
     if(id === 'user') userInit();
     if(id === 'lib') libLoad();
-    if(id === 'settings') {
+    if(id === 'announcement') {
         loadRecentMessages();
+    }
+    if(id === 'settings') {
         loadLastResetInfo();
     }
 };
