@@ -47,7 +47,7 @@
 }
 
 body {
-    background-color: var(--bg-main);
+    background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
     color: var(--text-primary);
     min-height: 100vh;
     display: flex;
@@ -64,10 +64,12 @@ body {
 
 /* Common Card Style */
 .panel {
-    background: var(--bg-card);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-card);
-    border: 1px solid var(--border-light);
+    border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
 /* Premium Buttons */

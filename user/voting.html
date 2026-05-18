@@ -24,12 +24,13 @@
         .stat-lab { font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); }
         
         /* Leaderboard */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; border-radius: 12px; overflow: hidden; }
-        th, td { padding: 12px; text-align: center; border-bottom: 1px solid var(--border-light); }
-        th { background: var(--primary); color: white; font-size: 0.8rem; }
-        .rank-1 { background: #fef9c3 !important; }
-        .rank-2 { background: #f1f5f9 !important; }
-        .rank-3 { background: #fff1f2 !important; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: transparent; border-radius: 12px; overflow: hidden; }
+        th, td { padding: 16px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.04); }
+        th { background: rgba(27, 92, 56, 0.04); color: var(--primary); font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        tr:hover td { background: rgba(255,255,255,0.6); }
+        .rank-1 td { background: linear-gradient(90deg, rgba(254,249,195,0.3) 0%, rgba(254,249,195,0.8) 50%, rgba(254,249,195,0.3) 100%) !important; font-weight: bold; }
+        .rank-2 td { background: linear-gradient(90deg, rgba(241,245,249,0.3) 0%, rgba(241,245,249,0.8) 50%, rgba(241,245,249,0.3) 100%) !important; font-weight: bold; }
+        .rank-3 td { background: linear-gradient(90deg, rgba(255,241,242,0.3) 0%, rgba(255,241,242,0.8) 50%, rgba(255,241,242,0.3) 100%) !important; font-weight: bold; }
 
         /* Calendar */
         .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
