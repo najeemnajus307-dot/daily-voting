@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome | Faith & Fitness</title>
+    <link rel="stylesheet" href="../assets/global.css">
+    <style>
+        .auth-card {
+            background: #fff;
+            padding: 30px;
+            width: 100%;
+            max-width: 380px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid var(--border-light);
+        }
+        .hide { display: none; }
+        .link {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .link:hover { color: var(--primary-light); }
+        .logo-box {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .logo-box h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--primary);
+            font-size: 1.5rem;
+            line-height: 1.2;
+        }
+        .forgot-pass {
+            text-align: right;
+            margin: 10px 0;
+            font-size: 0.85rem;
+        }
+        .forgot-pass a {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+        .forgot-pass a:hover { color: var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <!-- Unified Auth Box -->
+        <div class="auth-card animate-fade-in">
+            
+            <!-- LOGIN SECTION -->
+            <div id="loginBox">
+                <div class="logo-box">
+                    <img src="../photo/logo.png" alt="Faith & Fitness Logo" style="max-width: 140px; margin-bottom: 12px;">
+                    <h3 class="font-serif" style="font-size: 1.2rem;">WELCOME TO<br>FAITH & FITNESS</h3>
+                </div>
+
+                <div class="input-group">
+                    <label>Phone Number</label>
+                    <input id="loginPhone" placeholder="Enter phone number" type="tel">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input id="loginPass" type="password" placeholder="Enter password">
+                </div>
+
+                <div class="forgot-pass">
+                    <a href="#" onclick="showReset()">Forgot Password?</a>
+                </div>
+
+                <button class="btn-primary" onclick="login()">Login</button>
+
+                <!-- RESET PASSWORD AREA -->
+                <div id="resetBox" class="hide" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <h4 style="margin-bottom:15px; font-size:1rem;">Reset Password</h4>
+                    <div class="input-group">
+                        <input id="resetPhone" placeholder="Verify Phone Number">
+                    </div>
+                    <div class="input-group">
+                        <input id="newPass" type="password" placeholder="New Password">
+                    </div>
+                    <button class="btn-primary" style="background:var(--secondary)" onclick="resetPassword()">Update Password</button>
+                </div>
+
+                <div class="link" onclick="showSignup()">Don't have an account? Sign Up</div>
+            </div>
+
+            <!-- SIGNUP SECTION -->
+            <div id="signupBox" class="hide">
+                <div class="logo-box">
+                    <img src="../photo/logo.png" alt="Faith & Fitness Logo" style="max-width: 120px; margin-bottom: 8px;">
+                    <h3 class="font-serif" style="font-size: 1.2rem;">Create Account</h3>
+                </div>
+
+                <div class="input-group">
+                    <label>Full Name</label>
+                    <input id="name" placeholder="Enter your name">
+                </div>
+                <div class="input-group">
+                    <label>Phone Number</label>
+                    <input id="phone" placeholder="Enter phone number" type="tel">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input id="pass" type="password" placeholder="Create password">
+                </div>
+
+                <button class="btn-primary" onclick="signup()">Create Account</button>
+
+                <div class="link" onclick="showLogin()">Already have an account? Login</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+        const app = initializeApp({
+            apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+            authDomain: "daily-voting-793ee.firebaseapp.com",
+            projectId: "daily-voting-793ee"
+        });
+        const db = getFirestore(app);
+
+        // Auto Login
+        if (localStorage.getItem("userPhone")) {
+            location.replace("../user/voting.html");
+        }
+
+        // Toggles
+        window.showSignup = () => {
+            document.getElementById("loginBox").classList.add("hide");
+            document.getElementById("signupBox").classList.remove("hide");
+        };
+
+        window.showLogin = () => {
+            document.getElementById("signupBox").classList.add("hide");
+            document.getElementById("loginBox").classList.remove("hide");
+        };
+
+        window.showReset = () => {
+            const rb = document.getElementById("resetBox");
+            rb.classList.toggle("hide");
+        };
+
+        // Signup Logic
+        window.signup = async () => {
+            const name = getValue("name");
+            const phone = getValue("phone");
+            const pass = getValue("pass");
+
+            if (!name || !phone || !pass) return alert("Please fill all fields");
+
+            const snap = await getDocs(query(collection(db, "users"), where("phone", "==", phone)));
+            if (!snap.empty) return alert("User already exists");
+
+            await addDoc(collection(db, "users"), {
+                name, phone, password: pass, createdAt: new Date().toISOString()
+            });
+
+            alert("Signup successful ✅ Please login");
+            showLogin();
+        };
+
+        // Login Logic
+        window.login = async () => {
+            const phone = getValue("loginPhone");
+            const pass = getValue("loginPass");
+
+            if (!phone || !pass) return alert("Enter phone and password");
+
+            const snap = await getDocs(query(collection(db, "users"), where("phone", "==", phone), where("password", "==", pass)));
+            if (snap.empty) return alert("Wrong phone or password ❌");
+
+            localStorage.setItem("userPhone", phone);
+            location.replace("../user/voting.html");
+        };
+
+        // Reset Password Logic
+        window.resetPassword = async () => {
+            const phone = getValue("resetPhone");
+            const newPass = getValue("newPass");
+
+            if (!phone || !newPass) return alert("Enter phone and new password");
+
+            const snap = await getDocs(query(collection(db, "users"), where("phone", "==", phone)));
+            if (snap.empty) return alert("User not found ❌");
+
+            await updateDoc(snap.docs[0].ref, { password: newPass });
+
+            alert("Password updated ✅ Please login");
+            document.getElementById("resetBox").classList.add("hide");
+        };
+
+        function getValue(id) {
+            return document.getElementById(id).value.trim();
+        }
+    </script>
+</body>
+</html>

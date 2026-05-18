@@ -1,0 +1,16 @@
+/* CSS for Admin Page */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #fff3f3;
+}
+
+h1 {
+    color: #b30000;
+}
+
+.logo {
+    max-width: 150px;
+    height: auto;
+}

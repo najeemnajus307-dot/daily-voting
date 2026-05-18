@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile | Faith & Fitness</title>
+    <link rel="stylesheet" href="../assets/global.css">
+    <style>
+        .profile-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .profile-photo-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .profile-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: white;
+            font-weight: 700;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            overflow: hidden;
+        }
+
+        .profile-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none; /* Shown when photo exists */
+        }
+
+        .profile-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .profile-phone {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .profile-form {
+            padding: 25px 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            margin-top: 30px;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <div class="page-header animate-fade-in">
+            <h1 class="page-title">My Profile</h1>
+            <button id="logoutBtn" class="btn-secondary" style="width: auto; padding: 8px 16px; font-size: 0.85rem;">Logout</button>
+        </div>
+
+        <div class="profile-header glass-panel animate-fade-in" style="animation-delay: 0.1s;">
+            <div class="profile-photo-container">
+                <div class="profile-photo" id="profileInitial">U</div>
+                <!-- Optional: Add an actual img tag if user uploads photo -->
+            </div>
+            <h2 class="profile-name" id="displayHeaderName">Loading...</h2>
+            <p class="profile-phone" id="displayHeaderPhone">...</p>
+        </div>
+
+        <div class="profile-form glass-panel animate-fade-in" style="animation-delay: 0.2s;">
+            <form id="profileForm">
+                <div class="input-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" disabled style="opacity: 0.7;">
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="age">Age</label>
+                        <input type="number" id="age" placeholder="e.g. 25">
+                    </div>
+                    <div class="input-group">
+                        <label for="weight">Weight (kg)</label>
+                        <input type="number" id="weight" step="0.1" placeholder="e.g. 70.5">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="profilePhotoUrl">Profile Photo URL (Optional)</label>
+                    <input type="url" id="profilePhotoUrl" placeholder="https://...">
+                </div>
+
+                <button type="submit" class="btn-primary" id="saveBtn">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="voting.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            <span class="nav-label">Voting</span>
+        </a>
+        <a href="leaderboard.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+            <span class="nav-label">Rank</span>
+        </a>
+        <a href="calendar.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span class="nav-label">Calendar</span>
+        </a>
+        <a href="messages.html" class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            <span class="nav-label">Messages</span>
+        </a>
+        <a href="profile.html" class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span class="nav-label">Profile</span>
+        </a>
+    </nav>
+
+    <script type="module" src="profile.js"></script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Editor | Faith & Fitness</title>
+    <link rel="stylesheet" href="../assets/global.css">
+    <style>
+        .editor-container { max-width: 600px; margin: 40px auto; padding: 20px; }
+        .days-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 15px 0; }
+        .day-check { background: white; border: 1px solid #ddd; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+        .task-list-item { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border-light); }
+        .task-actions { display: flex; gap: 10px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="editor-container animate-fade-in">
+        <a href="admin.html" style="color: var(--primary); text-decoration: none; font-weight: 600; display: block; margin-bottom: 20px;">← Back to Dashboard</a>
+        
+        <h1 class="font-serif" style="color: var(--primary); margin-bottom: 20px;">Task Editor</h1>
+        
+        <div class="panel" style="padding: 25px;">
+            <div class="input-group">
+                <label>Task Description</label>
+                <input id="taskText" placeholder="e.g. Completed Daily Workout">
+            </div>
+            <div class="input-group">
+                <label>Points Awarded</label>
+                <input id="taskPoints" type="number" placeholder="10">
+            </div>
+            
+            <label style="font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);">Active Days</label>
+            <div class="days-grid" id="daysBox">
+                <label class="day-check"><input type="checkbox" value="1"> Mon</label>
+                <label class="day-check"><input type="checkbox" value="2"> Tue</label>
+                <label class="day-check"><input type="checkbox" value="3"> Wed</label>
+                <label class="day-check"><input type="checkbox" value="4"> Thu</label>
+                <label class="day-check"><input type="checkbox" value="5"> Fri</label>
+                <label class="day-check"><input type="checkbox" value="6"> Sat</label>
+                <label class="day-check"><input type="checkbox" value="0"> Sun</label>
+            </div>
+
+            <div style="display:flex; gap:15px; margin-bottom: 20px;">
+                <div class="input-group" style="flex:1;">
+                    <label>Start Time</label>
+                    <input id="startTime" type="time">
+                </div>
+                <div class="input-group" style="flex:1;">
+                    <label>End Time</label>
+                    <input id="endTime" type="time">
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="saveTask()">Save Task</button>
+        </div>
+
+        <div style="margin-top: 40px;">
+            <h3 class="font-serif" style="margin-bottom: 15px;">Existing Tasks</h3>
+            <div id="taskList">Loading tasks...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+        const app = initializeApp({
+            apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+            authDomain: "daily-voting-793ee.firebaseapp.com",
+            projectId: "daily-voting-793ee"
+        });
+        const db = getFirestore(app);
+
+        if (prompt("Admin password") !== "1") location.replace("admin.html");
+
+        let editId = null;
+
+        async function loadTasks() {
+            const list = document.getElementById("taskList");
+            list.innerHTML = "";
+            const snap = await getDocs(collection(db, "tasks"));
+            if (snap.empty) { list.innerHTML = "No tasks found."; return; }
+
+            snap.forEach(d => {
+                const t = d.data();
+                const div = document.createElement("div");
+                div.className = "task-list-item";
+                div.innerHTML = `
+                    <div style="font-weight:700; color:var(--primary);">${t.text}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
+                        Points: ${t.points} | Time: ${t.start} - ${t.end}
+                    </div>
+                    <div class="task-actions">
+                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start}', '${t.end}', ${JSON.stringify(t.days || [])})">Edit</button>
+                        <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error);" onclick="deleteTask('${d.id}')">Delete</button>
+                    </div>`;
+                list.appendChild(div);
+            });
+        }
+
+        window.saveTask = async () => {
+            const text = document.getElementById("taskText").value.trim();
+            const points = Number(document.getElementById("taskPoints").value);
+            const start = document.getElementById("startTime").value;
+            const end = document.getElementById("endTime").value;
+            const days = [...document.querySelectorAll("#daysBox input:checked")].map(d => Number(d.value));
+
+            if (!text || points < 0 || !start || !end || days.length === 0) return alert("Please fill all fields");
+
+            const data = { text, points, start, end, days };
+            if (editId) {
+                await updateDoc(doc(db, "tasks", editId), data);
+                editId = null;
+            } else {
+                await addDoc(collection(db, "tasks"), { ...data, createdAt: new Date().toISOString() });
+            }
+
+            location.reload();
+        };
+
+        window.editTask = (id, text, points, start, end, days) => {
+            editId = id;
+            document.getElementById("taskText").value = text;
+            document.getElementById("taskPoints").value = points;
+            document.getElementById("startTime").value = start;
+            document.getElementById("endTime").value = end;
+            document.querySelectorAll("#daysBox input").forEach(c => c.checked = days.includes(Number(c.value)));
+            window.scrollTo(0, 0);
+        };
+
+        window.deleteTask = async (id) => {
+            if (confirm("Delete this task?")) {
+                await deleteDoc(doc(db, "tasks", id));
+                loadTasks();
+            }
+        };
+
+        loadTasks();
+    </script>
+</body>
+</html>

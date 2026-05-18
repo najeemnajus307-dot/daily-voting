@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faith & Fitness</title>
+    <link rel="stylesheet" href="../assets/global.css">
+    <style>
+        /* Specific Styles for Voting SPA */
+        .section { display: none; }
+        .section.active { display: block; }
+        
+        /* Home Components */
+        .header-top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; position: relative; }
+        .streak-card { 
+            background: var(--primary); color: white; border-radius: 20px; padding: 25px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 15px;
+            box-shadow: var(--shadow-green);
+        }
+        .reminder-card { background: var(--bg-card-highlight); border-radius: 16px; padding: 20px; margin-bottom: 15px; border: 1px solid #f2e3c6; }
+        .stats-row { display: flex; background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px; justify-content: space-around; border: 1px solid var(--border-light); }
+        .stat-item { text-align: center; }
+        .stat-val { font-family: 'Playfair Display', serif; font-weight: 700; color: var(--primary); font-size: 1.2rem; }
+        .stat-lab { font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); }
+        
+        /* Leaderboard */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; border-radius: 12px; overflow: hidden; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid var(--border-light); }
+        th { background: var(--primary); color: white; font-size: 0.8rem; }
+        .rank-1 { background: #fef9c3 !important; }
+        .rank-2 { background: #f1f5f9 !important; }
+        .rank-3 { background: #fff1f2 !important; }
+
+        /* Calendar */
+        .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 0.9rem; font-weight: 600; color: white; background: #e5e7eb; }
+        .cal-day.done { background: var(--success); }
+        .cal-day.pending { background: var(--warning); color: black; }
+        .cal-day.missed { background: var(--error); }
+        .cal-day.future { background: #cbd5e1; }
+        .cal-day.today { outline: 3px solid var(--primary); }
+
+        /* Bottom Nav Icons */
+        .nav-item i { font-style: normal; font-size: 1.2rem; display: block; margin-bottom: 2px; }
+
+        /* Settings */
+        .settings-item { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border-light); }
+        
+        /* Video */
+        iframe { border-radius: 12px; margin-bottom: 15px; box-shadow: var(--shadow-sm); }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        
+        <!-- HOME SECTION -->
+        <section id="homeSection" class="section active animate-fade-in">
+            <!-- Admin Quick Switch Banner (Visible only to admins) -->
+            <div id="adminSwitchBanner" style="display: none; background: linear-gradient(135deg, #16a34a, #15803d); color: white; padding: 10px 16px; border-radius: 14px; margin-bottom: 16px; align-items: center; justify-content: space-between; font-size: 0.8rem; font-weight: 700; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.2s;" onclick="switchToAdminPanel()" onmouseover="this.style.transform='scale(1.01)'" onmouseout="this.style.transform='none'">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>🛡️</span>
+                    <span>Admin Mode Available</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 8px; font-size: 0.7rem; letter-spacing: 0.5px; text-transform: uppercase;">Switch →</div>
+            </div>
+
+            <div class="header-top" style="align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="../photo/logo.png" alt="Logo" style="height: 48px; object-fit: contain;">
+                    <div>
+                        <div class="greeting" style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 1px; line-height: 1;">GOOD DAY</div>
+                        <h1 class="font-serif" id="todayDate" style="color: var(--primary); font-size: 1.1rem; margin-top: 4px; margin-bottom: 0;"></h1>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <!-- Notification Bell Container -->
+                    <div style="position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 5px;" onclick="toggleNotificationPanel(event)">
+                        <span style="font-size: 1.4rem;">🔔</span>
+                        <!-- Notification Badge (Red dot with number) -->
+                        <span id="notificationBadge" style="display: none; position: absolute; top: -2px; right: -2px; background: var(--error); color: white; border-radius: 50%; font-size: 0.65rem; padding: 1px 5px; font-weight: 700; border: 2px solid white; line-height: 1;">0</span>
+                    </div>
+                    <div id="userNameHeader" style="font-size: 0.9rem; font-weight: 600; color: var(--primary);"></div>
+                </div>
+
+                <!-- Notification Dropdown Panel -->
+                <div id="notificationPanel" class="panel animate-fade-in" style="display: none; position: absolute; top: 60px; right: 0px; width: 300px; max-height: 380px; overflow-y: auto; z-index: 1000; box-shadow: var(--shadow-card); border: 1px solid var(--border-light); background: white; padding: 15px; border-radius: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; margin-bottom: 10px;">
+                        <h4 class="font-serif" style="margin: 0; color: var(--primary); font-size: 1rem;">Notifications</h4>
+                        <span style="font-size: 0.7rem; color: var(--secondary); font-weight: 700; cursor: pointer;" onclick="markAllNotificationsAsRead()">Mark all as read</span>
+                    </div>
+                    <div id="notificationList" style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Notifications will load here dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="streak-card" style="position: relative; overflow: hidden;">
+                <div style="font-size: 2.5rem;">🔥</div>
+                <div class="font-serif" style="font-size: 3rem; font-weight: 800; line-height: 1;" id="streakCounter">0</div>
+                <div style="font-size: 0.7rem; letter-spacing: 2px; font-weight: 700; margin-top: 5px;">DAY STREAK</div>
+                <div id="streakBadge" style="margin-top: 10px; font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 12px; font-weight: 700; letter-spacing: 0.5px;">🌱 Seedling Badge</div>
+            </div>
+
+            <!-- Daily Reflection Quote Card -->
+            <div class="panel animate-fade-in" style="background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(240,253,244,0.9)); border: 1px solid var(--border-light); padding: 20px; border-radius: 18px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: var(--shadow-sm);">
+                <div style="font-size: 0.65rem; color: var(--secondary); font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                    <span>📖</span> DAILY REFLECTION
+                </div>
+                <div id="dailyQuoteText" class="font-serif" style="font-size: 0.9rem; font-style: italic; color: var(--primary); line-height: 1.5; margin-bottom: 8px;">Loading reflection...</div>
+                <div id="dailyQuoteRef" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-align: right;"></div>
+            </div>
+
+            <div class="reminder-card" id="messageBox" style="display: none;">
+                <div style="font-size: 0.6rem; color: var(--secondary); font-weight: 800; letter-spacing: 1px; margin-bottom: 8px;">DAILY REMINDER</div>
+                <div class="font-serif" id="reminderText" style="font-style: italic; line-height: 1.4;">Loading reminder...</div>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-item">
+                    <div class="stat-val" id="userPoints">0</div>
+                    <div class="stat-lab">Total Points</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" id="statWeeklyRank">#--</div>
+                    <div class="stat-lab">Weekly Rank</div>
+                </div>
+            </div>
+
+            <!-- Interactive Water Tracker Card -->
+            <div class="panel animate-fade-in" style="padding: 20px; border-radius: 18px; border: 1px solid var(--border-light); background: white; margin-bottom: 15px; box-shadow: var(--shadow-sm);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.3rem;">💧</span>
+                        <div>
+                            <div style="font-size: 0.85rem; font-weight: 700; color: var(--primary);">WATER INTAKE</div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.5px;">GOAL: 8 GLASSES (2 LITRES)</div>
+                        </div>
+                    </div>
+                    <div id="waterPercent" style="font-size: 0.95rem; font-weight: 800; color: #0284c7;">0%</div>
+                </div>
+                <div style="position: relative; width: 100%; height: 16px; background: #e0f2fe; border-radius: 8px; overflow: hidden; margin-bottom: 15px; border: 1px solid #bae6fd;">
+                    <div id="waterProgressFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #0284c7); transition: width 0.4s ease;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary);">
+                        Logged: <span id="waterCount" style="font-size: 1rem; font-weight: 800; color: #0284c7;">0</span> / 8 Glasses
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="decrementWater(event)" class="btn-secondary btn-sm" style="border-color:#0284c7; color:#0284c7; border-radius:50%; width:32px; height:32px; padding:0; display:flex; align-items:center; justify-content:center; font-size:1.1rem; font-weight:bold; cursor:pointer;">-</button>
+                        <button onclick="incrementWater(event)" class="btn-primary btn-sm" style="background:#0284c7; border-color:#0284c7; border-radius:50%; width:32px; height:32px; padding:0; display:flex; align-items:center; justify-content:center; font-size:1.1rem; font-weight:bold; color:white; cursor:pointer;">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task Progress Bar Card -->
+            <div id="progressCard" class="panel animate-fade-in" style="padding: 15px; border-radius: 16px; border: 1px solid var(--border-light); margin-bottom: 15px; background: white; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 0.75rem; font-weight: 700; color: var(--primary);">DAILY TASKS PROGRESS</span>
+                    <span id="progressText" style="font-size: 0.75rem; font-weight: 800; color: var(--secondary);">0%</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden;">
+                    <div id="progressBarFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--secondary), var(--primary)); transition: width 0.3s ease; border-radius: 4px;"></div>
+                </div>
+            </div>
+
+            <!-- Task Area -->
+            <div id="taskBox" style="margin-bottom: 20px;"></div>
+            <div id="nextVoteBox" class="reminder-card" style="display:none; background: #e0f2fe; border-color: #bae6fd; text-align: center;"></div>
+
+            <button class="btn-primary" id="submitBtn" onclick="submitVote()">Submit Vote</button>
+
+            <div style="margin-top: 30px;">
+                <h3 class="font-serif" style="margin-bottom: 10px;">🏆 Top Performers</h3>
+                <div id="top3List"></div>
+            </div>
+        </section>
+
+        <!-- LEADERBOARD SECTION -->
+        <section id="leaderboardSection" class="section animate-fade-in">
+            <div class="header-top" style="align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="../photo/logo.png" alt="Logo" style="height: 48px; object-fit: contain;">
+                    <div>
+                        <div class="greeting" style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 1px; line-height: 1;">COMMUNITY</div>
+                        <h1 class="font-serif text-green" style="font-size: 1.1rem; margin-top: 4px; margin-bottom: 0;">Leaderboard</h1>
+                    </div>
+                </div>
+                <div class="settings-btn">⚙️</div>
+            </div>
+
+            <!-- Current User Rank Card -->
+            <div class="panel" style="padding: 15px; display: flex; align-items: center; gap: 15px; background: #f0fdf4; border: 1px solid #dcfce7; margin-bottom: 20px;">
+                <div style="background: #eab308; color: white; width: 50px; height: 50px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; font-family: 'Playfair Display', serif;">
+                    <span style="font-size: 0.6rem;">#</span><span id="myRank">1</span>
+                </div>
+                <div style="flex-grow: 1;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <b id="myName" style="font-size: 1.1rem;">User</b>
+                        <span style="background: #dcfce7; color: #166534; font-size: 0.6rem; padding: 2px 8px; border-radius: 10px; font-weight: 700;">YOU</span>
+                        <span style="background: #ffedd5; color: #9a3412; font-size: 0.6rem; padding: 2px 8px; border-radius: 10px; font-weight: 700; display: flex; align-items: center; gap: 2px;">🔥 <span id="myStreak">0</span> day streak</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #666;">You're doing great! Keep it up 🌿</div>
+                </div>
+                <div style="text-align: right;">
+                    <div id="myPoints" style="font-size: 1.5rem; font-weight: 800; color: var(--primary); font-family: 'Playfair Display', serif; line-height: 1;">0</div>
+                    <div style="font-size: 0.6rem; font-weight: 700; color: #999; letter-spacing: 1px;">POINTS</div>
+                </div>
+            </div>
+
+            <!-- Top 3 Podium -->
+            <div class="panel" style="padding: 20px; margin-bottom: 20px;">
+                <h3 class="font-serif" style="font-size: 1.1rem; margin-bottom: 5px;">Top 3 this week</h3>
+                <p style="font-size: 0.75rem; color: #888; margin-bottom: 20px;">Recognising consistent devotion 🌿</p>
+                
+                <div style="display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin-top: 30px; min-height: 140px;">
+                    <!-- Rank 2 -->
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                        <div id="p2_name" style="font-size: 0.7rem; font-weight: 700; margin-bottom: 5px; text-align: center;">--</div>
+                        <div id="p2_pts" style="font-size: 0.7rem; color: #999; margin-bottom: 10px;">0 pts</div>
+                        <div style="width: 100%; height: 60px; background: white; border: 1px solid #eee; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: center;">
+                             <div style="font-size: 1.2rem;">🥈</div>
+                        </div>
+                    </div>
+                    <!-- Rank 1 -->
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                        <div id="p1_name" style="font-size: 0.8rem; font-weight: 800; margin-bottom: 5px; text-align: center;">--</div>
+                        <div id="p1_pts" style="font-size: 0.7rem; color: #999; margin-bottom: 10px;">0 pts</div>
+                        <div style="width: 100%; height: 90px; background: #eab308; background-image: linear-gradient(to bottom, #facc15, #ca8a04); border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3);">
+                             <div style="font-size: 1.5rem;">🥇</div>
+                        </div>
+                    </div>
+                    <!-- Rank 3 -->
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                        <div id="p3_name" style="font-size: 0.7rem; font-weight: 700; margin-bottom: 5px; text-align: center;">--</div>
+                        <div id="p3_pts" style="font-size: 0.7rem; color: #999; margin-bottom: 10px;">0 pts</div>
+                        <div style="width: 100%; height: 40px; background: white; border: 1px solid #eee; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: center;">
+                             <div style="font-size: 1.2rem;">🥉</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Group Pulse -->
+            <div class="panel" style="padding: 20px; margin-bottom: 20px;">
+                <div style="font-size: 0.6rem; letter-spacing: 2px; font-weight: 700; color: #999; margin-bottom: 15px;">GROUP PULSE • THIS WEEK</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div style="background: #f0fdf4; border-radius: 12px; padding: 15px; border: 1px solid #dcfce7;">
+                        <div id="g_sessions" style="font-size: 1.5rem; font-weight: 800; font-family: 'Playfair Display', serif;">0</div>
+                        <div style="font-size: 0.6rem; font-weight: 700; color: #166534; opacity: 0.6;">SESSIONS</div>
+                    </div>
+                    <div style="background: #fff1f2; border-radius: 12px; padding: 15px; border: 1px solid #ffe4e6;">
+                        <div id="g_streaks" style="font-size: 1.5rem; font-weight: 800; font-family: 'Playfair Display', serif;">0</div>
+                        <div style="font-size: 0.6rem; font-weight: 700; color: #9f1239; opacity: 0.6;">STREAKS 5+</div>
+                    </div>
+                    <div style="background: #f0f9ff; border-radius: 12px; padding: 15px; border: 1px solid #e0f2fe;">
+                        <div id="g_avg" style="font-size: 1.5rem; font-weight: 800; font-family: 'Playfair Display', serif;">0</div>
+                        <div style="font-size: 0.6rem; font-weight: 700; color: #075985; opacity: 0.6;">AVG PTS</div>
+                    </div>
+                    <div style="background: #fffbeb; border-radius: 12px; padding: 15px; border: 1px solid #fef3c7;">
+                        <div id="g_topday" style="font-size: 1.5rem; font-weight: 800; font-family: 'Playfair Display', serif;">--</div>
+                        <div style="font-size: 0.6rem; font-weight: 700; color: #92400e; opacity: 0.6;">TOP DAY</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Standings List -->
+            <div class="panel" style="padding: 20px;">
+                <h3 class="font-serif" style="font-size: 1.3rem; margin-bottom: 10px;">Standings</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn-secondary btn-sm active" onclick="setLeaderboardRange('week')">Week</button>
+                    <button class="btn-secondary btn-sm" onclick="setLeaderboardRange('month')">Month</button>
+                    <button class="btn-secondary btn-sm" onclick="setLeaderboardRange('all')">All time</button>
+                </div>
+                <div id="leaderboardBody"></div>
+            </div>
+        </section>
+
+        <!-- CALENDAR SECTION -->
+        <section id="calendarSection" class="section animate-fade-in">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <img src="../photo/logo.png" alt="Logo" style="height: 48px; object-fit: contain;">
+                <div>
+                    <div class="greeting" style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 1px; line-height: 1;">TRACKING</div>
+                    <h1 class="font-serif" style="color: var(--primary); font-size: 1.1rem; margin-top: 4px; margin-bottom: 0;">Your Progress</h1>
+                </div>
+            </div>
+            <div class="panel" style="padding: 20px;">
+                <div class="cal-head">
+                    <button class="btn-secondary" style="width: auto; padding: 5px 15px;" onclick="prevMonth()">◀</button>
+                    <h3 id="calTitle" class="font-serif"></h3>
+                    <button class="btn-secondary" style="width: auto; padding: 5px 15px;" onclick="nextMonth()">▶</button>
+                </div>
+                <div class="calendar" style="font-weight: 700; color: var(--text-muted); font-size: 0.7rem; margin-bottom: 10px; text-align: center;">
+                    <div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div>
+                </div>
+                <div class="calendar" id="calendarGrid"></div>
+                
+                <div id="calendarTaskDetails" style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px;"></div>
+
+                <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem;">
+                    <div style="display:flex; align-items:center; gap:5px;"><span style="width:10px; height:10px; border-radius:50%; background:var(--success);"></span> Complete</div>
+                    <div style="display:flex; align-items:center; gap:5px;"><span style="width:10px; height:10px; border-radius:50%; background:var(--error);"></span> Missed</div>
+                    <div style="display:flex; align-items:center; gap:5px;"><span style="width:10px; height:10px; border-radius:50%; background:var(--warning);"></span> Pending</div>
+                    <div style="display:flex; align-items:center; gap:5px;"><span style="width:10px; height:10px; border-radius:50%; background:#cbd5e1;"></span> Future</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- WORKOUT SECTION -->
+        <section id="workoutSection" class="section animate-fade-in">
+            <div id="workoutHeader" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="../photo/logo.png" alt="Logo" style="height: 48px; object-fit: contain;">
+                    <div>
+                        <div class="greeting" style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 1px; line-height: 1;">WORKOUTS</div>
+                        <h1 class="font-serif" style="color: var(--primary); font-size: 1.1rem; margin-top: 4px; margin-bottom: 0;">Workout Library</h1>
+                    </div>
+                </div>
+                <button id="libBackBtn" class="btn-secondary btn-sm" style="display:none; width:auto;" onclick="showWorkoutCats()">← Back</button>
+            </div>
+            
+            <div id="workoutCats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <!-- Categories will load here -->
+            </div>
+
+            <div id="workoutItems" style="display:none;">
+                <!-- Items will load here -->
+            </div>
+        </section>
+
+        <!-- CHALLENGE SECTION -->
+        <section id="challengeSection" class="section animate-fade-in">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <img src="../photo/logo.png" alt="Logo" style="height: 48px; object-fit: contain;">
+                <div>
+                    <div class="greeting" style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 1px; line-height: 1;">CHALLENGE</div>
+                    <h1 class="font-serif" style="color: var(--primary); font-size: 1.1rem; margin-top: 4px; margin-bottom: 0;">Daily Challenge</h1>
+                </div>
+            </div>
+            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScr2gs6eYNndi0KVPryFeKPW0JgujjDR9EMCBbq96OIvvrqhw/viewform" width="100%" height="600" frameborder="0"></iframe>
+        </section>
+
+        <!-- SETTINGS SECTION (RECONFIGURED TO "MY PROFILE" DASHBOARD) -->
+        <section id="settingsSection" class="section animate-fade-in">
+            <!-- Profile Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 1.5px; font-weight: 800;">MY ACCOUNT</div>
+                    <h1 class="font-serif" style="color: var(--primary); font-size: 1.5rem; margin-top: 4px; margin-bottom: 0;">My Profile</h1>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-primary btn-sm" onclick="toggleEditProfileModal(event)" style="background: #15803d; border-color: #15803d; color: white; display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 700; border-radius: 10px; padding: 6px 12px; cursor: pointer; width: auto;">
+                        <span>📝</span> Edit profile
+                    </button>
+                    <button class="btn-secondary btn-sm" onclick="toggleSettingsSubpanel(event)" style="border-color: #ddd; color: var(--text-secondary); width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer;">
+                        <span>⚙️</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Profile Banner Card -->
+            <div class="panel animate-fade-in" style="background: linear-gradient(135deg, #f0fdf4 0%, #fefefe 100%); border: 1px solid #dcfce7; border-radius: 20px; padding: 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <!-- User Avatar circular circle -->
+                    <div id="profileAvatar" style="background: linear-gradient(135deg, #a855f7, #6366f1); color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; border: 3px solid white; box-shadow: 0 4px 10px rgba(99,102,241,0.2); background-size: cover; background-position: center;">
+                        U
+                    </div>
+                    <div>
+                        <div id="profileJoinDate" style="font-size: 0.6rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px;">MEMBER SINCE 2026-05-09</div>
+                        <h3 id="profileName" class="font-serif" style="font-size: 1.3rem; color: var(--primary); margin: 0 0 6px 0; font-weight: 800;">User Name</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                            <span id="profilePhonePill" style="background: #f1f5f9; color: var(--text-secondary); font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; display: flex; align-items: center; gap: 4px;">🎂 <span>24 years</span></span>
+                            <span id="profileStreakPill" style="background: #ffedd5; color: #9a3412; font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; display: flex; align-items: center; gap: 4px;">🔥 <span id="profileStreakVal">0</span> -day streak</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Circular Streak Goal Progress Dial -->
+                <div style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+                    <div style="position: relative; width: 54px; height: 54px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center;">
+                        <!-- dynamic green circular ring progress overlay -->
+                        <div id="profileGoalDial" style="position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#22c55e 0deg, #e2e8f0 0deg); mask: radial-gradient(transparent 18px, black 19px); -webkit-mask: radial-gradient(transparent 18px, black 19px);"></div>
+                        <span id="profileGoalText" style="font-size: 0.8rem; font-weight: 800; color: var(--primary); z-index: 10;">0/7</span>
+                    </div>
+                    <span style="font-size: 0.55rem; font-weight: 800; color: var(--text-muted); margin-top: 5px; letter-spacing: 0.5px;">STREAK GOAL</span>
+                </div>
+            </div>
+
+            <!-- Edit Profile Modal Sub-panel (hidden by default) -->
+            <div id="editProfileModal" class="panel animate-fade-in" style="display: none; padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); background: white; margin-bottom: 20px; box-shadow: var(--shadow-sm);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 class="font-serif" style="margin: 0; font-size: 1.1rem; color: var(--primary);">Edit Profile</h3>
+                    <button onclick="toggleEditProfileModal(event)" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #888;">✕</button>
+                </div>
+                
+                <div style="margin-bottom: 15px; text-align: center;">
+                    <!-- Preview of photo -->
+                    <div id="editPhotoPreview" style="width: 75px; height: 75px; border-radius: 50%; background: linear-gradient(135deg, #a855f7, #6366f1); color: white; margin: 0 auto 8px auto; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; border: 3px solid white; box-shadow: 0 4px 10px rgba(99,102,241,0.15); overflow: hidden; background-size: cover; background-position: center;">
+                        U
+                    </div>
+                    <label for="editPhotoInput" style="font-size: 0.7rem; color: var(--secondary); font-weight: 700; cursor: pointer; text-decoration: underline; display: inline-block;">Change Photo</label>
+                    <input type="file" id="editPhotoInput" accept="image/*" style="display: none;" onchange="previewEditPhoto(event)">
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">FULL NAME</label>
+                    <input id="editName" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-weight: 600; font-size: 0.95rem; font-family: inherit;" placeholder="Your Name">
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px;">
+                    <div>
+                        <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">AGE</label>
+                        <input id="editAge" type="number" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-weight: 600; font-size: 0.95rem; font-family: inherit;" placeholder="24">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">HEIGHT (CM)</label>
+                        <input id="editHeight" type="number" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-weight: 600; font-size: 0.95rem; font-family: inherit;" placeholder="175">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">WEIGHT (KG)</label>
+                        <input id="editWeight" type="number" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-weight: 600; font-size: 0.95rem; font-family: inherit;" placeholder="70">
+                    </div>
+                </div>
+
+                <button class="btn-primary btn-sm" onclick="saveSettings()" style="width: 100%;">Save Changes</button>
+            </div>
+
+            <!-- Settings Preferences Sub-panel (hidden by default) -->
+            <div id="settingsSubpanel" class="panel animate-fade-in" style="display: none; padding: 20px; border-radius: 16px; border: 1px solid var(--border-light); background: white; margin-bottom: 20px; box-shadow: var(--shadow-sm);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 class="font-serif" style="margin: 0; font-size: 1.1rem; color: var(--primary);">Preferences</h3>
+                    <button onclick="toggleSettingsSubpanel(event)" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #888;">✕</button>
+                </div>
+                <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Voting Reminder notifications</span>
+                    <input type="checkbox" id="reminderToggle" style="width: 18px; height: 18px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">LANGUAGE</label>
+                    <select id="langSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-family: inherit; font-size: 0.85rem;">
+                        <option value="en">English</option>
+                        <option value="ml">Malayalam</option>
+                    </select>
+                </div>
+                <button class="btn-secondary" style="border-color: var(--error); color: var(--error); width: 100%;" onclick="logout()">Logout</button>
+            </div>
+
+            <!-- Stats Grid Section -->
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px;">
+                    <div>
+                        <h2 class="font-serif" style="font-size: 1.3rem; margin: 0; color: var(--primary);">My stats</h2>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Tracked across all sessions</div>
+                    </div>
+                    <div id="statsUpdateTime" style="font-size: 0.6rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">UPDATED • TODAY 18:11</div>
+                </div>
+
+                <!-- Stats 6-Card Grid -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                    <!-- Card 1: Total Points (Green) -->
+                    <div style="background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 14px; padding: 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 105px;">
+                        <div>
+                            <div style="font-size: 0.55rem; font-weight: 800; color: #16a34a; letter-spacing: 0.5px; text-transform: uppercase;">TOTAL POINTS</div>
+                            <div id="statTotalPoints" style="font-size: 1.5rem; font-weight: 800; font-family: 'Playfair Display', serif; color: var(--primary); margin-top: 4px;">0</div>
+                        </div>
+                        <div style="font-size: 0.6rem; color: #166534; opacity: 0.7;">All time</div>
+                        <!-- Mini Trendline Vector SVG Graphic overlay -->
+                        <svg style="position: absolute; bottom: 0; left: 0; width: 100%; height: 25px;" viewBox="0 0 100 25" preserveAspectRatio="none"><path d="M0 25 C20 20, 40 18, 60 12, 80 14, 100 2" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"></path></svg>
+                    </div>
+
+                    <!-- Card 2: Best Streak (Orange) -->
+                    <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 14px; padding: 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 105px;">
+                        <div>
+                            <div style="font-size: 0.55rem; font-weight: 800; color: #ea580c; letter-spacing: 0.5px; text-transform: uppercase;">BEST STREAK</div>
+                            <div id="statBestStreak" style="font-size: 1.5rem; font-weight: 800; font-family: 'Playfair Display', serif; color: var(--primary); margin-top: 4px;">0</div>
+                        </div>
+                        <div style="font-size: 0.6rem; color: #9a3412; opacity: 0.7;">Days in a row</div>
+                        <svg style="position: absolute; bottom: 0; left: 0; width: 100%; height: 25px;" viewBox="0 0 100 25" preserveAspectRatio="none"><path d="M0 25 C25 22, 50 15, 75 18, 100 5" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round"></path></svg>
+                    </div>
+
+                    <!-- Card 3: Sessions (Blue) -->
+                    <div style="background: #f0f9ff; border: 1px solid #e0f2fe; border-radius: 14px; padding: 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 105px;">
+                        <div>
+                            <div style="font-size: 0.55rem; font-weight: 800; color: #0284c7; letter-spacing: 0.5px; text-transform: uppercase;">SESSIONS</div>
+                            <div id="statSessions" style="font-size: 1.5rem; font-weight: 800; font-family: 'Playfair Display', serif; color: var(--primary); margin-top: 4px;">0</div>
+                        </div>
+                        <div style="font-size: 0.6rem; color: #0369a1; opacity: 0.7;">Submitted</div>
+                        <svg style="position: absolute; bottom: 0; left: 0; width: 100%; height: 25px;" viewBox="0 0 100 25" preserveAspectRatio="none"><path d="M0 25 C20 22, 40 18, 60 12, 80 15, 100 4" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"></path></svg>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px;">
+                    <!-- Card 4: Weekly Rank (Yellow) -->
+                    <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: 14px; padding: 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 105px;">
+                        <div>
+                            <div style="font-size: 0.55rem; font-weight: 800; color: #ca8a04; letter-spacing: 0.5px; text-transform: uppercase;">WEEKLY RANK</div>
+                            <div id="statProfileWeeklyRank" style="font-size: 1.5rem; font-weight: 800; font-family: 'Playfair Display', serif; color: var(--primary); margin-top: 4px;">#--</div>
+                        </div>
+                        <div style="font-size: 0.6rem; color: #854d0e; opacity: 0.7;">Mon - Sun</div>
+                        <svg style="position: absolute; bottom: 0; left: 0; width: 100%; height: 25px;" viewBox="0 0 100 25" preserveAspectRatio="none"><path d="M0 25 C30 22, 60 10, 80 15, 100 3" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round"></path></svg>
+                    </div>
+
+                    <!-- Card 5: Monthly Rank (Pink) -->
+                    <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 14px; padding: 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 105px;">
+                        <div>
+                            <div style="font-size: 0.55rem; font-weight: 800; color: #db2777; letter-spacing: 0.5px; text-transform: uppercase;">MONTHLY RANK</div>
+                            <div id="statMonthlyRank" style="font-size: 1.5rem; font-weight: 800; font-family: 'Playfair Display', serif; color: var(--primary); margin-top: 4px;">#--</div>
+                        </div>
+                        <div style="font-size: 0.6rem; color: #9d174d; opacity: 0.7;">This month</div>
+                        <svg style="position: absolute; bottom: 0; left: 0; width: 100%; height: 25px;" viewBox="0 0 100 25" preserveAspectRatio="none"><path d="M0 25 C20 23, 40 18, 60 14, 80 16, 100 6" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round"></path></svg>
+                    </div>
+
+                    <!-- Card 6: All-Time Rank (Purple) -->
+                    <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 14px; padding: 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 105px;">
+                        <div>
+                            <div style="font-size: 0.55rem; font-weight: 800; color: #7e22ce; letter-spacing: 0.5px; text-transform: uppercase;">ALL-TIME RANK</div>
+                            <div id="statAllTimeRank" style="font-size: 1.5rem; font-weight: 800; font-family: 'Playfair Display', serif; color: var(--primary); margin-top: 4px;">#--</div>
+                        </div>
+                        <div style="font-size: 0.6rem; color: #6b21a8; opacity: 0.7;">Overall</div>
+                        <svg style="position: absolute; bottom: 0; left: 0; width: 100%; height: 25px;" viewBox="0 0 100 25" preserveAspectRatio="none"><path d="M0 25 C25 24, 50 18, 75 14, 100 8" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round"></path></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- This Week Activity Grid Card -->
+            <div class="panel animate-fade-in" style="padding: 20px; border-radius: 18px; border: 1px solid var(--border-light); background: white; margin-bottom: 20px; box-shadow: var(--shadow-sm);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div>
+                        <h3 class="font-serif" style="font-size: 1.15rem; margin: 0; color: var(--primary);">This week</h3>
+                    </div>
+                    <div id="thisWeekDatesRange" style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">MAY 11 — MAY 17</div>
+                </div>
+
+                <!-- Monday - Sunday Weekly Nodes -->
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 15px; text-align: center;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted);">M</span>
+                        <div id="weeklyNode-0" style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted);">T</span>
+                        <div id="weeklyNode-1" style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted);">W</span>
+                        <div id="weeklyNode-2" style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted);">T</span>
+                        <div id="weeklyNode-3" style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted);">F</span>
+                        <div id="weeklyNode-4" style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted);">S</span>
+                        <div id="weeklyNode-5" style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted);">S</span>
+                        <div id="weeklyNode-6" style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
+                    </div>
+                </div>
+
+                <!-- Weekly summary text -->
+                <div id="weeklyActivitySummary" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 12px; display: flex; justify-content: center; gap: 15px;">
+                    <span><b>0</b> sessions</span>
+                    <span>•</span>
+                    <span><b style="color: var(--success);">0</b> pts</span>
+                    <span>•</span>
+                    <span><b style="color: var(--error);">0</b> miss</span>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="showSection('homeSection')">
+            <i>🏠</i><span class="nav-label">Home</span>
+        </button>
+        <button class="nav-item" onclick="showSection('leaderboardSection')">
+            <i>🏆</i><span class="nav-label">Rank</span>
+        </button>
+        <button class="nav-item" onclick="showSection('calendarSection')">
+            <i>📅</i><span class="nav-label">Progress</span>
+        </button>
+        <button class="nav-item" onclick="showSection('workoutSection')">
+            <i>📚</i><span class="nav-label">Workout</span>
+        </button>
+        <button class="nav-item" onclick="showSection('challengeSection')">
+            <i>💪</i><span class="nav-label">Challenge</span>
+        </button>
+        <button class="nav-item" onclick="showSection('settingsSection')">
+            <i>👤</i><span class="nav-label">Profile</span>
+        </button>
+    </nav>
+
+    <script type="module" src="voting.js?v=2.0"></script>
+</body>
+</html>
