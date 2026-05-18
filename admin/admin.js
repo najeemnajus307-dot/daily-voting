@@ -247,7 +247,7 @@ window.dashLoad = async () => {
         window.allUsersRows = [];
         users.forEach(u => {
             const d = u.data();
-            window.allUsersRows.push({ name: d.name || "Unknown", phone: d.phone || "---", total: map[d.phone] || 0 });
+            window.allUsersRows.push({ id: u.id, name: d.name || "Unknown", phone: d.phone || "---", total: map[d.phone] || 0, role: d.role || "user" });
         });
 
         renderDashTable();
@@ -275,12 +275,13 @@ window.renderDashTable = () => {
         const tr = document.createElement("tr");
         if (rank <= 3) tr.className = `rank-${rank}`;
         tr.innerHTML = `
-            <td>${sl}</td><td>${rank}</td><td>${r.name}</td><td>${r.phone}</td><td>${r.total}</td>
+            <td>${sl}</td><td>${rank}</td><td>${r.name} ${r.role === 'admin' ? '👑' : ''}</td><td>${r.phone}</td><td>${r.total}</td>
             <td>
-                <div style="display:flex; gap:5px;">
+                <div style="display:flex; gap:5px; align-items:center; justify-content:center; flex-wrap:wrap;">
                     <input id="p_${r.phone}" type="number" style="width:60px; padding:5px; border-radius:5px; border:1px solid #ddd;" placeholder="Pts">
                     <button class="btn-primary btn-sm" onclick="addPoint('${r.phone}', 'add')">+</button>
                     <button class="btn-primary btn-sm" style="background:#444;" onclick="addPoint('${r.phone}', 'set')">Set</button>
+                    <button class="btn-primary btn-sm" style="background:${r.role === 'admin' ? 'var(--error)' : '#10b981'}; font-size: 0.7rem;" onclick="toggleAdmin('${r.id}', '${r.role}')">${r.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}</button>
                 </div>
             </td>`;
         body.appendChild(tr);
@@ -306,6 +307,21 @@ window.addPoint = async (phone, mode) => {
     await addDoc(collection(db, "votes"), { phone, points: v, date: today(), source: "admin" });
     vInput.value = "";
     dashLoad();
+};
+
+window.toggleAdmin = async (userId, currentRole) => {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    const msg = newRole === 'admin' ? "Make this user an admin?" : "Remove admin rights from this user?";
+    if (!confirm(msg)) return;
+    
+    try {
+        await updateDoc(doc(db, "users", userId), { role: newRole });
+        alert(`User role updated to ${newRole}!`);
+        dashLoad();
+    } catch (e) {
+        console.error("Failed to toggle admin:", e);
+        alert("Error: " + e.message);
+    }
 };
 
 // --- TASK REPORT ---
