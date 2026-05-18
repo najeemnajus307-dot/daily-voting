@@ -814,11 +814,33 @@ async function loadLeaderboard() {
     let rank = 1, prev = null;
     allUsers.forEach((r) => {
         if (prev !== null && r.score < prev) rank++;
+        let cls = "background: rgba(255,255,255,0.7); border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.5); box-shadow: var(--shadow-sm); transition: transform 0.2s;";
+        let rankColor = "#64748b";
+        let scoreColor = "var(--primary)";
+        let icon = "";
+        
+        if (rank === 1) {
+            cls = "background: linear-gradient(135deg, #fdf4ff 0%, #fef08a 100%); border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid #fde047; box-shadow: 0 8px 20px rgba(234,179,8,0.2); transform: scale(1.02); z-index: 3; position: relative;";
+            rankColor = "#854d0e";
+            scoreColor = "#b45309";
+            icon = "👑 ";
+        } else if (rank === 2) {
+            cls = "background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid #cbd5e1; box-shadow: 0 6px 15px rgba(148,163,184,0.15); transform: scale(1.01); z-index: 2; position: relative;";
+            rankColor = "#334155";
+            scoreColor = "#475569";
+            icon = "🥈 ";
+        } else if (rank === 3) {
+            cls = "background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid #fdba74; box-shadow: 0 6px 15px rgba(251,146,60,0.15); transform: scale(1.01); z-index: 1; position: relative;";
+            rankColor = "#9a3412";
+            scoreColor = "#c2410c";
+            icon = "🥉 ";
+        }
+
         body.innerHTML += `
-            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
-                <div style="width: 40px; font-weight: 700; color: #999;">${rank}</div>
-                <div style="flex-grow: 1; font-weight: 600;">${r.name}</div>
-                <div style="font-weight: 700; color: #166534;">${r.score} pts</div>
+            <div style="display: flex; align-items: center; ${cls}" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='${rank <= 3 ? (rank === 1 ? 'scale(1.02)' : 'scale(1.01)') : 'scale(1)'}'">
+                <div style="width: 45px; font-weight: 800; font-size: 1.2rem; color: ${rankColor}; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">${rank}</div>
+                <div style="flex-grow: 1; font-weight: 700; color: #1e293b; font-size: 1.05rem;">${icon}${r.name}</div>
+                <div style="font-weight: 800; color: ${scoreColor}; font-size: 1.1rem;">${r.score} <span style="font-size:0.7rem; font-weight:600;">pts</span></div>
             </div>`;
         prev = r.score;
     });

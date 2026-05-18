@@ -210,33 +210,39 @@
             </div>
 
             <!-- Top 3 Podium -->
-            <div class="panel" style="padding: 20px; margin-bottom: 20px;">
-                <h3 class="font-serif" style="font-size: 1.1rem; margin-bottom: 5px;">Top 3 this week</h3>
-                <p style="font-size: 0.75rem; color: #888; margin-bottom: 20px;">Recognising consistent devotion 🌿</p>
+            <div class="panel" style="padding: 25px 20px; margin-bottom: 25px; background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.9); box-shadow: 0 10px 30px rgba(0,0,0,0.05);">
+                <h3 class="font-serif" style="font-size: 1.2rem; margin-bottom: 5px; text-align: center; color: var(--primary);">Top 3 Performers</h3>
+                <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 30px; text-align: center; font-weight: 500;">Recognising consistent devotion 🌿</p>
                 
-                <div style="display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin-top: 30px; min-height: 140px;">
+                <div style="display: flex; align-items: flex-end; justify-content: center; gap: 12px; margin-top: 20px; min-height: 160px; padding: 0 10px;">
                     <!-- Rank 2 -->
-                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                        <div id="p2_name" style="font-size: 0.7rem; font-weight: 700; margin-bottom: 5px; text-align: center;">--</div>
-                        <div id="p2_pts" style="font-size: 0.7rem; color: #999; margin-bottom: 10px;">0 pts</div>
-                        <div style="width: 100%; height: 60px; background: white; border: 1px solid #eee; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: center;">
-                             <div style="font-size: 1.2rem;">🥈</div>
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 2;">
+                        <div style="background: rgba(255,255,255,0.9); padding: 8px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 100%; text-align: center;">
+                            <div id="p2_name" style="font-size: 0.75rem; font-weight: 700; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</div>
+                            <div id="p2_pts" style="font-size: 0.7rem; font-weight: 800; color: #475569;">0 pts</div>
+                        </div>
+                        <div style="width: 100%; height: 70px; background: linear-gradient(180deg, #f1f5f9 0%, #cbd5e1 100%); border-radius: 16px 16px 0 0; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 4px 10px rgba(255,255,255,0.8), 0 -4px 15px rgba(148,163,184,0.3); border: 1px solid #e2e8f0; border-bottom: none;">
+                             <div style="font-size: 1.6rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">🥈</div>
                         </div>
                     </div>
                     <!-- Rank 1 -->
-                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                        <div id="p1_name" style="font-size: 0.8rem; font-weight: 800; margin-bottom: 5px; text-align: center;">--</div>
-                        <div id="p1_pts" style="font-size: 0.7rem; color: #999; margin-bottom: 10px;">0 pts</div>
-                        <div style="width: 100%; height: 90px; background: #eab308; background-image: linear-gradient(to bottom, #facc15, #ca8a04); border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3);">
-                             <div style="font-size: 1.5rem;">🥇</div>
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 3;">
+                        <div style="background: white; padding: 10px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 6px 15px rgba(234, 179, 8, 0.2); width: 110%; text-align: center; border: 1px solid #fef08a;">
+                            <div id="p1_name" style="font-size: 0.85rem; font-weight: 800; color: #854d0e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</div>
+                            <div id="p1_pts" style="font-size: 0.75rem; font-weight: 800; color: #b45309;">0 pts</div>
+                        </div>
+                        <div style="width: 110%; height: 100px; background: linear-gradient(180deg, #fef08a 0%, #eab308 100%); border-radius: 16px 16px 0 0; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 4px 12px rgba(255,255,255,0.6), 0 -6px 20px rgba(234, 179, 8, 0.4); border: 1px solid #facc15; border-bottom: none;">
+                             <div style="font-size: 2rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">👑</div>
                         </div>
                     </div>
                     <!-- Rank 3 -->
-                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                        <div id="p3_name" style="font-size: 0.7rem; font-weight: 700; margin-bottom: 5px; text-align: center;">--</div>
-                        <div id="p3_pts" style="font-size: 0.7rem; color: #999; margin-bottom: 10px;">0 pts</div>
-                        <div style="width: 100%; height: 40px; background: white; border: 1px solid #eee; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: center;">
-                             <div style="font-size: 1.2rem;">🥉</div>
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1;">
+                        <div style="background: rgba(255,255,255,0.9); padding: 8px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 100%; text-align: center;">
+                            <div id="p3_name" style="font-size: 0.75rem; font-weight: 700; color: #7c2d12; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</div>
+                            <div id="p3_pts" style="font-size: 0.7rem; font-weight: 800; color: #9a3412;">0 pts</div>
+                        </div>
+                        <div style="width: 100%; height: 50px; background: linear-gradient(180deg, #ffedd5 0%, #fdba74 100%); border-radius: 16px 16px 0 0; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 4px 10px rgba(255,255,255,0.8), 0 -4px 15px rgba(251,146,60,0.3); border: 1px solid #fed7aa; border-bottom: none;">
+                             <div style="font-size: 1.4rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">🥉</div>
                         </div>
                     </div>
                 </div>
