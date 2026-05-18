@@ -10,12 +10,20 @@ const app = initializeApp({
     messagingSenderId: "1065830068376"
 });
 const db = getFirestore(app);
-const messaging = getMessaging(app);
 const VAPID_KEY = 'BKIGPXFbPybxBpilFawNRuivEOv28HVuj7Yfa9SSw6lZDYXyPQZFr7XqvFcFICwr22TVErvfamU9BNIdAIus_5g';
+
+let messaging = null;
+try {
+    // Check if messaging is supported in the browser before initializing
+    messaging = getMessaging(app);
+} catch (err) {
+    console.warn("Firebase Messaging is not supported or failed to initialize in this browser:", err);
+}
 
 // Register device for FCM push notifications
 async function registerFCMToken() {
     try {
+        if (!messaging) return;
         if (!('Notification' in window)) return;
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') return;
@@ -40,13 +48,19 @@ async function registerFCMToken() {
 }
 
 // Show notification when app is OPEN (foreground)
-onMessage(messaging, (payload) => {
-    const title = payload.notification?.title || '🕊️ Faith & Fitness';
-    const body  = payload.notification?.body  || '';
-    if (Notification.permission === 'granted') {
-        new Notification(title, { body, icon: '../photo/logo.png' });
+if (messaging) {
+    try {
+        onMessage(messaging, (payload) => {
+            const title = payload.notification?.title || '🕊️ Faith & Fitness';
+            const body  = payload.notification?.body  || '';
+            if (Notification.permission === 'granted') {
+                new Notification(title, { body, icon: '../photo/logo.png' });
+            }
+        });
+    } catch (e) {
+        console.warn("FCM onMessage listener could not be registered:", e);
     }
-});
+}
 
 // Helper for type-immune queries (matches string or number phone numbers)
 async function getDocsByPhone(collectionName, phoneVal, extraQueries = []) {
