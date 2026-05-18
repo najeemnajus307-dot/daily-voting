@@ -64,6 +64,7 @@ window.showPage = (id) => {
     if(id === 'settings') {
         settingsLoad();
         loadRecentMessages();
+        loadLastResetInfo();
     }
 };
 
@@ -231,6 +232,37 @@ window.dashLoad = async () => {
         
         // Load pending backdate requests
         await loadPendingRequests();
+        
+        // Check if weekly reset is overdue (show banner on Sunday=0 or Monday=1)
+        const dayOfWeek = new Date().getDay();
+        const banner = document.getElementById("weeklyResetBanner");
+        if (banner) {
+            if (dayOfWeek === 0 || dayOfWeek === 1) {
+                // Check if a reset was done this week
+                try {
+                    const resetSnap = await getDocs(query(
+                        collection(db, "weekly_resets"),
+                        orderBy("resetAt", "desc"),
+                        limit(1)
+                    ));
+                    let resetDueThisWeek = true;
+                    if (!resetSnap.empty) {
+                        const lastReset = new Date(resetSnap.docs[0].data().resetAt);
+                        // Compute this week's Monday
+                        const now = new Date();
+                        const diff = (now.getDay() === 0 ? -6 : 1) - now.getDay();
+                        const thisMonday = new Date(now);
+                        thisMonday.setDate(now.getDate() + diff);
+                        thisMonday.setHours(0, 0, 0, 0);
+                        if (lastReset >= thisMonday) resetDueThisWeek = false;
+                    }
+                    banner.style.display = resetDueThisWeek ? "flex" : "none";
+                } catch(e) { banner.style.display = "none"; }
+            } else {
+                banner.style.display = "none";
+            }
+        }
+
 
         const from = document.getElementById("d_from").value;
         const to = document.getElementById("d_to").value || from;
@@ -617,9 +649,79 @@ window.toggleSchedTime = () => {
     document.getElementById("sched_time_wrapper").style.display = type === "scheduled" ? "block" : "none";
 };
 
+// --- FCM PUSH NOTIFICATION SENDER ---
+
+// Signs a JWT with the service account private key using SubtleCrypto
+async function getOAuthToken() {
+    const SA = {
+        client_email: "firebase-adminsdk-fbsvc@daily-voting-793ee.iam.gserviceaccount.com",
+        private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDCEcm9RTwl5hrq\nhe+Je4JpYmYhdl7j5gjZI1omGjPWNzs5AGi0dlIibqidSa8qMqzeWA+nOATwW001\nDln3TpmDAsK82cRDzmLflzt7n6ov/YJHCZI+DyYka7+g4PHLeVoAqr4Q4GC49WGB\np9XLnvZcEL/mvy0NemTOLzV9V5TjmxzLsg7+WEMmtX+gq8QYWtuFPtYzi2RKnCsB\nUI0SNxtZe21haJF30F5NIHcfNRStXqMqvDneM8L0Z4I//yY63+cxri7KLKmAbUD4\nPO5zvvJQkG2FWYJXvKA1mrqYc62umZhLuTtTl4clvuJVK2KQmziq3n25PVtP4EWS\n6uT/auTnAgMBAAECggEADWdJxf8MesLxZEs10mABD3g9UjL+YMJteq8SCy76Gjcc\nVFaD5MWF7LI0hmXQFEZbDCGMNeIM7UYmXJ4OIUzWFhH7EyyofSpkR8mxJlujrHGC\nLZfVTYtMThhRrDHSYVmTRBfcIrGXMeRjWfTBM7FZ6zKOSR3hEFzorhjdRTfm+kUz\nIzsnCnpz/3t+Py1cc6tl1OIuhTMSlZ0MSLmV8mNv07U2MsuSGDWg52ZmcvMq3dXo\nHHEPWL/RSffNJ9MsrCa04r+CJX3UaXLDYHr8QmaYsZCxXOk7G2IRi9rdZVVGm9q/\n71GiWLl/vVswliW064EtL9MyRRl/WvwxZpIWW1M+qQKBgQDlMZ2pLXpta9WbJPp5\ny/ESGs7BnKp9Pxb45QrmQjm5CEsoVxJ1SnoduzB4iW8HaGNKo/RlXdGOlyMdFVv7\nnRY7bo63E0hnhU0ne8zPTPDtPCn7eheHlGthNHRFtyi0PhTJxrIWs9sLFE6uKSyb\noZrpqhflRQJ0FD97hAbR+nGChQKBgQDYxIAk3t1uTtvflM69fIPLP1cFcq+FVKbQ\n1/nwaiUc/OCajjlAvqsyIJjY5c5R1hp5euTMueTLbH634BgedPNLpQMGZCYT6IIH\nsbuVrNYaL30I9oFN9m+Qra9oJLDWpicySK+l5SQ9/pvGhlILnuQQ4izT+VLzzJe8\nr6hQxrUjewKBgQDGlGGlJmlQC0GNZdG7288ov59qs2IomJQ/3Lu/25uFzUDJV///\nLiN2RSzvEyzm/zQghMQJW+ton1zmIw6KiIWtwtHWn9d5Ek9SKXrAFksdUaaSZCuk\n5hzPoRIpIVQcLzn1xbmh3/2msNanIbertK6zTBPeKxfAGZcTXsZGArd8vQKBgQDP\nnZVmuxa2uk0ZnftNvd61YptEmo3GVEfaK6I2RFP7qbCuF556hqSNxG7g/2pXM4vz\n4mMWOs4KkIXmM3qmYTlNsGRvUKiv1LgGCpMyTnJabjWByigatfgxSEmCo/HEBSvx\nm3CwogHOZvhocupOOwcRrK9m75wl6kVC8bNyen+v1QKBgFtPQG8nGgbbcfuIoXAg\nTB+dAaRPHEC+KAspKnMRPe447nzxdvmbMDbHtOs6hUC3bY4mw7OmTUrc5vIlIz3T\nFf7G/xjY8/B00N9ewz6Dp8g+ua9Es8qz2wFb2VnK4w8WmaFcNhYwTQZ20W+Yfdjx\nhsHFq5QHS0LQkklhKsmUGgjf\n-----END PRIVATE KEY-----\n"
+    };
+
+    const b64url = (str) => btoa(str).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    const now = Math.floor(Date.now() / 1000);
+    const header  = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+    const payload = b64url(JSON.stringify({
+        iss: SA.client_email,
+        scope: 'https://www.googleapis.com/auth/firebase.messaging',
+        aud: 'https://oauth2.googleapis.com/token',
+        iat: now, exp: now + 3600
+    }));
+    const unsigned = `${header}.${payload}`;
+
+    const pemBody = SA.private_key.replace(/-----[^-]+-----\n?/g,'').replace(/\n/g,'');
+    const keyBuf  = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0)).buffer;
+    const cryptoKey = await crypto.subtle.importKey(
+        'pkcs8', keyBuf,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        false, ['sign']
+    );
+    const sigBuf = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(unsigned));
+    const sig = btoa(String.fromCharCode(...new Uint8Array(sigBuf))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    const jwt = `${unsigned}.${sig}`;
+
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
+    });
+    const data = await res.json();
+    return data.access_token;
+}
+
+async function sendFCMPushToAll(title, body) {
+    try {
+        const accessToken = await getOAuthToken();
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const tokens = [];
+        usersSnap.forEach(u => { (u.data().fcmTokens || []).forEach(t => tokens.push(t)); });
+        if (tokens.length === 0) { console.log('No FCM tokens yet'); return; }
+
+        let sent = 0;
+        for (const token of tokens) {
+            try {
+                const r = await fetch('https://fcm.googleapis.com/v1/projects/daily-voting-793ee/messages:send', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: {
+                        token,
+                        notification: { title, body },
+                        webpush: {
+                            notification: { title, body, icon: 'https://najeemnajus307-dot.github.io/faith-and-fitnesss/photo/logo.png', requireInteraction: true },
+                            fcm_options: { link: 'https://najeemnajus307-dot.github.io/faith-and-fitnesss/user/voting.html' }
+                        }
+                    }})
+                });
+                if (r.ok) sent++;
+            } catch(e) { console.warn('Token send failed:', e); }
+        }
+        console.log(`FCM push sent to ${sent}/${tokens.length} devices \u2705`);
+    } catch(e) { console.error('FCM push error:', e); }
+}
+
 window.saveMessage = async () => {
-    const text = document.getElementById("msg_text").value.trim();
-    const type = document.getElementById("msg_type").value;
+    const text      = document.getElementById("msg_text").value.trim();
+    const type      = document.getElementById("msg_type").value;
     const schedType = document.getElementById("msg_sched_type").value;
     const schedTime = document.getElementById("msg_sched_time").value;
 
@@ -627,14 +729,15 @@ window.saveMessage = async () => {
 
     try {
         await addDoc(collection(db, "messages"), {
-            text: text,
-            type: type,
-            schedType: schedType,
+            text, type, schedType,
             schedTime: schedType === "scheduled" ? schedTime : "",
             timestamp: new Date().toISOString()
         });
 
-        alert("Message broadcasted successfully! 🎉");
+        // Send FCM push immediately (even if scheduled — still notifies)
+        await sendFCMPushToAll('\uD83D\uDD4A\uFE0F Faith & Fitness', text);
+
+        alert("Message broadcasted + Push notifications sent! \uD83C\uDF89");
         document.getElementById("msg_text").value = "";
         loadRecentMessages();
     } catch (e) {
@@ -642,6 +745,7 @@ window.saveMessage = async () => {
         alert("Error: " + e.message);
     }
 };
+
 
 window.loadRecentMessages = async () => {
     try {
@@ -688,5 +792,154 @@ window.deleteMessage = async (id) => {
     }
 };
 
+// --- WEEKLY POINTS RESET ---
+
+// Load last reset info and show it in the Settings panel
+window.loadLastResetInfo = async () => {
+    const el = document.getElementById("lastResetInfo");
+    if (!el) return;
+    
+    try {
+        const snap = await getDocs(query(
+            collection(db, "weekly_resets"),
+            orderBy("resetAt", "desc"),
+            limit(1)
+        ));
+        
+        if (snap.empty) {
+            el.innerHTML = "⏱️ <b>No reset performed yet.</b> Points have never been wiped.";
+        } else {
+            const r = snap.docs[0].data();
+            const resetDate = r.resetAt ? new Date(r.resetAt).toLocaleString() : "Unknown";
+            const week = r.weekLabel || "N/A";
+            el.innerHTML = `✅ Last reset: <b>${resetDate}</b> &nbsp;|&nbsp; Week archived: <b>${week}</b> &nbsp;|&nbsp; Users reset: <b>${r.usersReset || 0}</b>`;
+        }
+    } catch (e) {
+        el.innerHTML = "Could not load reset info.";
+        console.error(e);
+    }
+};
+
+// Load reset history list
+window.loadResetHistory = async () => {
+    const histList = document.getElementById("resetHistoryList");
+    if (!histList) return;
+    
+    const isVisible = histList.style.display !== "none";
+    if (isVisible) {
+        histList.style.display = "none";
+        return;
+    }
+    
+    histList.style.display = "block";
+    histList.innerHTML = `<div style="text-align:center; font-size:0.8rem; color:var(--text-muted); padding:10px;">Loading history...</div>`;
+    
+    try {
+        const snap = await getDocs(query(
+            collection(db, "weekly_resets"),
+            orderBy("resetAt", "desc"),
+            limit(10)
+        ));
+        
+        if (snap.empty) {
+            histList.innerHTML = `<div style="text-align:center; font-size:0.8rem; color:var(--text-muted); padding:10px;">No reset history found.</div>`;
+            return;
+        }
+        
+        histList.innerHTML = `<h4 style="font-family:'Playfair Display',serif; color:#9f1239; margin-bottom:12px; font-size:0.95rem;">Past Weekly Resets</h4>`;
+        snap.forEach(d => {
+            const r = d.data();
+            const resetDate = r.resetAt ? new Date(r.resetAt).toLocaleString() : "Unknown";
+            histList.innerHTML += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:white; border-radius:10px; margin-bottom:8px; border:1px solid #fecaca; font-size:0.82rem;">
+                    <div>
+                        <div style="font-weight:700; color:#7f1d1d;">Week: ${r.weekLabel || "N/A"}</div>
+                        <div style="color:#6b7280; margin-top:2px;">Reset on ${resetDate} &bull; ${r.usersReset || 0} users reset</div>
+                    </div>
+                    <div style="font-weight:800; color:#dc2626;">−${r.totalPointsWiped || 0} pts</div>
+                </div>
+            `;
+        });
+    } catch (e) {
+        histList.innerHTML = `<div style="color:var(--error); font-size:0.8rem; padding:10px;">Error loading history: ${e.message}</div>`;
+    }
+};
+
+// Trigger the weekly reset
+window.triggerWeeklyReset = async () => {
+    const confirmed = confirm(
+        "⚠️ WEEKLY RESET CONFIRMATION\n\n" +
+        "This will:\n" +
+        "• Archive all current user points\n" +
+        "• Reset EVERY user's points to 0\n" +
+        "• Clear all votes from the database\n\n" +
+        "Are you absolutely sure? This CANNOT be undone."
+    );
+    if (!confirmed) return;
+    
+    // Double confirm
+    const doubleConfirm = confirm("FINAL WARNING: Are you sure you want to reset ALL user points to zero?");
+    if (!doubleConfirm) return;
+    
+    const btn = document.getElementById("weeklyResetBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "⏳ Resetting..."; }
+    
+    try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        const votesSnap = await getDocs(collection(db, "votes"));
+        
+        // Calculate total points being wiped
+        let totalPointsWiped = 0;
+        const userPointsArchive = [];
+        usersSnap.forEach(u => {
+            const pts = u.data().points || 0;
+            totalPointsWiped += pts;
+            userPointsArchive.push({ name: u.data().name, phone: u.data().phone, points: pts });
+        });
+        
+        // Calculate week label (Mon-Sun)
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+        const monday = new Date(now);
+        monday.setDate(now.getDate() + diffToMon);
+        monday.setHours(0, 0, 0, 0);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        const weekLabel = `${monday.toLocaleDateString('en-GB')} – ${sunday.toLocaleDateString('en-GB')}`;
+        
+        // Archive the weekly reset metadata
+        await addDoc(collection(db, "weekly_resets"), {
+            resetAt: new Date().toISOString(),
+            resetBy: phone,
+            weekLabel: weekLabel,
+            usersReset: usersSnap.size,
+            totalPointsWiped: totalPointsWiped,
+            archive: userPointsArchive
+        });
+        
+        // Reset all users' points to 0 and clear streaks
+        const userBatch = usersSnap.docs.map(u =>
+            updateDoc(u.ref, { points: 0 })
+        );
+        await Promise.all(userBatch);
+        
+        // Delete all votes
+        const voteBatch = votesSnap.docs.map(v => deleteDoc(v.ref));
+        await Promise.all(voteBatch);
+        
+        alert(`✅ Weekly reset complete!\n\n${usersSnap.size} users reset.\n${votesSnap.size} vote records cleared.\n\nWeek archived: ${weekLabel}`);
+        
+        await loadLastResetInfo();
+        dashLoad();
+    } catch (e) {
+        console.error("Weekly reset failed:", e);
+        alert("Error during reset: " + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "🔄 Reset Weekly Points"; }
+    }
+};
+
 // Init
 dashLoad();
+loadLastResetInfo();

@@ -1,13 +1,52 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, getDocs, query, where, addDoc, doc, updateDoc, orderBy, limit, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 const app = initializeApp({
     apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
     authDomain: "daily-voting-793ee.firebaseapp.com",
     projectId: "daily-voting-793ee",
-    storageBucket: "daily-voting-793ee.appspot.com"
+    storageBucket: "daily-voting-793ee.appspot.com",
+    messagingSenderId: "1065830068376"
 });
 const db = getFirestore(app);
+const messaging = getMessaging(app);
+const VAPID_KEY = 'BKIGPXFbPybxBpilFawNRuivEOv28HVuj7Yfa9SSw6lZDYXyPQZFr7XqvFcFICwr22TVErvfamU9BNIdAIus_5g';
+
+// Register device for FCM push notifications
+async function registerFCMToken() {
+    try {
+        if (!('Notification' in window)) return;
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        const swReg = await navigator.serviceWorker.register('/faith-and-fitnesss/firebase-messaging-sw.js', { scope: '/faith-and-fitnesss/' });
+        const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
+        if (!token) return;
+
+        // Save token to Firestore user doc
+        const userSnap = await getDocsByPhone('users', phone);
+        if (!userSnap.empty) {
+            const uDoc = userSnap.docs[0];
+            const existing = uDoc.data().fcmTokens || [];
+            if (!existing.includes(token)) {
+                await updateDoc(uDoc.ref, { fcmTokens: [...existing, token] });
+            }
+        }
+        console.log('FCM token registered ✅');
+    } catch (e) {
+        console.warn('FCM registration skipped:', e.message);
+    }
+}
+
+// Show notification when app is OPEN (foreground)
+onMessage(messaging, (payload) => {
+    const title = payload.notification?.title || '🕊️ Faith & Fitness';
+    const body  = payload.notification?.body  || '';
+    if (Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '../photo/logo.png' });
+    }
+});
 
 // Helper for type-immune queries (matches string or number phone numbers)
 async function getDocsByPhone(collectionName, phoneVal, extraQueries = []) {
@@ -1398,3 +1437,4 @@ window.switchToAdminPanel = () => {
 loadHome();
 loadLeaderboard();
 renderCalendar();
+registerFCMToken(); // Register for push notifications
