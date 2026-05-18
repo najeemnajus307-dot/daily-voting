@@ -26,8 +26,24 @@ async function registerFCMToken() {
     try {
         if (!messaging) return;
         if (!('Notification' in window)) return;
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return;
+
+        // If permission not asked yet, show the beautiful opt-in card
+        if (Notification.permission === 'default') {
+            const card = document.getElementById("notificationOptInCard");
+            if (card) card.style.display = "block";
+            return;
+        }
+
+        // If denied, make sure the card is hidden
+        if (Notification.permission === 'denied') {
+            const card = document.getElementById("notificationOptInCard");
+            if (card) card.style.display = "none";
+            return;
+        }
+
+        // Already granted, hide the card and register the token silently
+        const card = document.getElementById("notificationOptInCard");
+        if (card) card.style.display = "none";
 
         const swReg = await navigator.serviceWorker.register('/faith-and-fitnesss/firebase-messaging-sw.js', { scope: '/faith-and-fitnesss/' });
         const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
@@ -47,6 +63,32 @@ async function registerFCMToken() {
         console.warn('FCM registration skipped:', e.message);
     }
 }
+
+// User-triggered notification permission (Gesture flow needed by modern browsers)
+window.requestNotificationPermissionManual = async () => {
+    try {
+        if (!('Notification' in window)) {
+            alert("This device/browser does not support push notifications.");
+            return;
+        }
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            const card = document.getElementById("notificationOptInCard");
+            if (card) card.style.display = "none";
+            
+            // Run silent registration since permission is now granted
+            await registerFCMToken();
+            alert("Notifications successfully enabled! \uD83C\uDF89 You will now receive alerts.");
+        } else {
+            alert("Permission denied. You can enable them manually in browser settings.");
+            const card = document.getElementById("notificationOptInCard");
+            if (card) card.style.display = "none";
+        }
+    } catch (e) {
+        console.error("Manual permission request failed:", e);
+        alert("Error requesting permission: " + e.message);
+    }
+};
 
 // Show notification when app is OPEN (foreground)
 if (messaging) {

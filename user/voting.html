@@ -103,6 +103,18 @@
                 <div id="streakBadge" style="margin-top: 10px; font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 12px; font-weight: 700; letter-spacing: 0.5px;">🌱 Seedling Badge</div>
             </div>
 
+            <!-- Push Notification Opt-in Card (Glassmorphism design) -->
+            <div id="notificationOptInCard" class="panel animate-fade-in" style="display: none; background: linear-gradient(135deg, rgba(22, 163, 74, 0.08), rgba(21, 128, 61, 0.03)); border: 1.5px dashed var(--secondary); padding: 20px; border-radius: 18px; margin-bottom: 15px; text-align: center; box-shadow: var(--shadow-sm); transition: transform 0.2s;">
+                <div style="font-size: 2.2rem; margin-bottom: 6px;">🔔</div>
+                <h4 class="font-serif" style="margin: 0 0 6px 0; color: var(--primary); font-size: 1.05rem; font-weight: 800;">Stay Updated!</h4>
+                <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; margin: 0 0 14px 0; font-weight: 600;">
+                    Enable push notifications to receive daily reminders and announcements even when the app is closed! 📱
+                </p>
+                <button class="btn-primary" onclick="requestNotificationPermissionManual()" style="background: linear-gradient(135deg, var(--secondary), var(--primary)); border-color: var(--primary); color: white; width: 100%; font-weight: 700; padding: 10px; border-radius: 10px; box-shadow: 0 4px 12px rgba(27, 92, 56, 0.2); cursor: pointer;">
+                    Enable Notifications 🔔
+                </button>
+            </div>
+
             <!-- Daily Reflection Quote Card -->
             <div class="panel animate-fade-in" style="background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(240,253,244,0.9)); border: 1px solid var(--border-light); padding: 20px; border-radius: 18px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: var(--shadow-sm);">
                 <div style="font-size: 0.65rem; color: var(--secondary); font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
