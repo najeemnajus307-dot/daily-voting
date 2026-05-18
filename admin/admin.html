@@ -31,6 +31,19 @@
         .btn-sm { padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; width: auto; }
         .add-btn { background: var(--success); color: white; }
         .del-btn { background: var(--error); color: white; }
+
+        @media (max-width: 768px) {
+            .admin-wrap { flex-direction: column; }
+            .sidebar { width: 100%; padding: 15px; box-sizing: border-box; }
+            .sidebar h2 { margin-bottom: 15px; }
+            nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+            .nav-link { margin-bottom: 0; padding: 8px 12px; font-size: 0.85rem; flex: 1 1 40%; text-align: center; }
+            .admin-main { padding: 15px; width: 100%; box-sizing: border-box; overflow-x: hidden; }
+            .panel { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; box-sizing: border-box; }
+            table { min-width: 800px; }
+            .stat-grid { grid-template-columns: 1fr; }
+            .nav-link[href="task-editor.html"] { margin-top: 0 !important; padding-top: 8px !important; border-top: none !important; }
+        }
     </style>
 </head>
 <body>
