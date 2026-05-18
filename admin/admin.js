@@ -65,7 +65,7 @@ window.showPage = (id) => {
         loadRecentMessages();
     }
     if(id === 'settings') {
-        loadLastResetInfo();
+        settingsLoad();
     }
 };
 
@@ -503,6 +503,43 @@ window.delVotes = async (idsStr) => {
         console.error("Delete votes failed:", e);
         alert("Error: " + e.message);
     }
+};
+
+// --- SETTINGS (Original Points) ---
+window.settingsLoad = async () => {
+    const from = document.getElementById("s_from").value;
+    const to = document.getElementById("s_to").value;
+    const usersSnap = await getDocs(collection(db, "users"));
+    const votesSnap = await getDocs(collection(db, "votes"));
+
+    const nameMap = {};
+    usersSnap.forEach(u => nameMap[u.data().phone] = u.data().name);
+
+    const pointMap = {};
+    votesSnap.forEach(v => {
+        const x = v.data();
+        if (x.source === "admin") return;
+        if (from && (x.date < from || (to && x.date > to))) return;
+        pointMap[x.phone] = (pointMap[x.phone] || 0) + Number(x.points || 0);
+    });
+
+    let rows = [];
+    for (const p in pointMap) rows.push({ name: nameMap[p] || "Unknown", points: pointMap[p] });
+    rows.sort((a, b) => b.points - a.points);
+
+    const body = document.getElementById("s_body");
+    body.innerHTML = "";
+    let sl = 0, rank = 0, prev = null;
+
+    rows.forEach(r => {
+        sl++;
+        if (prev === null || r.points < prev) rank++;
+        prev = r.points;
+        const tr = document.createElement("tr");
+        if (rank <= 3) tr.className = `rank-${rank}`;
+        tr.innerHTML = `<td>${sl}</td><td>${rank}</td><td>${r.name}</td><td>${r.points}</td>`;
+        body.appendChild(tr);
+    });
 };
 
 // --- BACKDATE REQUESTS APPROVAL ---

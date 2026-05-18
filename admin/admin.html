@@ -245,23 +245,23 @@
 
             <!-- SETTINGS -->
             <section id="page-settings">
-                <!-- WEEKLY RESET PANEL -->
-                <h1 class="font-serif" style="margin-bottom: 20px;">⚠️ Weekly Leaderboard Reset</h1>
-                <div class="panel" style="padding: 24px; margin-bottom: 30px; border: 2px solid #fca5a5; background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);">
-                    <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 200px;">
-                            <h3 style="margin: 0 0 8px 0; color: #9f1239; font-family: 'Playfair Display', serif; font-size: 1.1rem;">Reset All User Points to Zero</h3>
-                            <p style="font-size: 0.85rem; color: #6b7280; margin: 0 0 12px 0; line-height: 1.6;">This will reset <b>every user's total points</b> to 0, archiving this week's final scores before the new week begins. The leaderboard restarts fresh. This action <b>cannot be undone</b>.</p>
-                            <div id="lastResetInfo" style="font-size: 0.8rem; color: #475569; background: white; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block; margin-bottom: 12px;">Loading last reset info...</div>
+                <h1 class="font-serif" style="margin-bottom: 20px;">Original User Points</h1>
+                <div class="panel" style="padding: 20px; margin-bottom: 20px;">
+                    <div style="display:flex; gap:10px; align-items:flex-end;">
+                        <div>
+                            <label>From</label><br><input type="date" id="s_from" style="padding:8px; margin-top:5px;">
                         </div>
-                        <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-end; min-width: 180px;">
-                            <button id="weeklyResetBtn" class="btn-primary" style="background: linear-gradient(135deg, #dc2626, #9f1239); border: none; padding: 14px 24px; font-size: 0.95rem; font-weight: 700; border-radius: 12px; width: 100%; box-shadow: 0 4px 15px rgba(220,38,38,0.3); cursor: pointer;" onclick="triggerWeeklyReset()">🔄 Reset Weekly Points</button>
-                            <button class="btn-secondary" style="font-size: 0.8rem; padding: 8px 14px; width: 100%; border-radius: 10px; cursor: pointer;" onclick="loadResetHistory()">📋 View Reset History</button>
+                        <div>
+                            <label>To</label><br><input type="date" id="s_to" style="padding:8px; margin-top:5px;">
                         </div>
+                        <button class="btn-primary" style="width:auto;" onclick="settingsLoad()">Filter</button>
                     </div>
-                    <div id="resetHistoryList" style="display: none; margin-top: 16px; border-top: 1px solid #fca5a5; padding-top: 16px;">
-                        <!-- Reset history rows load here -->
-                    </div>
+                </div>
+                <div class="panel" style="padding: 0;">
+                    <table>
+                        <thead><tr><th>SL</th><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
+                        <tbody id="s_body"></tbody>
+                    </table>
                 </div>
             </section>
 
