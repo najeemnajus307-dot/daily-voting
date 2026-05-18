@@ -57,6 +57,10 @@ window.showSection = (id) => {
     if (id === 'settingsSection') loadProfileData();
 };
 
+window.switchToAdminPanel = () => {
+    window.location.href = '../admin/admin.html';
+};
+
 // --- WORKOUT LIBRARY ---
 window.loadWorkouts = async () => {
     const snap = await getDocs(collection(db, "library"));
