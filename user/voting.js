@@ -409,23 +409,7 @@ async function loadHome() {
         }
     }
 
-    // Load Daily Scripture / Fitness Quotes
-    const DAILY_QUOTES = [
-        { text: "But they who wait for the Lord shall renew their strength; they shall mount up with wings like eagles.", ref: "Isaiah 40:31" },
-        { text: "I can do all things through Christ who strengthens me.", ref: "Philippians 4:13" },
-        { text: "For God has not given us a spirit of fear, but of power and of love and of a sound mind.", ref: "2 Timothy 1:7" },
-        { text: "She is clothed with strength and dignity, and she laughs without fear of the future.", ref: "Proverbs 31:25" },
-        { text: "Commit your work to the Lord, and your plans will be established.", ref: "Proverbs 16:3" },
-        { text: "Do you not know that your body is a temple of the Holy Spirit?", ref: "1 Corinthians 6:19" },
-        { text: "The Lord is my strength and my shield; in Him my heart trusts.", ref: "Psalm 28:7" }
-    ];
-    
-    const dayOfWeek = new Date().getDay();
-    const dailyQuote = DAILY_QUOTES[dayOfWeek % DAILY_QUOTES.length];
-    const quoteTextEl = document.getElementById("dailyQuoteText");
-    const quoteRefEl = document.getElementById("dailyQuoteRef");
-    if (quoteTextEl) quoteTextEl.textContent = `"${dailyQuote.text}"`;
-    if (quoteRefEl) quoteRefEl.textContent = `- ${dailyQuote.ref}`;
+
 
     // Initialize Interactive Water Tracker
     updateWaterUI();

@@ -89,12 +89,12 @@
                 <div style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 8px; font-size: 0.7rem; letter-spacing: 0.5px; text-transform: uppercase;">Switch →</div>
             </div>
 
-            <!-- Global Pinned Banner (From Admin) -->
-            <div id="globalPinnedBanner" class="animate-fade-in" style="display: none; background: linear-gradient(135deg, #fef08a, #facc15); color: #713f12; padding: 14px 16px; border-radius: 14px; margin-bottom: 16px; font-size: 0.85rem; font-weight: 600; line-height: 1.4; box-shadow: var(--shadow-sm); border: 1px solid #eab308;">
-                <div style="display: flex; align-items: flex-start; gap: 10px;">
-                    <span style="font-size: 1.2rem;">📌</span>
-                    <div id="globalPinnedBannerText" style="flex: 1;"></div>
+            <!-- Daily Reflection (Admin Controlled) -->
+            <div id="globalPinnedBanner" class="panel animate-fade-in" style="display: none; background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(240,253,244,0.9)); border: 1px solid var(--border-light); padding: 20px; border-radius: 18px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: var(--shadow-sm);">
+                <div style="font-size: 0.65rem; color: var(--secondary); font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                    <span>📖</span> DAILY REFLECTION
                 </div>
+                <div id="globalPinnedBannerText" class="font-serif" style="font-size: 0.95rem; font-style: italic; color: var(--primary); line-height: 1.5;"></div>
             </div>
 
             <div class="header-top" style="align-items: center;">
@@ -146,14 +146,7 @@
                 </button>
             </div>
 
-            <!-- Daily Reflection Quote Card -->
-            <div class="panel animate-fade-in" style="background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(240,253,244,0.9)); border: 1px solid var(--border-light); padding: 20px; border-radius: 18px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: var(--shadow-sm);">
-                <div style="font-size: 0.65rem; color: var(--secondary); font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                    <span>📖</span> DAILY REFLECTION
-                </div>
-                <div id="dailyQuoteText" class="font-serif" style="font-size: 0.9rem; font-style: italic; color: var(--primary); line-height: 1.5; margin-bottom: 8px;">Loading reflection...</div>
-                <div id="dailyQuoteRef" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-align: right;"></div>
-            </div>
+
 
             <div class="reminder-card" id="messageBox" style="display: none;">
                 <div style="font-size: 0.6rem; color: var(--secondary); font-weight: 800; letter-spacing: 1px; margin-bottom: 8px;">DAILY REMINDER</div>
