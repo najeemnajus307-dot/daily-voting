@@ -411,8 +411,7 @@ async function loadHome() {
 
 
 
-    // Initialize Interactive Water Tracker
-    updateWaterUI();
+
 
     // Load Pinned Banner
     await loadPinnedBanner();
@@ -644,41 +643,7 @@ window.updateTaskProgressBar = () => {
     if (text) text.textContent = `${checked} of ${total} (${percent}%)`;
 };
 
-// --- INTERACTIVE WATER TRACKER ---
-window.incrementWater = (e) => {
-    e.stopPropagation();
-    const todayStr = getVoteDate();
-    let current = Number(localStorage.getItem("water_" + todayStr) || "0");
-    if (current >= 12) return; // Cap at 12 glasses
-    current += 1;
-    localStorage.setItem("water_" + todayStr, current);
-    updateWaterUI(current);
-};
 
-window.decrementWater = (e) => {
-    e.stopPropagation();
-    const todayStr = getVoteDate();
-    let current = Number(localStorage.getItem("water_" + todayStr) || "0");
-    if (current <= 0) return;
-    current -= 1;
-    localStorage.setItem("water_" + todayStr, current);
-    updateWaterUI(current);
-};
-
-window.updateWaterUI = (count) => {
-    const todayStr = getVoteDate();
-    const current = count !== undefined ? count : Number(localStorage.getItem("water_" + todayStr) || "0");
-    
-    const countText = document.getElementById("waterCount");
-    const percentText = document.getElementById("waterPercent");
-    const fill = document.getElementById("waterProgressFill");
-    
-    if (countText) countText.textContent = current;
-    
-    const percent = Math.min(Math.round((current / 8) * 100), 100);
-    if (percentText) percentText.textContent = percent + "%";
-    if (fill) fill.style.width = percent + "%";
-};
 
 function isTaskActive(task) {
     const now = new Date();
