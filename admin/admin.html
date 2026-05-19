@@ -201,6 +201,29 @@
             <section id="page-announcement">
                 <h1 class="font-serif" style="margin-bottom: 20px;">📢 Message & Announcement History</h1>
                 
+                <!-- Pinned Banner Settings -->
+                <div class="panel" style="padding: 20px; margin-bottom: 30px; border-left: 4px solid var(--primary);">
+                    <h3 class="font-serif" style="margin-bottom: 10px; font-size:1.1rem; color:var(--primary);">📌 Pinned Banner</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">This text will be pinned at the top of every user's home screen.</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div>
+                            <textarea id="banner_text" placeholder="e.g. Ramadan schedule: voting opens at Maghrib this week 🌙" style="width:100%; height:60px; padding:10px; border-radius:8px; border:1px solid #ddd; font-family:inherit; font-size:0.9rem;"></textarea>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <label style="font-weight:600; font-size:0.85rem; color:var(--text-primary);">Show banner to users</label>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Turn off to hide it without deleting the text</div>
+                            </div>
+                            <input type="checkbox" id="banner_active" style="width:20px; height:20px; cursor:pointer;">
+                        </div>
+                        <div>
+                            <button class="btn-primary" style="width: auto; padding: 10px 20px; font-size:0.9rem;" onclick="saveBanner()">Save Banner</button>
+                            <span id="banner_msg" style="margin-left: 10px; font-size: 0.85rem; color: var(--success);"></span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="panel" style="padding: 20px; margin-bottom: 30px;">
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <input type="hidden" id="edit_msg_id" value="">

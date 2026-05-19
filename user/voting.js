@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, addDoc, doc, updateDoc, orderBy, limit, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, where, addDoc, doc, updateDoc, orderBy, limit, increment, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 const app = initializeApp({
@@ -429,11 +429,34 @@ async function loadHome() {
     // Initialize Interactive Water Tracker
     updateWaterUI();
 
+    // Load Pinned Banner
+    await loadPinnedBanner();
+
     // Load Broadcast Reminders & Announcements
     await checkBroadcastMessages();
     
     // Load voting tasks
     await loadTasks();
+}
+
+async function loadPinnedBanner() {
+    try {
+        const snap = await getDoc(doc(db, "settings", "app"));
+        const bannerContainer = document.getElementById("globalPinnedBanner");
+        const bannerText = document.getElementById("globalPinnedBannerText");
+        
+        if (snap.exists() && bannerContainer && bannerText) {
+            const data = snap.data();
+            if (data.announcementActive && data.announcement) {
+                bannerText.innerHTML = data.announcement.replace(/\n/g, '<br>');
+                bannerContainer.style.display = "block";
+            } else {
+                bannerContainer.style.display = "none";
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load pinned banner:", e);
+    }
 }
 
 window.toggleNotificationPanel = (event) => {
@@ -679,6 +702,18 @@ function isTaskActive(task) {
     // Active only from 8 PM (20:00) to 12 PM (12:00)
     const isActiveTime = (hrs >= 20 || hrs < 12);
     if (!isActiveTime) return false;
+
+    // Special Task Date Logic
+    if (task.startDate) {
+        const voteDate = getVoteDate();
+        const start = task.startDate;
+        const end = task.endDate || task.startDate;
+        // If current voting date falls within the special task date range, it's active
+        if (voteDate >= start && voteDate <= end) {
+            return true;
+        }
+        return false;
+    }
 
     const today = now.getDay();
     const yesterday = (today + 6) % 7;

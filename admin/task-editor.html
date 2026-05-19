@@ -51,6 +51,18 @@
                 </div>
             </div>
 
+            <label style="font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);">Special Task Dates (Optional)</label>
+            <div style="display:flex; gap:15px; margin-top: 5px; margin-bottom: 20px;">
+                <div class="input-group" style="flex:1;">
+                    <label>Start Date</label>
+                    <input id="startDate" type="date">
+                </div>
+                <div class="input-group" style="flex:1;">
+                    <label>End Date</label>
+                    <input id="endDate" type="date">
+                </div>
+            </div>
+
             <button class="btn-primary" onclick="saveTask()">Save Task</button>
         </div>
 
@@ -88,10 +100,10 @@
                 div.innerHTML = `
                     <div style="font-weight:700; color:var(--primary);">${t.text}</div>
                     <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
-                        Points: ${t.points} | Time: ${t.start} - ${t.end}
+                        Points: ${t.points} | Time: ${t.start} - ${t.end} ${t.startDate ? `| Dates: ${t.startDate} to ${t.endDate||' ongoing'}` : ''}
                     </div>
                     <div class="task-actions">
-                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start}', '${t.end}', ${JSON.stringify(t.days || [])})">Edit</button>
+                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start}', '${t.end}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}')">Edit</button>
                         <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error);" onclick="deleteTask('${d.id}')">Delete</button>
                     </div>`;
                 list.appendChild(div);
@@ -103,11 +115,13 @@
             const points = Number(document.getElementById("taskPoints").value);
             const start = document.getElementById("startTime").value;
             const end = document.getElementById("endTime").value;
+            const startDate = document.getElementById("startDate").value;
+            const endDate = document.getElementById("endDate").value;
             const days = [...document.querySelectorAll("#daysBox input:checked")].map(d => Number(d.value));
 
-            if (!text || points < 0 || !start || !end || days.length === 0) return alert("Please fill all fields");
+            if (!text || points < 0 || (!startDate && days.length === 0)) return alert("Please provide task text, points, and either active days or a start date.");
 
-            const data = { text, points, start, end, days };
+            const data = { text, points, start, end, days, startDate: startDate || null, endDate: endDate || null };
             if (editId) {
                 await updateDoc(doc(db, "tasks", editId), data);
                 editId = null;
@@ -118,12 +132,14 @@
             location.reload();
         };
 
-        window.editTask = (id, text, points, start, end, days) => {
+        window.editTask = (id, text, points, start, end, days, startDate, endDate) => {
             editId = id;
             document.getElementById("taskText").value = text;
             document.getElementById("taskPoints").value = points;
             document.getElementById("startTime").value = start;
             document.getElementById("endTime").value = end;
+            document.getElementById("startDate").value = startDate;
+            document.getElementById("endDate").value = endDate;
             document.querySelectorAll("#daysBox input").forEach(c => c.checked = days.includes(Number(c.value)));
             window.scrollTo(0, 0);
         };

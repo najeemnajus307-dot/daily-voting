@@ -1000,3 +1000,41 @@ window.triggerWeeklyReset = async () => {
 // Init
 dashLoad();
 loadLastResetInfo();
+
+// --- PINNED BANNER ---
+window.loadBanner = async () => {
+    try {
+        const snap = await getDoc(doc(db, "settings", "app"));
+        if (snap.exists()) {
+            const elText = document.getElementById("banner_text");
+            const elActive = document.getElementById("banner_active");
+            if (elText) elText.value = snap.data().announcement || "";
+            if (elActive) elActive.checked = snap.data().announcementActive || false;
+        }
+    } catch (e) {
+        console.error("Load banner failed:", e);
+    }
+};
+
+window.saveBanner = async () => {
+    const msg = document.getElementById("banner_msg");
+    const text = document.getElementById("banner_text").value.trim();
+    const active = document.getElementById("banner_active").checked;
+    
+    try {
+        await updateDoc(doc(db, "settings", "app"), {
+            announcement: text,
+            announcementActive: active
+        });
+        msg.textContent = "Banner saved ✅";
+        msg.style.color = "var(--success)";
+        setTimeout(() => msg.textContent = "", 2500);
+    } catch (e) {
+        console.error("Save banner failed:", e);
+        msg.textContent = "Error saving banner";
+        msg.style.color = "var(--error)";
+    }
+};
+
+setTimeout(loadBanner, 1000); // Load banner after init
+
