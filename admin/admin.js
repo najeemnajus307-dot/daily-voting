@@ -692,18 +692,32 @@ async function getOAuthToken() {
 
 async function sendFCMPushToAll(title, body) {
     try {
+        console.log('[FCM] Starting push send...');
         const accessToken = await getOAuthToken();
+        if (!accessToken) {
+            console.error('[FCM] Failed to get OAuth token!');
+            alert('❌ FCM Error: Could not get auth token. Check console.');
+            return;
+        }
+        console.log('[FCM] OAuth token obtained ✅');
+
         const usersSnap = await getDocs(collection(db, 'users'));
         const tokens = [];
         usersSnap.forEach(u => { (u.data().fcmTokens || []).forEach(t => tokens.push(t)); });
-        if (tokens.length === 0) { console.log('No FCM tokens yet'); return; }
+
+        if (tokens.length === 0) {
+            console.warn('[FCM] No FCM tokens found in Firestore! Users may not have granted notification permission.');
+            alert('⚠️ No FCM tokens found! Users need to open the site and allow notifications first.');
+            return;
+        }
+        console.log(`[FCM] Found ${tokens.length} token(s) to send to.`);
 
         const basePath = location.pathname.substring(0, location.pathname.indexOf('/admin/')) || '';
         const appRootUrl = location.origin + basePath;
         const iconUrl = `${appRootUrl}/photo/logo.png`;
         const clickUrl = `${appRootUrl}/user/voting.html`;
 
-        let sent = 0;
+        let sent = 0, failed = 0;
         for (const token of tokens) {
             try {
                 const r = await fetch('https://fcm.googleapis.com/v1/projects/daily-voting-793ee/messages:send', {
@@ -718,11 +732,27 @@ async function sendFCMPushToAll(title, body) {
                         }
                     }})
                 });
-                if (r.ok) sent++;
-            } catch(e) { console.warn('Token send failed:', e); }
+                if (r.ok) {
+                    sent++;
+                    console.log(`[FCM] ✅ Sent to token: ${token.substring(0,20)}...`);
+                } else {
+                    failed++;
+                    const errText = await r.text();
+                    console.error(`[FCM] ❌ Failed for token ${token.substring(0,20)}... Status: ${r.status}`, errText);
+                }
+            } catch(e) {
+                failed++;
+                console.error('[FCM] Token send exception:', e);
+            }
         }
-        console.log(`FCM push sent to ${sent}/${tokens.length} devices \u2705`);
-    } catch(e) { console.error('FCM push error:', e); }
+        console.log(`[FCM] Done: ${sent} sent, ${failed} failed out of ${tokens.length} total.`);
+        if (failed > 0 && sent === 0) {
+            alert(`❌ FCM push failed for all ${failed} device(s). Check browser console (F12) for details.`);
+        }
+    } catch(e) {
+        console.error('[FCM] sendFCMPushToAll error:', e);
+        alert('❌ FCM push error: ' + e.message);
+    }
 }
 
 window.saveMessage = async () => {
