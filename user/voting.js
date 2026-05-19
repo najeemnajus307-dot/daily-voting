@@ -158,6 +158,7 @@ window.showSection = (id) => {
     if (id === 'calendarSection') renderCalendar();
     if (id === 'workoutSection') loadWorkouts();
     if (id === 'settingsSection') loadProfileData();
+    if (id === 'achievementsSection') loadAchievements();
 };
 
 window.switchToAdminPanel = () => {
@@ -1526,6 +1527,125 @@ window.switchToAdminPanel = () => {
     localStorage.setItem("admin_bypass_auth", "true");
     location.assign("../admin/admin.html");
 };
+
+// --- ACHIEVEMENTS LOGIC ---
+const BUILTIN_ACHIEVEMENTS = [
+    { id:"pts_100",   icon:"⭐", name:"First Steps",      desc:"Earn 100 total points",                rarity:"common",    cond:{ field:"totalPoints",      op:">=", value:100  } },
+    { id:"pts_500",   icon:"🌟", name:"Rising Star",      desc:"Earn 500 total points",                rarity:"common",    cond:{ field:"totalPoints",      op:">=", value:500  } },
+    { id:"pts_1000",  icon:"💫", name:"Faith Warrior",    desc:"Earn 1,000 total points",              rarity:"rare",      cond:{ field:"totalPoints",      op:">=", value:1000 } },
+    { id:"pts_2500",  icon:"🔥", name:"Points Legend",    desc:"2,500 points — a legend in the making.", rarity:"legendary", cond:{ field:"totalPoints",      op:">=", value:2500 } },
+  
+    { id:"str_3",     icon:"🌱", name:"Seedling",         desc:"Keep a 3-day streak",                  rarity:"common",    cond:{ field:"currentStreak",    op:">=", value:3   } },
+    { id:"str_7",     icon:"🌿", name:"Week Warrior",     desc:"Keep a 7-day streak",                  rarity:"common",    cond:{ field:"currentStreak",    op:">=", value:7   } },
+    { id:"str_14",    icon:"🌳", name:"Fortnight Faith",  desc:"Keep a 14-day streak",                 rarity:"rare",      cond:{ field:"currentStreak",    op:">=", value:14  } },
+    { id:"str_30",    icon:"🔱", name:"Monthly Devotee",  desc:"Keep a 30-day streak",                 rarity:"epic",      cond:{ field:"currentStreak",    op:">=", value:30  } },
+    { id:"str_100",   icon:"💎", name:"Century Streak",   desc:"100 days of pure commitment. Truly unstoppable.", rarity:"legendary", cond:{ field:"currentStreak",    op:">=", value:100 } },
+  
+    { id:"votes_1",   icon:"🗳️", name:"First Vote",       desc:"Cast your very first vote in the community.", rarity:"common", cond:{ field:"totalVotesCount",  op:">=", value:1   } },
+    { id:"votes_10",  icon:"📋", name:"Regular",          desc:"Vote 10 times in the platform.",       rarity:"common",    cond:{ field:"totalVotesCount",  op:">=", value:10  } },
+    { id:"votes_50",  icon:"🗣️", name:"Voice Heard",      desc:"Your voice has been heard 50 times.",  rarity:"epic",      cond:{ field:"totalVotesCount",  op:">=", value:50  } },
+    { id:"votes_100", icon:"🏆", name:"Century Voter",    desc:"A century of votes — true dedication to the faith.", rarity:"legendary", cond:{ field:"totalVotesCount",  op:">=", value:100 } }
+];
+
+let achievementFilter = "all";
+let earnedAchievementIds = new Set();
+let userStatsForBadges = {};
+
+window.setAchievementFilter = (f, btn) => {
+    document.querySelectorAll("#achievementsSection .filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    achievementFilter = f;
+    renderAchievements();
+};
+
+window.loadAchievements = async () => {
+    try {
+        const userSnap = await getDocsByPhone("users", phone);
+        if(userSnap.empty) return;
+        const ud = userSnap.docs[0].data();
+
+        // Count total votes
+        const votesSnap = await getDocsByPhone("votes", phone);
+        const totalVotesCount = votesSnap.size;
+
+        userStatsForBadges = {
+            totalPoints: ud.points || 0,
+            currentStreak: ud.streak || 0,
+            totalVotesCount: totalVotesCount
+        };
+
+        // Determine unlocked automatically
+        earnedAchievementIds = new Set();
+        BUILTIN_ACHIEVEMENTS.forEach(def => {
+            const val = userStatsForBadges[def.cond.field] || 0;
+            if(def.cond.op === ">=" && val >= def.cond.value) earnedAchievementIds.add(def.id);
+        });
+
+        // Summary
+        const total = BUILTIN_ACHIEVEMENTS.length;
+        const earned = earnedAchievementIds.size;
+        const pct = Math.round((earned / total) * 100);
+
+        document.getElementById("sumEarned").textContent = earned;
+        document.getElementById("sumTotal").textContent = total;
+        document.getElementById("sumPct").textContent = pct + "%";
+
+        renderAchievements();
+    } catch (e) {
+        console.error("Load badges failed:", e);
+    }
+};
+
+function renderAchievements() {
+    const grid = document.getElementById("badgeGrid");
+    grid.innerHTML = "";
+
+    let defs = [...BUILTIN_ACHIEVEMENTS];
+    
+    // Sort logic
+    const rarityOrder = { legendary:4, epic:3, rare:2, common:1 };
+    defs.sort((a,b) => {
+        const aE = earnedAchievementIds.has(a.id) ? 1 : 0;
+        const bE = earnedAchievementIds.has(b.id) ? 1 : 0;
+        if(aE !== bE) return bE - aE;
+        return (rarityOrder[b.rarity]||0) - (rarityOrder[a.rarity]||0);
+    });
+
+    if(achievementFilter === "unlocked") defs = defs.filter(d => earnedAchievementIds.has(d.id));
+    if(achievementFilter === "locked") defs = defs.filter(d => !earnedAchievementIds.has(d.id));
+
+    if(defs.length === 0){
+        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:30px; color:var(--text-muted); font-size:0.9rem;">No badges found.</div>`;
+        return;
+    }
+
+    defs.forEach(def => {
+        const unlocked = earnedAchievementIds.has(def.id);
+        const rarity = def.rarity || "common";
+        
+        let colorClass = "";
+        if(rarity === "common") colorClass = "background: #dcfce7; color: #16a34a;";
+        if(rarity === "rare") colorClass = "background: #dbeafe; color: #2563eb;";
+        if(rarity === "epic") colorClass = "background: #f3e8ff; color: #9333ea;";
+        if(rarity === "legendary") colorClass = "background: #fef3c7; color: #d97706;";
+
+        const card = document.createElement("div");
+        card.className = `badge-card ${unlocked ? "unlocked" : "locked"}`;
+        
+        card.innerHTML = `
+            <div class="status-icon"></div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div class="b-icon-wrap">${def.icon}</div>
+                <div style="font-family:'Courier New', monospace; font-size:0.6rem; font-weight:700; padding:2px 6px; border-radius:4px; text-transform:uppercase; ${colorClass}">${rarity}</div>
+            </div>
+            <div style="margin-top:5px;">
+                <div class="b-title">${def.name}</div>
+                <div class="b-desc">${def.desc}</div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
 
 // Init
 loadHome();
