@@ -1,6 +1,10 @@
-// Firebase Messaging Service Worker — handles push when app is CLOSED or in BACKGROUND
+// Firebase Messaging Service Worker v2 — handles push when app is CLOSED or in BACKGROUND
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+
+// Force new SW to activate immediately without waiting for old tabs to close
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 firebase.initializeApp({
     apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
@@ -13,53 +17,42 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// ✅ This handler fires when the app is CLOSED or in BACKGROUND
-// Without this, notifications only appear when the user opens the app again
+// ✅ Fires when app is CLOSED or in BACKGROUND
 messaging.onBackgroundMessage((payload) => {
-    console.log('[SW] Background message received:', payload);
+    console.log('[SW v2] Background message received:', payload);
 
     const title = payload.notification?.title || '🕊️ Faith & Fitness';
     const body  = payload.notification?.body  || payload.data?.body || '';
 
-    // Derive icon from service worker's own location (works on GitHub Pages too)
-    const swUrl  = new URL(self.location.href);
-    const origin = swUrl.origin;
-    // sw is at root, so /photo/logo.png is always correct
-    const scope  = swUrl.pathname.replace('firebase-messaging-sw.js', '');
-    const iconUrl = origin + scope + 'photo/logo.png';
-    const clickUrl = origin + scope + 'user/voting.html';
+    const swUrl   = new URL(self.location.href);
+    const scope   = swUrl.pathname.replace('firebase-messaging-sw.js', '');
+    const iconUrl = swUrl.origin + scope + 'photo/logo.png';
+    const clickUrl = swUrl.origin + scope + 'user/voting.html';
 
-    const notificationOptions = {
+    self.registration.showNotification(title, {
         body,
         icon: iconUrl,
         badge: iconUrl,
         vibrate: [200, 100, 200],
-        requireInteraction: true,      // stays until user taps it
+        requireInteraction: true,
         tag: payload.messageId || 'faith-fitness-push',
-        data: { url: clickUrl }        // used in notificationclick below
-    };
-
-    self.registration.showNotification(title, notificationOptions);
+        data: { url: clickUrl }
+    });
 });
 
-// ✅ Open / focus the app when user taps the notification
+// ✅ Open app when user taps the notification
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-
     const targetUrl = event.notification.data?.url || '/';
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            // If app is already open in a tab, focus it
             for (const client of clientList) {
                 if (client.url.includes('voting.html') && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Otherwise open a new tab
-            if (clients.openWindow) {
-                return clients.openWindow(targetUrl);
-            }
+            if (clients.openWindow) return clients.openWindow(targetUrl);
         })
     );
 });
