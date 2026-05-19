@@ -1000,6 +1000,7 @@ window.triggerWeeklyReset = async () => {
 // Init
 dashLoad();
 loadLastResetInfo();
+loadRecentMessages();
 
 // --- PINNED BANNER ---
 window.loadBanner = async () => {
@@ -1038,3 +1039,207 @@ window.saveBanner = async () => {
 
 setTimeout(loadBanner, 1000); // Load banner after init
 
+// --- BROADCAST MESSAGES ---
+window.toggleSchedTime = () => {
+    const type = document.getElementById("msg_sched_type").value;
+    document.getElementById("sched_time_wrapper").style.display = type === "scheduled" ? "block" : "none";
+};
+
+// --- FCM PUSH NOTIFICATION SENDER ---
+
+// Signs a JWT with the service account private key using SubtleCrypto
+async function getOAuthToken() {
+    const SA = {
+        client_email: "firebase-adminsdk-fbsvc@daily-voting-793ee.iam.gserviceaccount.com",
+        private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDCEcm9RTwl5hrq\nhe+Je4JpYmYhdl7j5gjZI1omGjPWNzs5AGi0dlIibqidSa8qMqzeWA+nOATwW001\nDln3TpmDAsK82cRDzmLflzt7n6ov/YJHCZI+DyYka7+g4PHLeVoAqr4Q4GC49WGB\np9XLnvZcEL/mvy0NemTOLzV9V5TjmxzLsg7+WEMmtX+gq8QYWtuFPtYzi2RKnCsB\nUI0SNxtZe21haJF30F5NIHcfNRStXqMqvDneM8L0Z4I//yY63+cxri7KLKmAbUD4\nPO5zvvJQkG2FWYJXvKA1mrqYc62umZhLuTtTl4clvuJVK2KQmziq3n25PVtP4EWS\n6uT/auTnAgMBAAECggEADWdJxf8MesLxZEs10mABD3g9UjL+YMJteq8SCy76Gjcc\nVFaD5MWF7LI0hmXQFEZbDCGMNeIM7UYmXJ4OIUzWFhH7EyyofSpkR8mxJlujrHGC\nLZfVTYtMThhRrDHSYVmTRBfcIrGXMeRjWfTBM7FZ6zKOSR3hEFzorhjdRTfm+kUz\nIzsnCnpz/3t+Py1cc6tl1OIuhTMSlZ0MSLmV8mNv07U2MsuSGDWg52ZmcvMq3dXo\nHHEPWL/RSffNJ9MsrCa04r+CJX3UaXLDYHr8QmaYsZCxXOk7G2IRi9rdZVVGm9q/\n71GiWLl/vVswliW064EtL9MyRRl/WvwxZpIWW1M+qQKBgQDlMZ2pLXpta9WbJPp5\ny/ESGs7BnKp9Pxb45QrmQjm5CEsoVxJ1SnoduzB4iW8HaGNKo/RlXdGOlyMdFVv7\nnRY7bo63E0hnhU0ne8zPTPDtPCn7eheHlGthNHRFtyi0PhTJxrIWs9sLFE6uKSyb\noZrpqhflRQJ0FD97hAbR+nGChQKBgQDYxIAk3t1uTtvflM69fIPLP1cFcq+FVKbQ\n1/nwaiUc/OCajjlAvqsyIJjY5c5R1hp5euTMueTLbH634BgedPNLpQMGZCYT6IIH\nsbuVrNYaL30I9oFN9m+Qra9oJLDWpicySK+l5SQ9/pvGhlILnuQQ4izT+VLzzJe8\nr6hQxrUjewKBgQDGlGGlJmlQC0GNZdG7288ov59qs2IomJQ/3Lu/25uFzUDJV///\nLiN2RSzvEyzm/zQghMQJW+ton1zmIw6KiIWtwtHWn9d5Ek9SKXrAFksdUaaSZCuk\n5hzPoRIpIVQcLzn1xbmh3/2msNanIbertK6zTBPeKxfAGZcTXsZGArd8vQKBgQDP\nnZVmuxa2uk0ZnftNvd61YptEmo3GVEfaK6I2RFP7qbCuF556hqSNxG7g/2pXM4vz\n4mMWOs4KkIXmM3qmYTlNsGRvUKiv1LgGCpMyTnJabjWByigatfgxSEmCo/HEBSvx\nm3CwogHOZvhocupOOwcRrK9m75wl6kVC8bNyen+v1QKBgFtPQG8nGgbbcfuIoXAg\nTB+dAaRPHEC+KAspKnMRPe447nzxdvmbMDbHtOs6hUC3bY4mw7OmTUrc5vIlIz3T\nFf7G/xjY8/B00N9ewz6Dp8g+ua9Es8qz2wFb2VnK4w8WmaFcNhYwTQZ20W+Yfdjx\nhsHFq5QHS0LQkklhKsmUGgjf\n-----END PRIVATE KEY-----\n"
+    };
+
+    const b64url = (str) => btoa(str).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    const now = Math.floor(Date.now() / 1000);
+    const header  = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+    const payload = b64url(JSON.stringify({
+        iss: SA.client_email,
+        scope: 'https://www.googleapis.com/auth/firebase.messaging',
+        aud: 'https://oauth2.googleapis.com/token',
+        iat: now, exp: now + 3600
+    }));
+    const unsigned = `${header}.${payload}`;
+
+    const pemBody = SA.private_key.replace(/-----[^-]+-----\n?/g,'').replace(/\n/g,'');
+    const keyBuf  = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0)).buffer;
+    const cryptoKey = await crypto.subtle.importKey(
+        'pkcs8', keyBuf,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        false, ['sign']
+    );
+    const sigBuf = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(unsigned));
+    const sig = btoa(String.fromCharCode(...new Uint8Array(sigBuf))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    const jwt = `${unsigned}.${sig}`;
+
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
+    });
+    const data = await res.json();
+    return data.access_token;
+}
+
+async function sendFCMPushToAll(title, body) {
+    try {
+        const accessToken = await getOAuthToken();
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const tokens = [];
+        usersSnap.forEach(u => { (u.data().fcmTokens || []).forEach(t => tokens.push(t)); });
+        if (tokens.length === 0) { console.log('No FCM tokens yet'); return; }
+
+        const basePath = location.pathname.substring(0, location.pathname.indexOf('/admin/')) || '';
+        const appRootUrl = location.origin + basePath;
+        const iconUrl = `${appRootUrl}/photo/logo.png`;
+        const clickUrl = `${appRootUrl}/user/voting.html`;
+
+        let sent = 0;
+        for (const token of tokens) {
+            try {
+                const r = await fetch('https://fcm.googleapis.com/v1/projects/daily-voting-793ee/messages:send', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: {
+                        token,
+                        notification: { title, body },
+                        webpush: {
+                            notification: { title, body, icon: iconUrl, requireInteraction: true },
+                            fcm_options: { link: clickUrl }
+                        }
+                    }})
+                });
+                if (r.ok) sent++;
+            } catch(e) { console.warn('Token send failed:', e); }
+        }
+        console.log(`FCM push sent to ${sent}/${tokens.length} devices \u2705`);
+    } catch(e) { console.error('FCM push error:', e); }
+}
+
+window.saveMessage = async () => {
+    const text      = document.getElementById("msg_text").value.trim();
+    const type      = document.getElementById("msg_type").value;
+    const schedType = document.getElementById("msg_sched_type").value;
+    const schedTime = document.getElementById("msg_sched_time").value;
+    const editId    = document.getElementById("edit_msg_id").value;
+
+    if (!text) return alert("Write a message first");
+
+    try {
+        if (editId) {
+            // Update existing broadcast
+            await updateDoc(doc(db, "messages", editId), {
+                text, type, schedType,
+                schedTime: schedType === "scheduled" ? schedTime : "",
+                timestamp: new Date().toISOString()
+            });
+            alert("Broadcast message updated successfully! ✅");
+        } else {
+            // Add new broadcast
+            await addDoc(collection(db, "messages"), {
+                text, type, schedType,
+                schedTime: schedType === "scheduled" ? schedTime : "",
+                timestamp: new Date().toISOString()
+            });
+
+            // Send FCM push immediately (even if scheduled — still notifies)
+            await sendFCMPushToAll('\uD83D\uDD4A\uFE0F Faith & Fitness', text);
+            alert("Message broadcasted + Push notifications sent! \uD83C\uDF89");
+        }
+
+        // Reset form
+        document.getElementById("msg_text").value = "";
+        document.getElementById("edit_msg_id").value = "";
+        document.getElementById("save_msg_btn").textContent = "Broadcast Message";
+        const cancelBtn = document.getElementById("cancel_msg_edit_btn");
+        if (cancelBtn) cancelBtn.style.display = "none";
+
+        loadRecentMessages();
+    } catch (e) {
+        console.error("Save message failed:", e);
+        alert("Error: " + e.message);
+    }
+};
+
+window.loadRecentMessages = async () => {
+    try {
+        const snap = await getDocs(query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(5)));
+        const list = document.getElementById("recent_messages_list");
+        if (snap.empty) {
+            list.innerHTML = `<div style="text-align:center; font-size:0.85rem; color:var(--text-muted); padding:10px;">No broadcasts yet.</div>`;
+            return;
+        }
+        
+        list.innerHTML = "";
+        snap.forEach(d => {
+            const m = d.data();
+            const timeInfo = m.schedType === "scheduled" ? `⏰ Daily at ${m.schedTime}` : "⚡ Immediate";
+            const typeInfo = m.type === "announcement" ? "📢 Announcement" : "⏳ Reminder";
+            
+            const escapedText = m.text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+            list.innerHTML += `
+                <div style="padding:12px; border:1px solid var(--border-light); border-radius:8px; display:flex; justify-content:space-between; align-items:center; background:#fafafa; margin-bottom: 5px;">
+                    <div style="max-width:70%;">
+                        <div style="font-size:0.85rem; font-weight:600;">${m.text}</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
+                            <span style="background:var(--primary); color:white; padding:2px 6px; border-radius:4px; font-size:0.65rem; font-weight:bold; margin-right:4px;">${typeInfo}</span> 
+                            <span>${timeInfo}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn-secondary btn-sm" style="padding:4px 8px; font-size:0.75rem;" onclick="editMessage('${d.id}', '${escapedText}', '${m.type}', '${m.schedType}', '${m.schedTime || '20:00'}')">Edit</button>
+                        <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); padding:4px 8px; font-size:0.75rem;" onclick="deleteMessage('${d.id}')">Delete</button>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (e) {
+        console.error("Load broadcasts failed:", e);
+    }
+};
+
+window.editMessage = (id, text, type, schedType, schedTime) => {
+    document.getElementById("edit_msg_id").value = id;
+    document.getElementById("msg_text").value = text;
+    document.getElementById("msg_type").value = type;
+    document.getElementById("msg_sched_type").value = schedType;
+    document.getElementById("msg_sched_time").value = schedTime || "20:00";
+    
+    document.getElementById("sched_time_wrapper").style.display = schedType === "scheduled" ? "block" : "none";
+    document.getElementById("save_msg_btn").textContent = "Update Broadcast";
+    
+    const cancelBtn = document.getElementById("cancel_msg_edit_btn");
+    if (cancelBtn) cancelBtn.style.display = "block";
+    
+    document.getElementById("msg_text").scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+window.cancelMessageEdit = () => {
+    document.getElementById("edit_msg_id").value = "";
+    document.getElementById("msg_text").value = "";
+    document.getElementById("msg_type").value = "announcement";
+    document.getElementById("msg_sched_type").value = "immediate";
+    document.getElementById("msg_sched_time").value = "20:00";
+    document.getElementById("sched_time_wrapper").style.display = "none";
+    
+    document.getElementById("save_msg_btn").textContent = "Broadcast Message";
+    const cancelBtn = document.getElementById("cancel_msg_edit_btn");
+    if (cancelBtn) cancelBtn.style.display = "none";
+};
+
+window.deleteMessage = async (id) => {
+    if (!confirm("Are you sure you want to delete this broadcast?")) return;
+    try {
+        await deleteDoc(doc(db, "messages", id));
+        alert("Broadcast deleted successfully. ✅");
+        loadRecentMessages();
+    } catch (e) {
+        console.error("Delete failed:", e);
+        alert("Error: " + e.message);
+    }
+};
