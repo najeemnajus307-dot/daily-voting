@@ -489,9 +489,14 @@ window.markAllNotificationsAsRead = () => {
 
 async function checkBroadcastMessages() {
     try {
-        // 1. Ask for browser notification permission gently
+        // 1. Ask for browser notification permission & immediately register FCM token if granted
         if (typeof Notification !== "undefined" && Notification.permission === "default") {
-            Notification.requestPermission();
+            Notification.requestPermission().then(perm => {
+                if (perm === 'granted') {
+                    console.log('[FCM] Permission granted via prompt — registering token now...');
+                    registerFCMToken();
+                }
+            });
         }
 
         const todayStr = getVoteDate();
