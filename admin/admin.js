@@ -1000,7 +1000,6 @@ window.triggerWeeklyReset = async () => {
 // Init
 dashLoad();
 loadLastResetInfo();
-loadRecentMessages();
 
 // --- PINNED BANNER ---
 window.loadBanner = async () => {
@@ -1243,3 +1242,8 @@ window.deleteMessage = async (id) => {
         alert("Error: " + e.message);
     }
 };
+
+// Initialize broadcasts list
+setTimeout(() => {
+    if (window.loadRecentMessages) window.loadRecentMessages();
+}, 500);
