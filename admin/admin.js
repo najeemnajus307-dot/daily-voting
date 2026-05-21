@@ -358,6 +358,22 @@ window.libDel = async (id) => {
 
 const today = () => new Date().toISOString().split("T")[0];
 
+const cleanPhone = (p) => String(p || "").replace(/[^0-9]/g, "");
+
+const localDateStr = (d) => {
+    return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+};
+
+const getVoteDate = () => {
+    const now = new Date();
+    const hrs = now.getHours();
+    const d = new Date(now);
+    if (hrs < 12) d.setDate(d.getDate() - 1); // Before Noon is for yesterday
+    return localDateStr(d);
+};
+
 // --- DASHBOARD ---
 window.dashLoad = async () => {
     try {
@@ -458,20 +474,21 @@ window.renderDashTable = () => {
         const tr = document.createElement("tr");
         if (rank <= 3) tr.className = `rank-${rank}`;
         tr.innerHTML = `
-            <td>${sl}</td>
-            <td>${rank}</td>
-            <td>
-                <span onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer; font-weight: 700; color: var(--primary); text-decoration: underline;" onmouseover="this.style.color='var(--secondary)'" onmouseout="this.style.color='var(--primary)'">${r.name}</span>
+            <td onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer; font-weight: 500;">${sl}</td>
+            <td onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer; font-weight: 500;">${rank}</td>
+            <td onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer;">
+                <span style="font-weight: 700; color: var(--primary); text-decoration: underline;" onmouseover="this.style.color='var(--secondary)'" onmouseout="this.style.color='var(--primary)'">${r.name}</span>
                 ${r.role === 'admin' ? '👑' : ''}
             </td>
-            <td>${r.phone}</td>
-            <td>${r.total}</td>
+            <td onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer;">${r.phone}</td>
+            <td onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer; font-weight: 700; color: var(--primary);">${r.total}</td>
             <td>
                 <div style="display:flex; gap:5px; align-items:center; justify-content:center; flex-wrap:wrap;">
                     <input id="p_${r.phone}" type="number" style="width:60px; padding:5px; border-radius:5px; border:1px solid #ddd;" placeholder="Pts" ${isViewOnly ? 'disabled' : ''}>
                     <button class="btn-primary btn-sm" onclick="addPoint('${r.phone}', 'add')" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>+</button>
                     <button class="btn-primary btn-sm" style="background:#444; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="addPoint('${r.phone}', 'set')" ${isViewOnly ? 'disabled' : ''}>Set</button>
                     <button class="btn-primary btn-sm" style="background:${r.role === 'admin' ? 'var(--error)' : '#10b981'}; font-size: 0.7rem; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="toggleAdmin('${r.id}', '${r.role}')" ${isViewOnly ? 'disabled' : ''}>${r.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}</button>
+                    <button class="btn-primary btn-sm" style="background:var(--secondary); font-size: 0.7rem;" onclick="openAdminUserModal('${r.phone}')">👤 Manage</button>
                 </div>
             </td>`;
         body.appendChild(tr);
@@ -608,7 +625,13 @@ window.togglePasswordVisibility = (inputId, btn) => {
 };
 
 window.openAdminUserModal = (phone) => {
-    const r = window.allUsersRows.find(user => String(user.phone) === String(phone));
+    const targetClean = cleanPhone(phone);
+    let r;
+    if (targetClean === "") {
+        r = window.allUsersRows.find(user => String(user.phone) === String(phone));
+    } else {
+        r = window.allUsersRows.find(user => cleanPhone(user.phone) === targetClean);
+    }
     if (!r) return alert("User not found!");
     
     const isViewOnly = currentAdminPerms.admin_view_only;
@@ -802,13 +825,76 @@ async function taskInit() {
         opt.textContent = d.data().text;
         sel.appendChild(opt);
     });
+    
+    // Set default task report date to current vote date
+    const dateInput = document.getElementById("t_date");
+    if (dateInput) {
+        dateInput.value = getVoteDate();
+    }
 }
 
+window.addPointForTask = async (phone, taskId, dateVal) => {
+    if (checkViewOnlyBlocked()) return;
+    
+    try {
+        const taskSnap = await getDoc(doc(db, "tasks", taskId));
+        if (!taskSnap.exists()) return alert("Task not found!");
+        const taskData = taskSnap.data();
+        const points = Number(taskData.points || 0);
+        
+        if (confirm(`Mark this task as completed for this user and award ${points} points?`)) {
+            // 1. Add to votes collection
+            await addDoc(collection(db, "votes"), {
+                phone: phone,
+                points: points,
+                taskId: taskId,
+                date: dateVal,
+                timestamp: new Date(),
+                source: "admin"
+            });
+            
+            // 2. Increment user's total points in the users collection
+            const userSnap = await getDocs(query(collection(db, "users"), where("phone", "==", phone)));
+            if (userSnap.empty && !isNaN(phone)) {
+                const userSnapNum = await getDocs(query(collection(db, "users"), where("phone", "==", Number(phone))));
+                if (!userSnapNum.empty) {
+                    const currentPoints = userSnapNum.docs[0].data().points || 0;
+                    await updateDoc(userSnapNum.docs[0].ref, {
+                        points: Math.max(0, currentPoints + points)
+                    });
+                }
+            } else if (!userSnap.empty) {
+                const currentPoints = userSnap.docs[0].data().points || 0;
+                await updateDoc(userSnap.docs[0].ref, {
+                    points: Math.max(0, currentPoints + points)
+                });
+            }
+            
+            alert("Points added successfully! ✅");
+            taskLoad();
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Failed to add points: " + e.message);
+    }
+};
+
 window.taskLoad = async () => {
+    const taskId = document.getElementById("t_task").value;
+    if (!taskId) return alert("Please select a task.");
+    const dateVal = document.getElementById("t_date").value || getVoteDate();
+    
     const users = await getDocs(collection(db, "users"));
-    const votes = await getDocs(collection(db, "votes"));
+    
+    // Query votes only for this date and task
+    const votesSnap = await getDocs(query(
+        collection(db, "votes"),
+        where("date", "==", dateVal),
+        where("taskId", "==", taskId)
+    ));
+    
     const map = {};
-    votes.forEach(v => {
+    votesSnap.forEach(v => {
         const x = v.data();
         map[x.phone] = (map[x.phone] || 0) + Number(x.points || 0);
     });
@@ -827,8 +913,11 @@ window.taskLoad = async () => {
 
     userList.forEach(u => {
         const p = u.phone, n = u.name;
-        if (map[p]) votedBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td style="color:var(--success); font-weight:700;">${map[p]} pts</td></tr>`;
-        else notBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td><button class="btn-primary btn-sm" onclick="addPoint('${p}')">Add Pts</button></td></tr>`;
+        if (map[p]) {
+            votedBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td style="color:var(--success); font-weight:700;">${map[p]} pts</td></tr>`;
+        } else {
+            votedBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td><button class="btn-primary btn-sm" onclick="addPointForTask('${p}', '${taskId}', '${dateVal}')">Add Pts</button></td></tr>`;
+        }
     });
 };
 

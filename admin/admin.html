@@ -134,10 +134,11 @@
             <!-- TASK REPORT -->
             <section id="page-task">
                 <div class="panel" style="padding: 20px; margin-bottom: 20px;">
-                    <label>Select Task</label>
-                    <div style="display:flex; gap:10px; margin-top:10px;">
-                        <select id="t_task" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;"></select>
-                        <button class="btn-primary" style="width: auto;" onclick="taskLoad()">View Report</button>
+                    <label>Select Task & Date</label>
+                    <div style="display:flex; gap:10px; margin-top:10px; flex-wrap: wrap;">
+                        <select id="t_task" style="flex:2; min-width: 200px; padding:10px; border-radius:8px; border:1px solid #ddd;"></select>
+                        <input type="date" id="t_date" style="flex:1; min-width: 150px; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                        <button class="btn-primary" style="width: auto; padding: 10px 24px;" onclick="taskLoad()">View Report</button>
                     </div>
                 </div>
                 <div class="stat-grid">
