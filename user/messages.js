@@ -1,5 +1,5 @@
 import { db } from "../firebase.js";
-import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
     const myPhone = localStorage.getItem("ff_phone");
