@@ -896,7 +896,8 @@ window.taskLoad = async () => {
     const map = {};
     votesSnap.forEach(v => {
         const x = v.data();
-        map[x.phone] = (map[x.phone] || 0) + Number(x.points || 0);
+        const cp = cleanPhone(x.phone);
+        map[cp] = (map[cp] || 0) + Number(x.points || 0);
     });
 
     const votedBody = document.getElementById("t_voted");
@@ -913,10 +914,11 @@ window.taskLoad = async () => {
 
     userList.forEach(u => {
         const p = u.phone, n = u.name;
-        if (map[p]) {
-            votedBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td style="color:var(--success); font-weight:700;">${map[p]} pts</td></tr>`;
+        const cp = cleanPhone(p);
+        if (map[cp]) {
+            votedBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td style="color:var(--success); font-weight:700;">${map[cp]} pts</td></tr>`;
         } else {
-            votedBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td><button class="btn-primary btn-sm" onclick="addPointForTask('${p}', '${taskId}', '${dateVal}')">Add Pts</button></td></tr>`;
+            notBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td><button class="btn-primary btn-sm" onclick="addPointForTask('${p}', '${taskId}', '${dateVal}')">Add Pts</button></td></tr>`;
         }
     });
 };
