@@ -747,43 +747,69 @@ function startTimer(msg) {
 }
 
 window.submitVote = async () => {
-    const checked = document.querySelectorAll("#taskBox input:checked");
-    if (!checked.length) return alert("Select at least one task");
-    
-    let totalPts = 0;
-    const todayStr = getVoteDate();
-    
-    for (let c of checked) {
-        totalPts += Number(c.dataset.points);
-        await addDoc(collection(db, "votes"), { 
-            phone, 
-            points: Number(c.dataset.points), 
-            taskId: c.dataset.id, 
-            date: todayStr, 
-            timestamp: new Date() 
-        });
+    const submitBtn = document.getElementById("submitBtn");
+    if (submitBtn) {
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.5";
+        submitBtn.textContent = "Submitting...";
     }
 
-    const userSnap = await getDocsByPhone("users", phone);
-    if(!userSnap.empty){
-        const uDoc = userSnap.docs[0];
-        const uData = uDoc.data();
-        const lastVote = uData.lastVoteDate || "";
+    const checked = document.querySelectorAll("#taskBox input:checked");
+    if (!checked.length) {
+        alert("Select at least one task");
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.textContent = "Submit Vote";
+        }
+        return;
+    }
+    
+    try {
+        let totalPts = 0;
+        const todayStr = getVoteDate();
         
-        let newStreak = uData.streak || 0;
-        if (lastVote !== todayStr) {
-            newStreak += 1;
+        for (let c of checked) {
+            totalPts += Number(c.dataset.points);
+            await addDoc(collection(db, "votes"), { 
+                phone, 
+                points: Number(c.dataset.points), 
+                taskId: c.dataset.id, 
+                date: todayStr, 
+                timestamp: new Date() 
+            });
         }
 
-        await updateDoc(uDoc.ref, {
-            points: increment(totalPts),
-            streak: newStreak,
-            lastVoteDate: todayStr
-        });
-    }
+        const userSnap = await getDocsByPhone("users", phone);
+        if(!userSnap.empty){
+            const uDoc = userSnap.docs[0];
+            const uData = uDoc.data();
+            const lastVote = uData.lastVoteDate || "";
+            
+            let newStreak = uData.streak || 0;
+            if (lastVote !== todayStr) {
+                newStreak += 1;
+            }
 
-    alert("Vote submitted! ✅");
-    location.reload();
+            await updateDoc(uDoc.ref, {
+                points: increment(totalPts),
+                streak: newStreak,
+                lastVoteDate: todayStr
+            });
+        }
+
+        alert("Vote submitted! ✅");
+        location.reload();
+    } catch (e) {
+        console.error("Submission failed:", e);
+        alert("Submission failed: " + e.message);
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.textContent = "Submit Vote";
+        }
+    }
 };
 
 // --- LEADERBOARD & TOP 3 ---
@@ -996,9 +1022,25 @@ async function renderCalendar() {
     }
 }
 
-window.submitBackdateRequest = async (date) => {
+window.submitBackdateRequest = async (date, btn) => {
+    const submitBtn = btn || document.querySelector("#calendarTaskDetails button");
+    if (submitBtn) {
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.5";
+        submitBtn.textContent = "Submitting...";
+    }
+
     const chks = document.querySelectorAll(".backdate-task-chk:checked");
-    if (!chks.length) return alert("Select at least one task first");
+    if (!chks.length) {
+        alert("Select at least one task first");
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.textContent = "Submit Request";
+        }
+        return;
+    }
     
     const selectedTasks = [];
     let totalPoints = 0;
@@ -1033,6 +1075,11 @@ window.submitBackdateRequest = async (date) => {
     } catch (e) {
         console.error("Backdate request failed:", e);
         alert("Error: " + e.message);
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.textContent = "Submit Request";
+        }
     }
 };
 
@@ -1103,7 +1150,7 @@ async function showDayTasks(date, votes) {
                     <div style="font-weight:700; color: var(--primary); margin-bottom: 8px; font-size: 0.95rem;">Request Backdate Points</div>
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">Forgetting to vote happens! Select the tasks you completed on this day to submit to the admin for point approval.</p>
                     <div style="margin-bottom: 15px;">${taskCheckboxes}</div>
-                    <button class="btn-primary" onclick="submitBackdateRequest('${date}')" style="padding: 10px 20px; font-size: 0.85rem; width: 100%;">Submit Request</button>
+                    <button class="btn-primary" onclick="submitBackdateRequest('${date}', this)" style="padding: 10px 20px; font-size: 0.85rem; width: 100%;">Submit Request</button>
                 </div>
             `;
         } else {
@@ -1147,24 +1194,72 @@ window.previewEditPhoto = (event) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-        window.selectedProfilePhotoBase64 = e.target.result;
-        const preview = document.getElementById("editPhotoPreview");
-        if (preview) {
-            preview.style.background = `url(${e.target.result}) no-repeat center center`;
-            preview.style.backgroundSize = "cover";
-            preview.textContent = "";
-        }
+        const img = new Image();
+        img.onload = () => {
+            // Target size: 200x200 max to keep Base64 size well under Firestore's 1MB limit
+            const canvas = document.createElement("canvas");
+            let width = img.width;
+            let height = img.height;
+            const max_size = 200;
+            if (width > height) {
+                if (width > max_size) {
+                    height *= max_size / width;
+                    width = max_size;
+                }
+            } else {
+                if (height > max_size) {
+                    width *= max_size / height;
+                    height = max_size;
+                }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Compress as JPEG with 0.7 quality
+            const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+            window.selectedProfilePhotoBase64 = compressedBase64;
+            
+            const preview = document.getElementById("editPhotoPreview");
+            if (preview) {
+                preview.style.background = `url(${compressedBase64}) no-repeat center center`;
+                preview.style.backgroundSize = "cover";
+                preview.textContent = "";
+            }
+        };
+        img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+};
+
+window.togglePasswordVisibility = (inputId, btn) => {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === "password") {
+        input.type = "text";
+        btn.textContent = "🙈";
+    } else {
+        input.type = "password";
+        btn.textContent = "👁️";
+    }
 };
 
 window.saveSettings = async () => {
     const name = document.getElementById("editName").value.trim();
     if (!name) return alert("Name cannot be empty");
     
-    const age = Number(document.getElementById("editAge").value) || "";
-    const height = Number(document.getElementById("editHeight").value) || "";
-    const weight = Number(document.getElementById("editWeight").value) || "";
+    const password = document.getElementById("editPassword").value.trim();
+    if (!password) return alert("Password cannot be empty");
+    
+    const ageVal = document.getElementById("editAge").value;
+    const age = ageVal !== "" ? Number(ageVal) : null;
+    
+    const heightVal = document.getElementById("editHeight").value;
+    const height = heightVal !== "" ? Number(heightVal) : null;
+    
+    const weightVal = document.getElementById("editWeight").value;
+    const weight = weightVal !== "" ? Number(weightVal) : null;
     
     const langEl = document.getElementById("langSelect");
     const lang = langEl ? langEl.value : "en";
@@ -1174,6 +1269,7 @@ window.saveSettings = async () => {
             const docRef = userSnap.docs[0].ref;
             const updateData = {
                 name,
+                password,
                 age,
                 height,
                 weight,
@@ -1185,6 +1281,8 @@ window.saveSettings = async () => {
             await updateDoc(docRef, updateData);
             alert("Profile updated successfully! ✅");
             location.reload();
+        } else {
+            alert("Failed to update profile: User document not found in database for phone " + phone);
         }
     } catch (e) {
         console.error("Save profile failed:", e);
@@ -1203,6 +1301,13 @@ window.toggleEditProfileModal = (e) => {
     modal.style.display = isHidden ? "block" : "none";
     if (isHidden) {
         document.getElementById("editName").value = document.getElementById("profileName").textContent;
+        document.getElementById("editPassword").value = window.currentUserPassword || "";
+        // Reset password field to type='password' and btn to '👁️'
+        const passInput = document.getElementById("editPassword");
+        if (passInput) passInput.type = "password";
+        const passBtn = passInput?.nextElementSibling;
+        if (passBtn) passBtn.textContent = "👁️";
+        
         document.getElementById("editAge").value = window.currentUserAge || "";
         document.getElementById("editHeight").value = window.currentUserHeight || "";
         document.getElementById("editWeight").value = window.currentUserWeight || "";
@@ -1260,6 +1365,7 @@ window.loadProfileData = async () => {
         window.currentUserAge = u.age || "";
         window.currentUserHeight = u.height || "";
         window.currentUserWeight = u.weight || "";
+        window.currentUserPassword = u.password || "";
 
         // Profile Photo Setup
         if (u.photo) {

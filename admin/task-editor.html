@@ -74,7 +74,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
         const app = initializeApp({
             apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
@@ -83,7 +83,60 @@
         });
         const db = getFirestore(app);
 
-        if (prompt("Admin password") !== "1") location.replace("admin.html");
+        // Auth check with bypass and Firestore role authorization
+        const phone = localStorage.getItem("userPhone");
+        const bypass = localStorage.getItem("admin_bypass_auth") === "true";
+        const adminNumbers = ["7904302567"]; // Default admin list
+
+        let isAuthorized = false;
+        let currentAdminPerms = {
+            admin_view_only: false,
+            admin_settings_only: false,
+            admin_task_only: false
+        };
+
+        // 1. Check direct phone list
+        if (phone && adminNumbers.includes(String(phone))) {
+            isAuthorized = true;
+        }
+
+        // 2. If not in hardcoded list, check Firestore u.role and load permissions
+        if (phone) {
+            try {
+                let snap = await getDocs(query(collection(db, "users"), where("phone", "==", String(phone))));
+                if (snap.empty && !isNaN(phone)) {
+                    snap = await getDocs(query(collection(db, "users"), where("phone", "==", Number(phone))));
+                }
+                if (!snap.empty) {
+                    const data = snap.docs[0].data();
+                    if (data.role === "admin") {
+                        isAuthorized = true;
+                    }
+                    currentAdminPerms.admin_view_only = data.admin_view_only || false;
+                    currentAdminPerms.admin_settings_only = data.admin_settings_only || false;
+                    currentAdminPerms.admin_task_only = data.admin_task_only || false;
+                }
+            } catch (e) {
+                console.error("Firestore admin check failed:", e);
+            }
+        }
+
+        // 3. Fallback to password prompt if not authorized and no bypass
+        if (!isAuthorized && !bypass) {
+            if (prompt("Admin password") !== "5") {
+                location.replace("../index.html");
+            } else {
+                localStorage.setItem("admin_bypass_auth", "true");
+            }
+        } else {
+            localStorage.setItem("admin_bypass_auth", "true");
+        }
+
+        // Enforce settings-only redirection
+        if (currentAdminPerms.admin_settings_only) {
+            alert("Access Denied: Settings-only admins cannot access the Task Editor.");
+            location.replace("admin.html");
+        }
 
         let editId = null;
 
@@ -92,6 +145,8 @@
             list.innerHTML = "";
             const snap = await getDocs(collection(db, "tasks"));
             if (snap.empty) { list.innerHTML = "No tasks found."; return; }
+
+            const isViewOnly = currentAdminPerms.admin_view_only;
 
             snap.forEach(d => {
                 const t = d.data();
@@ -103,14 +158,19 @@
                         Points: ${t.points} | Time: ${t.start} - ${t.end} ${t.startDate ? `| Dates: ${t.startDate} to ${t.endDate||' ongoing'}` : ''}
                     </div>
                     <div class="task-actions">
-                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start}', '${t.end}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}')">Edit</button>
-                        <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error);" onclick="deleteTask('${d.id}')">Delete</button>
+                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start}', '${t.end}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}')" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Edit</button>
+                        <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="deleteTask('${d.id}')" ${isViewOnly ? 'disabled' : ''}>Delete</button>
                     </div>`;
                 list.appendChild(div);
             });
         }
 
         window.saveTask = async () => {
+            if (currentAdminPerms.admin_view_only) {
+                alert("Permission Denied: You have View-Only access and cannot modify any tasks.");
+                return;
+            }
+
             const text = document.getElementById("taskText").value.trim();
             const points = Number(document.getElementById("taskPoints").value);
             const start = document.getElementById("startTime").value;
@@ -133,6 +193,7 @@
         };
 
         window.editTask = (id, text, points, start, end, days, startDate, endDate) => {
+            if (currentAdminPerms.admin_view_only) return;
             editId = id;
             document.getElementById("taskText").value = text;
             document.getElementById("taskPoints").value = points;
@@ -145,13 +206,35 @@
         };
 
         window.deleteTask = async (id) => {
+            if (currentAdminPerms.admin_view_only) {
+                alert("Permission Denied: You have View-Only access and cannot delete tasks.");
+                return;
+            }
             if (confirm("Delete this task?")) {
                 await deleteDoc(doc(db, "tasks", id));
                 loadTasks();
             }
         };
 
+        function applyViewOnlyUI() {
+            if (currentAdminPerms.admin_view_only) {
+                document.getElementById("taskText").disabled = true;
+                document.getElementById("taskPoints").disabled = true;
+                document.querySelectorAll("#daysBox input").forEach(el => el.disabled = true);
+                document.getElementById("startTime").disabled = true;
+                document.getElementById("endTime").disabled = true;
+                document.getElementById("startDate").disabled = true;
+                document.getElementById("endDate").disabled = true;
+                
+                const saveBtn = document.querySelector("button[onclick='saveTask()']");
+                if (saveBtn) {
+                    saveBtn.style.display = "none";
+                }
+            }
+        }
+
         loadTasks();
+        setTimeout(applyViewOnlyUI, 500);
     </script>
 </body>
 </html>

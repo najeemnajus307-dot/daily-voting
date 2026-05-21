@@ -62,19 +62,24 @@
             </div>
             <h2 class="font-serif" style="text-align: center; font-size: 1.1rem; margin-top: 10px; line-height: 1.3;">ADMIN PANEL</h2>
             <nav>
-                <div class="nav-link active" onclick="showPage('dash')">📊 Dashboard</div>
-                <div class="nav-link" onclick="showPage('task')">📋 Task Report</div>
-                <div class="nav-link" onclick="showPage('user')">👤 User Report</div>
-                <div class="nav-link" onclick="showPage('lib')">📚 Library Edit</div>
-                <div class="nav-link" onclick="showPage('announcement')">📢 Announcements</div>
-                <div class="nav-link" onclick="showPage('settings')">⚙️ Settings</div>
-                <a href="task-editor.html" class="nav-link" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">📝 Task Editor</a>
-                <a href="../user/voting.html" class="nav-link" style="margin-top: 5px; background: rgba(0,0,0,0.2); border-radius: 12px; display: flex; align-items: center; gap: 8px;">📱 Back to App</a>
+                <div id="nav-dash" class="nav-link active" onclick="showPage('dash')">📊 Dashboard</div>
+                <div id="nav-task" class="nav-link" onclick="showPage('task')">📋 Task Report</div>
+                <div id="nav-user" class="nav-link" onclick="showPage('user')">👤 User Report</div>
+                <div id="nav-lib" class="nav-link" onclick="showPage('lib')">📚 Library Edit</div>
+                <div id="nav-announcement" class="nav-link" onclick="showPage('announcement')">📢 Announcements</div>
+                <div id="nav-settings" class="nav-link" onclick="showPage('settings')">⚙️ Settings</div>
+                <a id="nav-task-editor" href="task-editor.html" class="nav-link" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">📝 Task Editor</a>
+                <a id="nav-back" href="../user/voting.html" class="nav-link" style="margin-top: 5px; background: rgba(0,0,0,0.2); border-radius: 12px; display: flex; align-items: center; gap: 8px;">📱 Back to App</a>
             </nav>
         </aside>
 
         <main class="admin-main animate-fade-in">
             
+            <!-- View-Only Mode Banner -->
+            <div id="viewOnlyModeBanner" style="display: none; background: linear-gradient(135deg, #475569, #334155); color: white; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; font-weight: 600; font-size: 0.88rem; align-items: center; gap: 8px; box-shadow: var(--shadow-sm); border: 1px solid rgba(255,255,255,0.15); animation: fadeIn 0.4s ease;">
+                🛡️ View Only Mode: You have read-only access and cannot make any modifications.
+            </div>
+
             <!-- DASHBOARD -->
             <section id="page-dash" class="active">
                 <div class="stat-grid">
@@ -280,15 +285,128 @@
                         <button class="btn-primary" style="width:auto;" onclick="settingsLoad()">Filter</button>
                     </div>
                 </div>
-                <div class="panel" style="padding: 0;">
+                <div class="panel" style="padding: 0; margin-bottom: 30px;">
                     <table>
                         <thead><tr><th>SL</th><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
                         <tbody id="s_body"></tbody>
                     </table>
                 </div>
+
+                <!-- Weekly Leaderboard Reset Section -->
+                <div class="panel" style="padding: 24px; margin-top: 25px; border-left: 4px solid #dc2626; background: #fff5f5;">
+                    <h3 class="font-serif" style="color: #9f1239; margin-top: 0; margin-bottom: 8px; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">🔄 Weekly Leaderboard Reset</h3>
+                    <p style="font-size: 0.8rem; color: #7f1d1d; margin-bottom: 16px; line-height: 1.4;">
+                        Use this section to archive and reset the weekly leaderboard. All users' scores will be wiped to 0, and current votes will be cleared. This action is permanent and cannot be undone.
+                    </p>
+                    
+                    <div id="lastResetInfo" style="font-size: 0.85rem; color: #4b5563; background: white; padding: 12px; border-radius: 8px; border: 1px solid #fecaca; margin-bottom: 16px;">
+                        ⏱️ Loading last reset information...
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="weeklyResetBtn" class="btn-primary" onclick="triggerWeeklyReset()" style="background: #dc2626; border-color: #dc2626; width: auto; font-size: 0.85rem; padding: 10px 20px;">🔄 Reset Weekly Points</button>
+                        <button class="btn-secondary" onclick="loadResetHistory()" style="width: auto; font-size: 0.85rem; padding: 10px 20px; border-color: #9f1239; color: #9f1239;">📋 View Reset History</button>
+                    </div>
+                    
+                    <div id="resetHistoryList" style="display: none; margin-top: 20px; padding-top: 15px; border-top: 1px dashed #fecaca;">
+                        <!-- Reset history will load here -->
+                    </div>
+                </div>
             </section>
 
         </main>
+    </div>
+
+    <!-- Admin Edit User Modal -->
+    <div id="adminUserModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center; padding: 20px; transition: all 0.3s ease;">
+        <div class="panel animate-fade-in" style="background: white; border-radius: 20px; width: 100%; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.8); overflow: hidden; display: flex; flex-direction: column; margin-bottom: 0;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, var(--primary) 0%, #0f3d23 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <h3 class="font-serif" style="margin: 0; font-size: 1.25rem; color: #fef08a; letter-spacing: 0.5px;">👤 Manage User</h3>
+                <button onclick="closeAdminUserModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: rgba(255,255,255,0.8); line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.8)'">✕</button>
+            </div>
+            <!-- Body -->
+            <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px; max-height: 70vh; overflow-y: auto;">
+                <input type="hidden" id="adminEditUserId">
+                <input type="hidden" id="adminEditOldPhone">
+                <input type="hidden" id="adminEditOldPoints">
+
+                <!-- User Profile Photo Section -->
+                <div style="margin-bottom: 8px; text-align: center;">
+                    <div id="adminEditPhotoPreview" style="width: 75px; height: 75px; border-radius: 50%; background: linear-gradient(135deg, #a855f7, #6366f1); color: white; margin: 0 auto 8px auto; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; border: 3px solid white; box-shadow: 0 4px 10px rgba(99,102,241,0.15); overflow: hidden; background-size: cover; background-position: center;">
+                        U
+                    </div>
+                    <label for="adminEditPhotoInput" style="font-size: 0.7rem; color: var(--secondary); font-weight: 700; cursor: pointer; text-decoration: underline; display: inline-block;">Change Profile Photo</label>
+                    <input type="file" id="adminEditPhotoInput" accept="image/*" style="display: none;">
+                </div>
+
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">FULL NAME</label>
+                    <input id="adminEditName" type="text" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box;" placeholder="User's Full Name" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">
+                </div>
+
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">PHONE NUMBER</label>
+                    <input id="adminEditPhone" type="text" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box;" placeholder="User's Phone Number" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">
+                </div>
+
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">TOTAL POINTS</label>
+                    <input id="adminEditPoints" type="number" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box;" placeholder="User's Total Points" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">
+                </div>
+
+                <div style="position: relative;">
+                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">PASSWORD</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input id="adminEditPassword" type="password" style="width: 100%; padding: 12px; padding-right: 44px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box;" placeholder="User's Password" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">
+                        <button type="button" onclick="togglePasswordVisibility('adminEditPassword', this)" style="position: absolute; right: 12px; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #888; padding: 4px; display: flex; align-items: center; justify-content: center;">👁️</button>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                    <div>
+                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">AGE</label>
+                        <input id="adminEditAge" type="number" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box;" placeholder="Age" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">HEIGHT (CM)</label>
+                        <input id="adminEditHeight" type="number" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box;" placeholder="CM" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">WEIGHT (KG)</label>
+                        <input id="adminEditWeight" type="number" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box;" placeholder="KG" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">ADMIN ROLE</label>
+                    <select id="adminEditRole" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; background: white; transition: border-color 0.2s; box-sizing: border-box;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">
+                        <option value="user">👤 User (Standard)</option>
+                        <option value="admin">👑 Admin (Full Access)</option>
+                    </select>
+                </div>
+
+                <div id="adminPermSection" style="display: none;">
+                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">GRANULAR ADMIN PERMISSIONS</label>
+                    <div style="display: flex; flex-direction: column; gap: 8px; background: #f8fafc; padding: 12px; border-radius: 10px; border: 1.5px solid #e2e8f0; box-sizing: border-box;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; color: var(--text-primary); margin: 0;">
+                            <input type="checkbox" id="adminEditPermViewOnly" style="width: 16px; height: 16px; margin: 0; cursor: pointer;"> View Only Mode
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; color: var(--text-primary); margin: 0;">
+                            <input type="checkbox" id="adminEditPermSettingsOnly" style="width: 16px; height: 16px; margin: 0; cursor: pointer;"> Edit Settings Only Mode
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; color: var(--text-primary); margin: 0;">
+                            <input type="checkbox" id="adminEditPermTaskOnly" style="width: 16px; height: 16px; margin: 0; cursor: pointer;"> Task Editor Only Mode
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <!-- Footer Buttons -->
+            <div style="background: #f8fafc; padding: 16px 24px; display: flex; gap: 12px; justify-content: flex-end; border-top: 1.5px solid #f1f5f9;">
+                <button onclick="closeAdminUserModal()" class="btn-secondary" style="width: auto; padding: 10px 20px; font-size: 0.9rem; border-radius: 10px; cursor: pointer; font-weight: 600; background: #e2e8f0; color: var(--text-primary); border: none;">Cancel</button>
+                <button id="adminUserSaveBtn" onclick="saveAdminUserChanges()" class="btn-primary" style="width: auto; padding: 10px 24px; font-size: 0.9rem; border-radius: 10px; cursor: pointer; font-weight: 700; background: var(--primary); color: white; border: none;">Save Changes</button>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="admin.js"></script>

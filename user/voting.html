@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Faith & Fitness</title>
+    <title>Faith & Fitness | Home</title>
     <link rel="stylesheet" href="../assets/global.css">
     <style>
         /* Specific Styles for Voting SPA */
@@ -419,6 +419,14 @@
                 <div style="margin-bottom: 12px;">
                     <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">FULL NAME</label>
                     <input id="editName" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-weight: 600; font-size: 0.95rem; font-family: inherit;" placeholder="Your Name">
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">PASSWORD</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input id="editPassword" type="password" style="width: 100%; padding: 10px; padding-right: 40px; border: 1px solid #ddd; border-radius: 8px; font-weight: 600; font-size: 0.95rem; font-family: inherit;" placeholder="Your Password">
+                        <button type="button" onclick="togglePasswordVisibility('editPassword', this)" style="position: absolute; right: 10px; background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #888; padding: 4px; display: flex; align-items: center; justify-content: center;">👁️</button>
+                    </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px;">

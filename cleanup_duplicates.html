@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faith & Fitness | Database Cleanup Utility</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1b5c38;
+            --primary-hover: #14452a;
+            --success: #22c55e;
+            --warning: #eab308;
+            --error: #ef4444;
+            --bg-main: #f8fafc;
+            --bg-card: rgba(255, 255, 255, 0.9);
+            --border-light: rgba(0, 0, 0, 0.08);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.03);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background-image: radial-gradient(circle at 10% 20%, rgba(27, 92, 56, 0.03) 0%, transparent 40%),
+                              radial-gradient(circle at 90% 80%, rgba(34, 197, 94, 0.02) 0%, transparent 40%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-light);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s ease;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .logo-wrap img {
+            height: 48px;
+            object-fit: contain;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        /* Steps progress bar */
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 35px;
+            position: relative;
+            padding: 0 40px;
+        }
+
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 40px;
+            right: 40px;
+            height: 2px;
+            background: #e2e8f0;
+            z-index: 1;
+            transform: translateY(-50%);
+        }
+
+        .step-progress-line {
+            position: absolute;
+            top: 50%;
+            left: 40px;
+            width: 0%;
+            height: 2px;
+            background: var(--primary);
+            z-index: 1;
+            transform: translateY(-50%);
+            transition: width 0.4s ease;
+        }
+
+        .step-node {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            position: relative;
+            z-index: 2;
+            transition: all 0.3s ease;
+        }
+
+        .step-node.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 0 0 4px rgba(27, 92, 56, 0.15);
+        }
+
+        .step-node.completed {
+            border-color: var(--success);
+            background: var(--success);
+            color: white;
+        }
+
+        /* Screen Sections */
+        .screen {
+            display: none;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: white;
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            outline: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(27, 92, 56, 0.15);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(27, 92, 56, 0.2);
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Tables & Lists */
+        .table-wrap {
+            max-height: 350px;
+            overflow-y: auto;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 700;
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .badge-danger {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .badge-success {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        /* Animations & Statuses */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3.5px solid #e2e8f0;
+            border-top: 3.5px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-illustration {
+            font-size: 4rem;
+            text-align: center;
+            margin-bottom: 20px;
+            animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            90% { transform: scale(1.08); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .alert-box {
+            background: #fef3c7;
+            border: 1px solid #fde047;
+            color: #92400e;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            line-height: 1.4;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="header">
+            <div class="logo-wrap">
+                <img src="photo/logo.png" alt="Logo" onerror="this.src='https://najeemnajus307-dot.github.io/faith-and-fitnesss/photo/logo.png'">
+                <h1>Faith & Fitness</h1>
+            </div>
+            <div class="subtitle">Database Duplicate Votes Cleaner Utility</div>
+        </div>
+
+        <!-- Progress Steps -->
+        <div class="steps">
+            <div class="step-progress-line" id="progressLine"></div>
+            <div class="step-node active" id="step1">1</div>
+            <div class="step-node" id="step2">2</div>
+            <div class="step-node" id="step3">3</div>
+        </div>
+
+        <!-- SCREEN 1: Scan & Detect -->
+        <div class="screen active" id="screen1">
+            <div class="card" style="text-align: center; padding: 40px 20px;">
+                <p style="font-size: 1rem; font-weight: 600; margin-bottom: 20px; color: var(--text-secondary);">
+                    Scan the database to detect duplicate votes on a single day for any user.
+                </p>
+                <div class="spinner" id="scanSpinner" style="display: none;"></div>
+                <button class="btn btn-primary" id="btnScan" onclick="scanDatabase()">
+                    🔍 Scan Database
+                </button>
+            </div>
+            <div class="alert-box" style="margin-top: 15px;">
+                <span>💡</span>
+                <span>This utility scans the <code>votes</code> collection, finds any duplicate votes (same user, same date, same task) created due to double-clicks, and enables deleting them. It will also automatically recalculate and correct each affected user's total score.</span>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: Review & Confirm -->
+        <div class="screen" id="screen2">
+            <div class="card">
+                <h3 class="font-serif" style="margin-bottom: 12px; color: var(--primary);">Duplicate Scan Results</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;" id="scanSummary">
+                    Finding duplicates...
+                </p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Date</th>
+                                <th>Task Text</th>
+                                <th>Points</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="duplicatesTableBody">
+                            <!-- Duplicate items will load here dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert-box" style="background: #fee2e2; border-color: #fca5a5; color: #991b1b; display: none;" id="alertDuplicateFound">
+                    <span>⚠️</span>
+                    <span><b>Important:</b> Performing cleanup will delete all the red-badged duplicate vote documents from Firestore. It will also recalculate and save the updated, correct scores for all users. This action cannot be undone.</span>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="goBackToScreen1()">← Restart</button>
+                <button class="btn btn-danger" id="btnCleanup" onclick="performCleanup()">🧹 Clean Up Duplicates</button>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: Cleanup Complete -->
+        <div class="screen" id="screen3">
+            <div class="card" style="text-align: center; padding: 40px 20px;">
+                <div class="success-illustration" id="successIcon">🎉</div>
+                <h2 class="font-serif" style="color: var(--primary); margin-bottom: 10px;">Database Cleaned Successfully!</h2>
+                <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 25px;" id="cleanupResultText">
+                    Duplicate vote entries have been deleted, and all user points have been recalculated and successfully updated in the database.
+                </p>
+                
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="window.location.href='user/voting.html?v=1'">🌿 Go to App Home</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDzcAE2EoLEdhG1VrxGuC981RH-5TmWE",
+            authDomain: "daily-voting-793ee.firebaseapp.com",
+            projectId: "daily-voting-793ee",
+            storageBucket: "daily-voting-793ee.appspot.com",
+            messagingSenderId: "1065830068376",
+            appId: "1:1065830068376:web:9d3858939d07056a5fa0ed"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // State variables
+        let usersMap = {};
+        let tasksMap = {};
+        let allVotes = [];
+        let duplicates = [];
+        let keepers = [];
+
+        window.scanDatabase = async () => {
+            const btn = document.getElementById("btnScan");
+            const spinner = document.getElementById("scanSpinner");
+            btn.disabled = true;
+            spinner.style.display = "block";
+
+            try {
+                // 1. Fetch Users
+                const uSnap = await getDocs(collection(db, "users"));
+                usersMap = {};
+                uSnap.forEach(d => {
+                    usersMap[d.data().phone] = { id: d.id, ...d.data() };
+                });
+
+                // 2. Fetch Tasks
+                const tSnap = await getDocs(collection(db, "tasks"));
+                tasksMap = {};
+                tSnap.forEach(d => {
+                    tasksMap[d.id] = d.data().text;
+                });
+
+                // 3. Fetch Votes
+                const vSnap = await getDocs(collection(db, "votes"));
+                allVotes = [];
+                vSnap.forEach(d => {
+                    allVotes.push({ id: d.id, ...d.data() });
+                });
+
+                // 4. Identify Duplicates
+                // Duplicate rule: same phone, same date, same taskId.
+                // Keep the earliest one (by timestamp), discard the others.
+                const groups = {};
+                allVotes.forEach(v => {
+                    const key = `${v.phone}_${v.date}_${v.taskId}`;
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(v);
+                });
+
+                duplicates = [];
+                keepers = [];
+
+                Object.keys(groups).forEach(key => {
+                    const list = groups[key];
+                    if (list.length > 1) {
+                        // Sort by timestamp ascending if timestamp is available
+                        list.sort((a, b) => {
+                            const tA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
+                            const tB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
+                            return tA - tB;
+                        });
+                        
+                        // First one is the keeper
+                        keepers.push(list[0]);
+                        // All others are duplicates to be deleted
+                        for (let i = 1; i < list.length; i++) {
+                            duplicates.push(list[i]);
+                        }
+                    } else {
+                        keepers.push(list[0]);
+                    }
+                });
+
+                // Move to Screen 2
+                showScreen2();
+
+            } catch (err) {
+                console.error("Scanning failed:", err);
+                alert("Scanning failed: " + err.message);
+                btn.disabled = false;
+                spinner.style.display = "none";
+            }
+        };
+
+        function showScreen2() {
+            document.getElementById("screen1").classList.remove("active");
+            document.getElementById("screen2").classList.add("active");
+            
+            document.getElementById("step1").className = "step-node completed";
+            document.getElementById("step1").textContent = "✓";
+            document.getElementById("step2").className = "step-node active";
+            document.getElementById("progressLine").style.width = "50%";
+
+            const summaryEl = document.getElementById("scanSummary");
+            const alertEl = document.getElementById("alertDuplicateFound");
+            const btnCleanup = document.getElementById("btnCleanup");
+            const tableBody = document.getElementById("duplicatesTableBody");
+
+            tableBody.innerHTML = "";
+
+            if (duplicates.length === 0) {
+                summaryEl.innerHTML = `🌟 <b>Great news!</b> No duplicate vote documents were found in the database. Your database is perfectly clean!`;
+                alertEl.style.display = "none";
+                btnCleanup.disabled = true;
+                btnCleanup.textContent = "🧹 Clean Up (Not Required)";
+                
+                tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding: 30px;">No duplicates found to show.</td></tr>`;
+            } else {
+                summaryEl.innerHTML = `🔍 Found <b>${duplicates.length} duplicate votes</b> out of ${allVotes.length} total votes.`;
+                alertEl.style.display = "flex";
+                btnCleanup.disabled = false;
+                btnCleanup.textContent = `🧹 Clean Up ${duplicates.length} Duplicates`;
+
+                duplicates.forEach(d => {
+                    const u = usersMap[d.phone] || { name: `Unknown (${d.phone})` };
+                    const taskText = tasksMap[d.taskId] || d.taskId || "Completed Task";
+                    
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td><b>${u.name}</b></td>
+                            <td><code>${d.date}</code></td>
+                            <td>${taskText}</td>
+                            <td>+${d.points} pts</td>
+                            <td><span class="badge badge-danger">Delete Duplicate</span></td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        window.goBackToScreen1 = () => {
+            document.getElementById("screen2").classList.remove("active");
+            document.getElementById("screen1").classList.add("active");
+            
+            document.getElementById("step1").className = "step-node active";
+            document.getElementById("step1").textContent = "1";
+            document.getElementById("step2").className = "step-node";
+            document.getElementById("progressLine").style.width = "0%";
+
+            document.getElementById("btnScan").disabled = false;
+            document.getElementById("scanSpinner").style.display = "none";
+        };
+
+        window.performCleanup = async () => {
+            const btn = document.getElementById("btnCleanup");
+            btn.disabled = true;
+            btn.textContent = "Processing Deletions...";
+
+            try {
+                // 1. Delete duplicates
+                for (let dup of duplicates) {
+                    const docRef = doc(db, "votes", dup.id);
+                    await deleteDoc(docRef);
+                }
+
+                // 2. Recalculate and update user total points
+                // We'll calculate the sum of keepers (non-deleted votes) for each user
+                const userScores = {};
+                // Initialize everyone with 0 to clear fully if needed
+                Object.keys(usersMap).forEach(phone => {
+                    userScores[phone] = 0;
+                });
+
+                // Sum remaining keepers
+                keepers.forEach(v => {
+                    if (userScores[v.phone] !== undefined) {
+                        userScores[v.phone] += Number(v.points || 0);
+                    }
+                });
+
+                // Update users documents
+                for (let phone of Object.keys(userScores)) {
+                    const userObj = usersMap[phone];
+                    const correctPoints = userScores[phone];
+                    
+                    if (userObj && userObj.points !== correctPoints) {
+                        const userDocRef = doc(db, "users", userObj.id);
+                        await updateDoc(userDocRef, {
+                            points: correctPoints
+                        });
+                        console.log(`Updated user ${userObj.name} score from ${userObj.points} to ${correctPoints}`);
+                    }
+                }
+
+                // Show Screen 3
+                showScreen3();
+
+            } catch (err) {
+                console.error("Cleanup failed:", err);
+                alert("Cleanup failed: " + err.message);
+                btn.disabled = false;
+                btn.textContent = "🧹 Clean Up Duplicates";
+            }
+        };
+
+        function showScreen3() {
+            document.getElementById("screen2").classList.remove("active");
+            document.getElementById("screen3").classList.add("active");
+
+            document.getElementById("step2").className = "step-node completed";
+            document.getElementById("step2").textContent = "✓";
+            document.getElementById("step3").className = "step-node active";
+            document.getElementById("progressLine").style.width = "100%";
+
+            const resultText = document.getElementById("cleanupResultText");
+            resultText.innerHTML = `🎉 Successfully deleted <b>${duplicates.length} duplicate votes</b> from the database!<br>
+            All user scores have been completely recalculated based on clean votes and updated in the <code>users</code> collection. All rankings are now 100% correct!`;
+        }
+    </script>
+</body>
+</html>

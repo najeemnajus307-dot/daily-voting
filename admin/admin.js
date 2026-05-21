@@ -17,45 +17,175 @@ const bypass = localStorage.getItem("admin_bypass_auth") === "true";
 const adminNumbers = ["7904302567"]; // Default admin list
 
 let isAuthorized = false;
+let currentAdminPerms = {
+    admin_view_only: false,
+    admin_settings_only: false,
+    admin_task_only: false
+};
 
 // 1. Check direct phone list
 if (phone && adminNumbers.includes(String(phone))) {
     isAuthorized = true;
 }
 
-// 2. If not in hardcoded list, check Firestore u.role
-if (!isAuthorized && phone) {
-    try {
-        let snap = await getDocs(query(collection(db, "users"), where("phone", "==", String(phone)), where("role", "==", "admin")));
-        if (snap.empty && !isNaN(phone)) {
-            snap = await getDocs(query(collection(db, "users"), where("phone", "==", Number(phone)), where("role", "==", "admin")));
+// Function to load admin roles/permissions asynchronously without blocking script execution
+async function checkAdminPermissions() {
+    if (phone) {
+        try {
+            let snap = await getDocs(query(collection(db, "users"), where("phone", "==", String(phone))));
+            if (snap.empty && !isNaN(phone)) {
+                snap = await getDocs(query(collection(db, "users"), where("phone", "==", Number(phone))));
+            }
+            if (!snap.empty) {
+                const data = snap.docs[0].data();
+                if (data.role === "admin") {
+                    isAuthorized = true;
+                }
+                currentAdminPerms.admin_view_only = data.admin_view_only || false;
+                currentAdminPerms.admin_settings_only = data.admin_settings_only || false;
+                currentAdminPerms.admin_task_only = data.admin_task_only || false;
+            }
+        } catch (e) {
+            console.error("Firestore admin check failed:", e);
         }
-        if (!snap.empty) {
-            isAuthorized = true;
-        }
-    } catch (e) {
-        console.error("Firestore admin check failed:", e);
     }
 }
 
-// 3. Fallback to password prompt if not authorized and no bypass
-if (!isAuthorized && !bypass) {
-    if (prompt("Admin password") !== "5") {
-        location.replace("../index.html");
+// Function to enforce bypass auth via password if not authorized
+async function enforceAuth() {
+    await checkAdminPermissions();
+    
+    if (!isAuthorized && !bypass) {
+        if (prompt("Admin password") !== "5") {
+            location.replace("../index.html");
+            return false;
+        } else {
+            // If they enter "5", authorize them
+            localStorage.setItem("admin_bypass_auth", "true");
+        }
     } else {
-        // If they enter "5", authorize them
+        // Keep bypass authorized
         localStorage.setItem("admin_bypass_auth", "true");
     }
-} else {
-    // Keep bypass authorized
-    localStorage.setItem("admin_bypass_auth", "true");
+    return true;
+}
+
+// Function to enforce admin permissions in UI elements
+function applyAdminPermissionsUI() {
+    const isViewOnly = currentAdminPerms.admin_view_only;
+    const isSettingsOnly = currentAdminPerms.admin_settings_only;
+    const isTaskOnly = currentAdminPerms.admin_task_only;
+    
+    if (isSettingsOnly) {
+        const toHide = ["nav-dash", "nav-task", "nav-user", "nav-lib", "nav-announcement", "nav-task-editor"];
+        toHide.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "none";
+        });
+        setTimeout(() => {
+            window.showPage('settings');
+        }, 100);
+    } else if (isTaskOnly) {
+        const toHide = ["nav-dash", "nav-user", "nav-lib", "nav-announcement", "nav-settings"];
+        toHide.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "none";
+        });
+        setTimeout(() => {
+            window.showPage('task');
+        }, 100);
+    }
+    
+    if (isViewOnly) {
+        const viewOnlyBanner = document.getElementById("viewOnlyModeBanner");
+        if (viewOnlyBanner) viewOnlyBanner.style.display = "flex";
+        
+        // Disable textareas & inputs for broadcasts
+        const bannerText = document.getElementById("banner_text");
+        const bannerActive = document.getElementById("banner_active");
+        const msgText = document.getElementById("msg_text");
+        const msgType = document.getElementById("msg_type");
+        const msgSchedType = document.getElementById("msg_sched_type");
+        const msgSchedTime = document.getElementById("msg_sched_time");
+        
+        if (bannerText) bannerText.disabled = true;
+        if (bannerActive) bannerActive.disabled = true;
+        if (msgText) msgText.disabled = true;
+        if (msgType) msgType.disabled = true;
+        if (msgSchedType) msgSchedType.disabled = true;
+        if (msgSchedTime) msgSchedTime.disabled = true;
+        
+        const saveBannerBtn = document.querySelector("button[onclick='saveBanner()']");
+        if (saveBannerBtn) {
+            saveBannerBtn.disabled = true;
+            saveBannerBtn.style.opacity = "0.5";
+            saveBannerBtn.style.cursor = "not-allowed";
+        }
+        
+        const saveMsgBtn = document.getElementById("save_msg_btn");
+        if (saveMsgBtn) {
+            saveMsgBtn.disabled = true;
+            saveMsgBtn.style.opacity = "0.5";
+            saveMsgBtn.style.cursor = "not-allowed";
+        }
+        
+        // Disable library inputs
+        const lTitle = document.getElementById("l_title");
+        const lCat = document.getElementById("l_cat");
+        const lType = document.getElementById("l_type");
+        const lFile = document.getElementById("l_file");
+        const lLocal = document.getElementById("l_local");
+        
+        if (lTitle) lTitle.disabled = true;
+        if (lCat) lCat.disabled = true;
+        if (lType) lType.disabled = true;
+        if (lFile) lFile.disabled = true;
+        if (lLocal) lLocal.disabled = true;
+        
+        const libSaveBtn = document.querySelector("button[onclick='libSave()']");
+        if (libSaveBtn) {
+            libSaveBtn.disabled = true;
+            libSaveBtn.style.opacity = "0.5";
+            libSaveBtn.style.cursor = "not-allowed";
+        }
+        
+        // Disable weekly reset inputs
+        const resetBtn = document.getElementById("weeklyResetBtn");
+        if (resetBtn) {
+            resetBtn.disabled = true;
+            resetBtn.style.opacity = "0.5";
+            resetBtn.style.cursor = "not-allowed";
+        }
+    }
+}
+
+// UI customization is now handled directly inside initAdmin() after permissions are successfully loaded
+
+// Safeguard function to block modifying actions for view-only users
+function checkViewOnlyBlocked() {
+    if (currentAdminPerms.admin_view_only) {
+        alert("Permission Denied: You have View-Only access and cannot modify any data.");
+        return true;
+    }
+    return false;
 }
 
 window.showPage = (id) => {
+    if (currentAdminPerms.admin_settings_only && id !== 'settings') {
+        return; // block navigation
+    }
+    if (currentAdminPerms.admin_task_only && id !== 'task') {
+        return; // block navigation
+    }
+
     document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
     document.getElementById('page-' + id).classList.add('active');
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+    
+    // Safety check to avoid error if event is undefined
+    if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('active');
+    }
     
     if(id === 'dash') dashLoad();
     if(id === 'task') taskInit();
@@ -114,6 +244,7 @@ window.libEdit = (id, title, cat, type, url) => {
 };
 
 window.libSave = async () => {
+    if (checkViewOnlyBlocked()) return;
     const title = document.getElementById("l_title").value.trim();
     const cat = document.getElementById("l_cat").value.trim();
     const type = document.getElementById("l_type").value;
@@ -177,6 +308,7 @@ window.libSave = async () => {
 };
 
 window.libToggleActive = async (id, currentStatus) => {
+    if (checkViewOnlyBlocked()) return;
     try {
         await updateDoc(doc(db, "library", id), { active: !currentStatus });
         libLoad();
@@ -190,6 +322,7 @@ window.libLoad = async () => {
     const snap = await getDocs(collection(db, "library"));
     const body = document.getElementById("l_body");
     body.innerHTML = "";
+    const isViewOnly = currentAdminPerms.admin_view_only;
     snap.forEach(d => {
         const x = d.data();
         const isActive = x.active !== false; // Default true if undefined
@@ -207,15 +340,16 @@ window.libLoad = async () => {
             <td>${x.type}</td>
             <td>${statusText}</td>
             <td>
-                <button class="btn-primary btn-sm" onclick="libToggleActive('${d.id}', ${isActive})" style="margin-right: 5px; background: ${toggleBtnColor}; border-color: ${toggleBtnColor};">${toggleBtnText}</button>
-                <button class="btn-primary btn-sm" onclick="libEdit('${d.id}', '${escapedTitle}', '${escapedCat}', '${x.type}', '${escapedUrl}')" style="margin-right: 5px;">Edit</button>
-                <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error);" onclick="libDel('${d.id}')">Delete</button>
+                <button class="btn-primary btn-sm" onclick="libToggleActive('${d.id}', ${isActive})" style="margin-right: 5px; background: ${toggleBtnColor}; border-color: ${toggleBtnColor}; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewOnly ? 'disabled' : ''}>${toggleBtnText}</button>
+                <button class="btn-primary btn-sm" onclick="libEdit('${d.id}', '${escapedTitle}', '${escapedCat}', '${x.type}', '${escapedUrl}')" style="margin-right: 5px; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewOnly ? 'disabled' : ''}>Edit</button>
+                <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="libDel('${d.id}')" ${isViewOnly ? 'disabled' : ''}>Delete</button>
             </td>
         </tr>`;
     });
 };
 
 window.libDel = async (id) => {
+    if (checkViewOnlyBlocked()) return;
     if (!confirm("Delete?")) return;
     await deleteDoc(doc(db, "library", id));
     if (editLibId === id) window.resetLibForm();
@@ -280,7 +414,22 @@ window.dashLoad = async () => {
         window.allUsersRows = [];
         users.forEach(u => {
             const d = u.data();
-            window.allUsersRows.push({ id: u.id, name: d.name || "Unknown", phone: d.phone || "---", total: map[d.phone] || 0, role: d.role || "user" });
+            window.allUsersRows.push({ 
+                id: u.id, 
+                name: d.name || "Unknown", 
+                phone: d.phone || "---", 
+                total: map[d.phone] || 0, 
+                role: d.role || "user", 
+                password: d.password || "",
+                points: Number(d.points || 0),
+                age: d.age || "",
+                height: d.height || "",
+                weight: d.weight || "",
+                photo: d.photo || null,
+                admin_view_only: d.admin_view_only || false,
+                admin_settings_only: d.admin_settings_only || false,
+                admin_task_only: d.admin_task_only || false
+            });
         });
 
         renderDashTable();
@@ -301,6 +450,7 @@ window.renderDashTable = () => {
     const body = document.getElementById("dashBody");
     body.innerHTML = "";
     let rank = 0, prev = null, sl = 0;
+    const isViewOnly = currentAdminPerms.admin_view_only;
 
     rows.forEach(r => {
         if (prev === null || r.total < prev) rank++;
@@ -308,13 +458,20 @@ window.renderDashTable = () => {
         const tr = document.createElement("tr");
         if (rank <= 3) tr.className = `rank-${rank}`;
         tr.innerHTML = `
-            <td>${sl}</td><td>${rank}</td><td>${r.name} ${r.role === 'admin' ? '👑' : ''}</td><td>${r.phone}</td><td>${r.total}</td>
+            <td>${sl}</td>
+            <td>${rank}</td>
+            <td>
+                <span onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer; font-weight: 700; color: var(--primary); text-decoration: underline;" onmouseover="this.style.color='var(--secondary)'" onmouseout="this.style.color='var(--primary)'">${r.name}</span>
+                ${r.role === 'admin' ? '👑' : ''}
+            </td>
+            <td>${r.phone}</td>
+            <td>${r.total}</td>
             <td>
                 <div style="display:flex; gap:5px; align-items:center; justify-content:center; flex-wrap:wrap;">
-                    <input id="p_${r.phone}" type="number" style="width:60px; padding:5px; border-radius:5px; border:1px solid #ddd;" placeholder="Pts">
-                    <button class="btn-primary btn-sm" onclick="addPoint('${r.phone}', 'add')">+</button>
-                    <button class="btn-primary btn-sm" style="background:#444;" onclick="addPoint('${r.phone}', 'set')">Set</button>
-                    <button class="btn-primary btn-sm" style="background:${r.role === 'admin' ? 'var(--error)' : '#10b981'}; font-size: 0.7rem;" onclick="toggleAdmin('${r.id}', '${r.role}')">${r.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}</button>
+                    <input id="p_${r.phone}" type="number" style="width:60px; padding:5px; border-radius:5px; border:1px solid #ddd;" placeholder="Pts" ${isViewOnly ? 'disabled' : ''}>
+                    <button class="btn-primary btn-sm" onclick="addPoint('${r.phone}', 'add')" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>+</button>
+                    <button class="btn-primary btn-sm" style="background:#444; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="addPoint('${r.phone}', 'set')" ${isViewOnly ? 'disabled' : ''}>Set</button>
+                    <button class="btn-primary btn-sm" style="background:${r.role === 'admin' ? 'var(--error)' : '#10b981'}; font-size: 0.7rem; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="toggleAdmin('${r.id}', '${r.role}')" ${isViewOnly ? 'disabled' : ''}>${r.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}</button>
                 </div>
             </td>`;
         body.appendChild(tr);
@@ -327,22 +484,37 @@ window.dashFilter = () => {
 };
 
 window.addPoint = async (phone, mode) => {
+    if (checkViewOnlyBlocked()) return;
     const vInput = document.getElementById("p_" + phone);
     let v = Number(vInput.value);
     
+    const userRow = window.allUsersRows.find(r => r.phone === phone);
+    if (!userRow) return;
+
     if (mode === 'set') {
-        const userRow = window.allUsersRows.find(r => r.phone === phone);
-        const currentTotal = userRow ? userRow.total : 0;
+        const currentTotal = userRow.total;
         v = v - currentTotal; // Calculate difference
     }
 
     if (v === 0) return;
+    
+    // 1. Add record to votes collection
     await addDoc(collection(db, "votes"), { phone, points: v, date: today(), source: "admin" });
+    
+    // 2. Update points field on users collection so leaderboard matches!
+    try {
+        const newPointsVal = Number(userRow.points) + v;
+        await updateDoc(doc(db, "users", userRow.id), { points: newPointsVal });
+    } catch (err) {
+        console.error("Failed to sync user doc points directly:", err);
+    }
+    
     vInput.value = "";
     dashLoad();
 };
 
 window.toggleAdmin = async (userId, currentRole) => {
+    if (checkViewOnlyBlocked()) return;
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
     const msg = newRole === 'admin' ? "Make this user an admin?" : "Remove admin rights from this user?";
     if (!confirm(msg)) return;
@@ -354,6 +526,268 @@ window.toggleAdmin = async (userId, currentRole) => {
     } catch (e) {
         console.error("Failed to toggle admin:", e);
         alert("Error: " + e.message);
+    }
+};
+
+// --- ADMIN MANAGE USER DETAILS MODAL ---
+window.selectedAdminEditPhotoBase64 = null;
+
+// Register file select & role compression events
+setTimeout(() => {
+    const fileInput = document.getElementById("adminEditPhotoInput");
+    if (fileInput) {
+        fileInput.addEventListener("change", (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    let width = img.width;
+                    let height = img.height;
+                    const max_size = 200;
+                    if (width > height) {
+                        if (width > max_size) {
+                            height *= max_size / width;
+                            width = max_size;
+                        }
+                    } else {
+                        if (height > max_size) {
+                            width *= max_size / height;
+                            height = max_size;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+                    window.selectedAdminEditPhotoBase64 = compressedBase64;
+                    
+                    const preview = document.getElementById("adminEditPhotoPreview");
+                    if (preview) {
+                        preview.style.background = `url(${compressedBase64}) no-repeat center center`;
+                        preview.style.backgroundSize = "cover";
+                        preview.textContent = "";
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    const roleSel = document.getElementById("adminEditRole");
+    const permSection = document.getElementById("adminPermSection");
+    if (roleSel && permSection) {
+        roleSel.addEventListener("change", () => {
+            if (roleSel.value === "admin") {
+                permSection.style.display = "block";
+            } else {
+                permSection.style.display = "none";
+                document.getElementById("adminEditPermViewOnly").checked = false;
+                document.getElementById("adminEditPermSettingsOnly").checked = false;
+                document.getElementById("adminEditPermTaskOnly").checked = false;
+            }
+        });
+    }
+}, 500);
+
+window.togglePasswordVisibility = (inputId, btn) => {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === "password") {
+        input.type = "text";
+        btn.textContent = "🙈";
+    } else {
+        input.type = "password";
+        btn.textContent = "👁️";
+    }
+};
+
+window.openAdminUserModal = (phone) => {
+    const r = window.allUsersRows.find(user => String(user.phone) === String(phone));
+    if (!r) return alert("User not found!");
+    
+    const isViewOnly = currentAdminPerms.admin_view_only;
+
+    document.getElementById("adminEditUserId").value = r.id;
+    document.getElementById("adminEditOldPhone").value = r.phone;
+    document.getElementById("adminEditOldPoints").value = r.total;
+
+    document.getElementById("adminEditName").value = r.name;
+    document.getElementById("adminEditPhone").value = r.phone;
+    document.getElementById("adminEditPoints").value = r.total;
+    document.getElementById("adminEditPassword").value = r.password || "";
+    document.getElementById("adminEditRole").value = r.role || "user";
+    
+    // Bind additional details
+    document.getElementById("adminEditAge").value = r.age || "";
+    document.getElementById("adminEditHeight").value = r.height || "";
+    document.getElementById("adminEditWeight").value = r.weight || "";
+    
+    // Bind granular permissions
+    document.getElementById("adminEditPermViewOnly").checked = r.admin_view_only || false;
+    document.getElementById("adminEditPermSettingsOnly").checked = r.admin_settings_only || false;
+    document.getElementById("adminEditPermTaskOnly").checked = r.admin_task_only || false;
+
+    // View-Only restrictions in modal fields
+    document.getElementById("adminEditName").disabled = isViewOnly;
+    document.getElementById("adminEditPhone").disabled = isViewOnly;
+    document.getElementById("adminEditPoints").disabled = isViewOnly;
+    document.getElementById("adminEditPassword").disabled = isViewOnly;
+    document.getElementById("adminEditAge").disabled = isViewOnly;
+    document.getElementById("adminEditHeight").disabled = isViewOnly;
+    document.getElementById("adminEditWeight").disabled = isViewOnly;
+    document.getElementById("adminEditRole").disabled = isViewOnly;
+    document.getElementById("adminEditPermViewOnly").disabled = isViewOnly;
+    document.getElementById("adminEditPermSettingsOnly").disabled = isViewOnly;
+    document.getElementById("adminEditPermTaskOnly").disabled = isViewOnly;
+    
+    const saveBtn = document.getElementById("adminUserSaveBtn");
+    if (saveBtn) {
+        saveBtn.style.display = isViewOnly ? "none" : "inline-block";
+    }
+    
+    const photoInputLabel = document.querySelector('label[for="adminEditPhotoInput"]');
+    if (photoInputLabel) {
+        photoInputLabel.style.display = isViewOnly ? "none" : "inline-block";
+    }
+    
+    // Manage granular permissions section display
+    const permSection = document.getElementById("adminPermSection");
+    if (permSection) {
+        permSection.style.display = r.role === "admin" ? "block" : "none";
+    }
+    
+    // Bind photo preview
+    window.selectedAdminEditPhotoBase64 = null;
+    const preview = document.getElementById("adminEditPhotoPreview");
+    if (preview) {
+        if (r.photo) {
+            preview.style.background = `url(${r.photo}) no-repeat center center`;
+            preview.style.backgroundSize = "cover";
+            preview.textContent = "";
+        } else {
+            preview.style.background = "linear-gradient(135deg, #a855f7, #6366f1)";
+            preview.style.backgroundSize = "cover";
+            preview.textContent = (r.name || "U").charAt(0).toUpperCase();
+        }
+    }
+    
+    // Reset password visibility state
+    const passInput = document.getElementById("adminEditPassword");
+    if (passInput) passInput.type = "password";
+    const passBtn = passInput?.nextElementSibling;
+    if (passBtn) passBtn.textContent = "👁️";
+    
+    document.getElementById("adminUserModal").style.display = "flex";
+};
+
+window.closeAdminUserModal = () => {
+    document.getElementById("adminUserModal").style.display = "none";
+};
+
+window.saveAdminUserChanges = async () => {
+    if (checkViewOnlyBlocked()) return;
+    const userId = document.getElementById("adminEditUserId").value;
+    const oldPhone = document.getElementById("adminEditOldPhone").value;
+    const oldPoints = Number(document.getElementById("adminEditOldPoints").value) || 0;
+
+    const name = document.getElementById("adminEditName").value.trim();
+    const phone = document.getElementById("adminEditPhone").value.trim();
+    const pointsVal = Number(document.getElementById("adminEditPoints").value) || 0;
+    const password = document.getElementById("adminEditPassword").value.trim();
+    const role = document.getElementById("adminEditRole").value;
+
+    const ageVal = document.getElementById("adminEditAge").value;
+    const age = ageVal !== "" ? Number(ageVal) : null;
+    
+    const heightVal = document.getElementById("adminEditHeight").value;
+    const height = heightVal !== "" ? Number(heightVal) : null;
+    
+    const weightVal = document.getElementById("adminEditWeight").value;
+    const weight = weightVal !== "" ? Number(weightVal) : null;
+
+    const admin_view_only = role === "admin" ? document.getElementById("adminEditPermViewOnly").checked : false;
+    const admin_settings_only = role === "admin" ? document.getElementById("adminEditPermSettingsOnly").checked : false;
+    const admin_task_only = role === "admin" ? document.getElementById("adminEditPermTaskOnly").checked : false;
+
+    if (!name || !phone || !password) {
+        return alert("Name, Phone, and Password cannot be empty");
+    }
+
+    const saveBtn = document.getElementById("adminUserSaveBtn");
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
+
+    try {
+        // 1. If points changed, calculate delta and log in votes collection
+        const pointsDelta = pointsVal - oldPoints;
+        if (pointsDelta !== 0) {
+            await addDoc(collection(db, "votes"), { 
+                phone: phone, 
+                points: pointsDelta, 
+                date: today(), 
+                source: "admin" 
+            });
+        }
+
+        // 2. If phone changed, migrate all historical votes to new phone number
+        if (phone !== oldPhone) {
+            console.log(`Migrating historical votes from ${oldPhone} to ${phone}`);
+            
+            // Search standard string phone
+            const votesSnapStr = await getDocs(query(collection(db, "votes"), where("phone", "==", String(oldPhone))));
+            const promises = [];
+            votesSnapStr.forEach(d => {
+                promises.push(updateDoc(d.ref, { phone: phone }));
+            });
+            
+            // Search number phone fallback
+            if (!isNaN(oldPhone)) {
+                const votesSnapNum = await getDocs(query(collection(db, "votes"), where("phone", "==", Number(oldPhone))));
+                votesSnapNum.forEach(d => {
+                    promises.push(updateDoc(d.ref, { phone: phone }));
+                });
+            }
+            
+            await Promise.all(promises);
+            console.log(`Migrated ${promises.length} vote records successfully.`);
+        }
+
+        // 3. Update the main user document in Firestore
+        const updateData = {
+            name,
+            phone,
+            password,
+            role,
+            points: pointsVal, // Sync the points field for the global leaderboard!
+            age,
+            height,
+            weight,
+            admin_view_only,
+            admin_settings_only,
+            admin_task_only
+        };
+        
+        if (window.selectedAdminEditPhotoBase64) {
+            updateData.photo = window.selectedAdminEditPhotoBase64;
+        }
+
+        await updateDoc(doc(db, "users", userId), updateData);
+
+        alert("User details updated successfully! ✅");
+        closeAdminUserModal();
+        dashLoad();
+    } catch (e) {
+        console.error("Failed to save user modifications:", e);
+        alert("Failed to update user details: " + e.message);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save Changes";
     }
 };
 
@@ -425,6 +859,7 @@ window.userLoad = async () => {
     const from = document.getElementById("u_from").value;
     const to = document.getElementById("u_to").value;
     const votesSnap = await getDocs(collection(db, "votes"));
+    const isViewOnly = currentAdminPerms.admin_view_only;
     
     // Group votes by date to show daily total points
     const dateGroups = {};
@@ -461,13 +896,14 @@ window.userLoad = async () => {
                 <td style="font-weight: 700; color: var(--primary);">${r.points}</td>
                 <td style="text-transform: capitalize;">${sourceStr}</td>
                 <td>
-                    <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error);" onclick="delVotes('${r.ids.join(",")}')">Delete</button>
+                    <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="delVotes('${r.ids.join(",")}')" ${isViewOnly ? 'disabled' : ''}>Delete</button>
                 </td>
             </tr>`;
     });
 };
 
 window.delVotes = async (idsStr) => {
+    if (checkViewOnlyBlocked()) return;
     if (!confirm("Are you sure you want to delete all voting records for this date? This will also automatically deduct the points from the user's total score!")) return;
     
     try {
@@ -565,6 +1001,8 @@ window.loadPendingRequests = async () => {
         badge.textContent = `${snap.size} pending`;
         list.innerHTML = "";
         
+        const isViewOnly = currentAdminPerms.admin_view_only;
+        
         snap.forEach(d => {
             const r = d.data();
             list.innerHTML += `
@@ -579,8 +1017,8 @@ window.loadPendingRequests = async () => {
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn-primary btn-sm" onclick="approveRequest('${d.id}')" style="background: var(--success); border-color: var(--success); padding: 6px 12px; font-size: 0.8rem; cursor: pointer; color: white;">Approve</button>
-                        <button class="btn-secondary btn-sm" onclick="rejectRequest('${d.id}')" style="color: var(--error); border-color: var(--error); padding: 6px 12px; font-size: 0.8rem; cursor: pointer;">Reject</button>
+                        <button class="btn-primary btn-sm" onclick="approveRequest('${d.id}')" style="background: var(--success); border-color: var(--success); padding: 6px 12px; font-size: 0.8rem; cursor: pointer; color: white; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewOnly ? 'disabled' : ''}>Approve</button>
+                        <button class="btn-secondary btn-sm" onclick="rejectRequest('${d.id}')" style="color: var(--error); border-color: var(--error); padding: 6px 12px; font-size: 0.8rem; cursor: pointer; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewOnly ? 'disabled' : ''}>Reject</button>
                     </div>
                 </div>
             `;
@@ -591,6 +1029,7 @@ window.loadPendingRequests = async () => {
 };
 
 window.approveRequest = async (id) => {
+    if (checkViewOnlyBlocked()) return;
     if (!confirm("Are you sure you want to approve this request?")) return;
     
     try {
@@ -632,6 +1071,7 @@ window.approveRequest = async (id) => {
 };
 
 window.rejectRequest = async (id) => {
+    if (checkViewOnlyBlocked()) return;
     if (!confirm("Are you sure you want to reject this request?")) return;
     
     try {
@@ -756,6 +1196,7 @@ async function sendFCMPushToAll(title, body) {
 }
 
 window.saveMessage = async () => {
+    if (checkViewOnlyBlocked()) return;
     const text      = document.getElementById("msg_text").value.trim();
     const type      = document.getElementById("msg_type").value;
     const schedType = document.getElementById("msg_sched_type").value;
@@ -810,6 +1251,8 @@ window.loadRecentMessages = async () => {
         }
         
         list.innerHTML = "";
+        const isViewOnly = currentAdminPerms.admin_view_only;
+        
         snap.forEach(d => {
             const m = d.data();
             const timeInfo = m.schedType === "scheduled" ? `⏰ Daily at ${m.schedTime}` : "⚡ Immediate";
@@ -827,8 +1270,8 @@ window.loadRecentMessages = async () => {
                         </div>
                     </div>
                     <div style="display:flex; gap:6px;">
-                        <button class="btn-secondary btn-sm" style="padding:4px 8px; font-size:0.75rem;" onclick="editMessage('${d.id}', '${escapedText}', '${m.type}', '${m.schedType}', '${m.schedTime || '20:00'}')">Edit</button>
-                        <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); padding:4px 8px; font-size:0.75rem;" onclick="deleteMessage('${d.id}')">Delete</button>
+                        <button class="btn-secondary btn-sm" style="padding:4px 8px; font-size:0.75rem; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="editMessage('${d.id}', '${escapedText}', '${m.type}', '${m.schedType}', '${m.schedTime || '20:00'}')" ${isViewOnly ? 'disabled' : ''}>Edit</button>
+                        <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); padding:4px 8px; font-size:0.75rem; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="deleteMessage('${d.id}')" ${isViewOnly ? 'disabled' : ''}>Delete</button>
                     </div>
                 </div>
             `;
@@ -868,6 +1311,7 @@ window.cancelMessageEdit = () => {
 };
 
 window.deleteMessage = async (id) => {
+    if (checkViewOnlyBlocked()) return;
     if (!confirm("Are you sure you want to delete this broadcast?")) return;
     try {
         await deleteDoc(doc(db, "messages", id));
@@ -954,6 +1398,7 @@ window.loadResetHistory = async () => {
 
 // Trigger the weekly reset
 window.triggerWeeklyReset = async () => {
+    if (checkViewOnlyBlocked()) return;
     const confirmed = confirm(
         "⚠️ WEEKLY RESET CONFIRMATION\n\n" +
         "This will:\n" +
@@ -1026,10 +1471,28 @@ window.triggerWeeklyReset = async () => {
         if (btn) { btn.disabled = false; btn.textContent = "🔄 Reset Weekly Points"; }
     }
 };
+// Init function to orchestrate loading sequence
+async function initAdmin() {
+    const authorized = await enforceAuth();
+    if (!authorized) return;
 
-// Init
-dashLoad();
-loadLastResetInfo();
+    applyAdminPermissionsUI();
+
+    try {
+        await loadBanner();
+        await loadLastResetInfo();
+        await dashLoad();
+    } catch (e) {
+        console.error("Dashboard initialization failed:", e);
+    }
+}
+
+// Start initialization once DOM is ready or immediately
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAdmin);
+} else {
+    initAdmin();
+}
 
 // --- PINNED BANNER ---
 window.loadBanner = async () => {
@@ -1047,6 +1510,7 @@ window.loadBanner = async () => {
 };
 
 window.saveBanner = async () => {
+    if (checkViewOnlyBlocked()) return;
     const msg = document.getElementById("banner_msg");
     const text = document.getElementById("banner_text").value.trim();
     const active = document.getElementById("banner_active").checked;
@@ -1065,7 +1529,6 @@ window.saveBanner = async () => {
         msg.style.color = "var(--error)";
     }
 };
-
-setTimeout(loadBanner, 1000); // Load banner after init
+// loadBanner is now called directly inside initAdmin()
 
 
