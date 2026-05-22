@@ -313,7 +313,9 @@ async function loadHome() {
     votesSnap.forEach(d => {
         const v = d.data();
         const pts = Number(v.points || 0);
-        totalPoints += pts;
+        if (!(v.isSpecial && !v.pointsCredited)) {
+            totalPoints += pts;
+        }
     });
 
     // Calculate actual weekly rank among all users
@@ -325,8 +327,10 @@ async function loadHome() {
         const v = d.data();
         const pts = Number(v.points || 0);
         const date = v.date || "";
-        if (date >= sevenDaysAgoStr) {
-            weeklyPointsMap[v.phone] = (weeklyPointsMap[v.phone] || 0) + pts;
+        if (!(v.isSpecial && !v.pointsCredited)) {
+            if (date >= sevenDaysAgoStr) {
+                weeklyPointsMap[v.phone] = (weeklyPointsMap[v.phone] || 0) + pts;
+            }
         }
     });
 
@@ -750,7 +754,7 @@ async function loadTasks() {
                             ${(t.start && t.end) ? `<span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
                         </div>
                     </div>
-                    <input type="checkbox" data-points="${t.points}" data-id="${t.id}" style="width:20px; height:20px;" onchange="updateTaskProgressBar()">
+                    <input type="checkbox" data-points="${t.points}" data-id="${t.id}" data-is-special="${!!t.startDate}" style="width:20px; height:20px;" onchange="updateTaskProgressBar()">
                 </div>`;
         });
         updateTaskProgressBar();
@@ -815,18 +819,29 @@ window.submitVote = async () => {
     }
     
     try {
-        let totalPts = 0;
+        let totalRegularPts = 0;
         const todayStr = getVoteDate();
         
         for (let c of checked) {
-            totalPts += Number(c.dataset.points);
-            await addDoc(collection(db, "votes"), { 
-                phone, 
-                points: Number(c.dataset.points), 
-                taskId: c.dataset.id, 
-                date: todayStr, 
-                timestamp: new Date() 
-            });
+            const pts = Number(c.dataset.points);
+            const isSpecial = c.dataset.isSpecial === "true";
+            
+            const voteDoc = {
+                phone,
+                points: pts,
+                taskId: c.dataset.id,
+                date: todayStr,
+                timestamp: new Date()
+            };
+            
+            if (isSpecial) {
+                voteDoc.isSpecial = true;
+                voteDoc.pointsCredited = false;
+            } else {
+                totalRegularPts += pts;
+            }
+            
+            await addDoc(collection(db, "votes"), voteDoc);
         }
 
         const userSnap = await getDocsByPhone("users", phone);
@@ -841,7 +856,7 @@ window.submitVote = async () => {
             }
 
             await updateDoc(uDoc.ref, {
-                points: increment(totalPts),
+                points: increment(totalRegularPts),
                 streak: newStreak,
                 lastVoteDate: todayStr
             });
@@ -904,16 +919,18 @@ async function loadLeaderboard() {
         const date = d.date || "";
         const phoneKey = String(d.phone);
         
-        mapTotal[phoneKey] = (mapTotal[phoneKey] || 0) + pts;
-        if (date >= weekStr) {
-            totalWeeklyVotes++;
-            totalWeeklyPoints += pts;
-            mapWeekly[phoneKey] = (mapWeekly[phoneKey] || 0) + pts;
-            const day = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
-            dayCounts[day] = (dayCounts[day] || 0) + 1;
-        }
-        if (date >= monthStr) {
-            mapMonthly[phoneKey] = (mapMonthly[phoneKey] || 0) + pts;
+        if (!(d.isSpecial && !d.pointsCredited)) {
+            mapTotal[phoneKey] = (mapTotal[phoneKey] || 0) + pts;
+            if (date >= weekStr) {
+                totalWeeklyVotes++;
+                totalWeeklyPoints += pts;
+                mapWeekly[phoneKey] = (mapWeekly[phoneKey] || 0) + pts;
+                const day = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+                dayCounts[day] = (dayCounts[day] || 0) + 1;
+            }
+            if (date >= monthStr) {
+                mapMonthly[phoneKey] = (mapMonthly[phoneKey] || 0) + pts;
+            }
         }
     });
 
@@ -1526,7 +1543,9 @@ window.loadProfileData = async () => {
         votesSnap.forEach(d => {
             const v = d.data();
             voteDatesSet.add(v.date);
-            totalPoints += Number(v.points || 0);
+            if (!(v.isSpecial && !v.pointsCredited)) {
+                totalPoints += Number(v.points || 0);
+            }
         });
 
         // Set Stats values
@@ -1640,7 +1659,9 @@ window.loadProfileData = async () => {
                 votesSnap.forEach(d => {
                     const v = d.data();
                     if (v.date === loopDateStr) {
-                        weekPointsSum += Number(v.points || 0);
+                        if (!(v.isSpecial && !v.pointsCredited)) {
+                            weekPointsSum += Number(v.points || 0);
+                        }
                     }
                 });
             } else if (isFuture) {

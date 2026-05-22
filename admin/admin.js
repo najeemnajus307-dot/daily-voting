@@ -421,6 +421,7 @@ window.dashLoad = async () => {
 
         votes.forEach(v => {
             const x = v.data();
+            if (x.isSpecial && !x.pointsCredited) return; // Skip uncredited special task points
             if (from) {
                 if (!x.date || x.date < from || x.date > to) return;
             }
@@ -897,7 +898,12 @@ window.taskLoad = async () => {
     votesSnap.forEach(v => {
         const x = v.data();
         const cp = cleanPhone(x.phone);
-        map[cp] = (map[cp] || 0) + Number(x.points || 0);
+        map[cp] = {
+            points: Number(x.points || 0),
+            isSpecial: !!x.isSpecial,
+            pointsCredited: x.pointsCredited !== false,
+            voteId: v.id
+        };
     });
 
     const votedBody = document.getElementById("t_voted");
@@ -915,12 +921,60 @@ window.taskLoad = async () => {
     userList.forEach(u => {
         const p = u.phone, n = u.name;
         const cp = cleanPhone(p);
-        if (map[cp]) {
-            votedBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td style="color:var(--success); font-weight:700;">${map[cp]} pts</td></tr>`;
+        const voteInfo = map[cp];
+        if (voteInfo) {
+            let ptsHtml = "";
+            if (voteInfo.isSpecial) {
+                if (voteInfo.pointsCredited) {
+                    ptsHtml = `<span style="color:var(--success); font-weight:700;">${voteInfo.points} pts (Credited ✅)</span>`;
+                } else {
+                    ptsHtml = `<span style="color:orange; font-weight:700;">${voteInfo.points} pts (Special - Pending)</span>
+                               <button class="btn-primary btn-sm" style="background:#10b981; border-color:#10b981; margin-left: 10px;" onclick="creditSpecialPoints('${voteInfo.voteId}', '${p}', ${voteInfo.points})">Add Points</button>`;
+                }
+            } else {
+                ptsHtml = `<span style="color:var(--success); font-weight:700;">${voteInfo.points} pts</span>`;
+            }
+            votedBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td>${ptsHtml}</td></tr>`;
         } else {
             notBody.innerHTML += `<tr><td>${n}</td><td>${p}</td><td><button class="btn-primary btn-sm" onclick="addPointForTask('${p}', '${taskId}', '${dateVal}')">Add Pts</button></td></tr>`;
         }
     });
+};
+
+window.creditSpecialPoints = async (voteDocId, phoneVal, points) => {
+    if (checkViewOnlyBlocked()) return;
+    
+    if (!confirm(`Are you sure you want to credit ${points} points to this user's profile for completing this Special Task?`)) return;
+    
+    try {
+        await updateDoc(doc(db, "votes", voteDocId), { pointsCredited: true });
+        
+        const userSnap = await getDocs(query(collection(db, "users"), where("phone", "==", phoneVal)));
+        if (userSnap.empty && !isNaN(phoneVal)) {
+            const userSnapNum = await getDocs(query(collection(db, "users"), where("phone", "==", Number(phoneVal))));
+            if (!userSnapNum.empty) {
+                const currentPoints = userSnapNum.docs[0].data().points || 0;
+                await updateDoc(userSnapNum.docs[0].ref, {
+                    points: currentPoints + Number(points)
+                });
+            } else {
+                console.warn(`User with phone ${phoneVal} not found in users collection to add special points!`);
+            }
+        } else if (!userSnap.empty) {
+            const currentPoints = userSnap.docs[0].data().points || 0;
+            await updateDoc(userSnap.docs[0].ref, {
+                points: currentPoints + Number(points)
+            });
+        } else {
+            console.warn(`User with phone ${phoneVal} not found in users collection to add special points!`);
+        }
+        
+        alert("Special task points credited successfully! ✅");
+        taskLoad();
+    } catch (e) {
+        console.error("Failed to credit special points:", e);
+        alert("Error: " + e.message);
+    }
 };
 
 // --- USER REPORT ---
@@ -958,6 +1012,7 @@ window.userLoad = async () => {
     votesSnap.forEach(v => {
         const x = v.data();
         if (x.phone !== phone) return;
+        if (x.isSpecial && !x.pointsCredited) return; // Skip uncredited special votes
         if (from && (x.date < from || (to && x.date > to))) return;
         
         const dateKey = x.date || "no-date";
@@ -1046,6 +1101,7 @@ window.settingsLoad = async () => {
     votesSnap.forEach(v => {
         const x = v.data();
         if (x.source === "admin") return;
+        if (x.isSpecial && !x.pointsCredited) return; // Skip uncredited special votes
         if (from && (x.date < from || (to && x.date > to))) return;
         pointMap[x.phone] = (pointMap[x.phone] || 0) + Number(x.points || 0);
     });
