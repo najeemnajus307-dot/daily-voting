@@ -54,6 +54,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         
         snapshot.forEach(doc => {
             const data = doc.data();
+            if (data.isSpecial) return; // Special tasks should not be added/counted in the calendar!
             const dateStr = data.date; // "YYYY-MM-DD"
             if (dateStr && dateStr.startsWith(prefix)) {
                 const dayStr = dateStr.split("-")[2];

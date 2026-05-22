@@ -133,25 +133,55 @@
 
             <!-- TASK REPORT -->
             <section id="page-task">
-                <div class="panel" style="padding: 20px; margin-bottom: 20px;">
-                    <label>Select Task & Date</label>
-                    <div style="display:flex; gap:10px; margin-top:10px; flex-wrap: wrap;">
-                        <select id="t_task" style="flex:2; min-width: 200px; padding:10px; border-radius:8px; border:1px solid #ddd;"></select>
-                        <input type="date" id="t_date" style="flex:1; min-width: 150px; padding:10px; border-radius:8px; border:1px solid #ddd;">
-                        <button class="btn-primary" style="width: auto; padding: 10px 24px;" onclick="taskLoad()">View Report</button>
+                <!-- Subtab Navigation for Regular vs Special Tasks -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; padding: 5px; background: rgba(27, 92, 56, 0.05); border-radius: 12px; width: fit-content;">
+                    <div id="subtab-regular" class="subtab" onclick="switchTaskSubTab('regular')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.3s; background: var(--primary); color: white;">📋 Regular Tasks</div>
+                    <div id="subtab-special" class="subtab" onclick="switchTaskSubTab('special')" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.3s; color: var(--text-secondary);">✨ Special Tasks</div>
+                </div>
+
+                <div id="task-regular-container">
+                    <div class="panel" style="padding: 20px; margin-bottom: 20px;">
+                        <label>Select Task & Date</label>
+                        <div style="display:flex; gap:10px; margin-top:10px; flex-wrap: wrap;">
+                            <select id="t_task" style="flex:2; min-width: 200px; padding:10px; border-radius:8px; border:1px solid #ddd;"></select>
+                            <input type="date" id="t_date" style="flex:1; min-width: 150px; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                            <button class="btn-primary" style="width: auto; padding: 10px 24px;" onclick="taskLoad()">View Report</button>
+                        </div>
+                    </div>
+                    <div class="stat-grid">
+                        <div class="panel" style="padding: 0;">
+                            <h4 style="padding: 15px; background: #f8fafc; font-size: 0.9rem;">VOTED</h4>
+                            <table>
+                                <tbody id="t_voted"></tbody>
+                            </table>
+                        </div>
+                        <div class="panel" style="padding: 0;">
+                            <h4 style="padding: 15px; background: #f8fafc; font-size: 0.9rem;">NOT VOTED</h4>
+                            <table>
+                                <tbody id="t_not"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-                <div class="stat-grid">
-                    <div class="panel" style="padding: 0;">
-                        <h4 style="padding: 15px; background: #f8fafc; font-size: 0.9rem;">VOTED</h4>
+
+                <div id="task-special-container" style="display: none;">
+                    <div class="panel" style="padding: 0; overflow-x: auto;">
+                        <h3 class="font-serif" style="padding: 20px 20px 10px 20px; margin: 0; color: var(--primary);">✨ Special Task Approvals & Adjustments</h3>
+                        <p style="padding: 0 20px 15px 20px; margin: 0; font-size: 0.82rem; color: var(--text-muted);">
+                            View and manage all voted Special Tasks. You can approve pending tasks, adjust point values, or delete them completely.
+                        </p>
                         <table>
-                            <tbody id="t_voted"></tbody>
-                        </table>
-                    </div>
-                    <div class="panel" style="padding: 0;">
-                        <h4 style="padding: 15px; background: #f8fafc; font-size: 0.9rem;">NOT VOTED</h4>
-                        <table>
-                            <tbody id="t_not"></tbody>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>User</th>
+                                    <th>Task Description</th>
+                                    <th>Points</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="t_special_body"></tbody>
                         </table>
                     </div>
                 </div>

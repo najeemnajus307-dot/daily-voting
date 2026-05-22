@@ -1542,7 +1542,9 @@ window.loadProfileData = async () => {
         let totalPoints = 0;
         votesSnap.forEach(d => {
             const v = d.data();
-            voteDatesSet.add(v.date);
+            if (!v.isSpecial) {
+                voteDatesSet.add(v.date);
+            }
             if (!(v.isSpecial && !v.pointsCredited)) {
                 totalPoints += Number(v.points || 0);
             }

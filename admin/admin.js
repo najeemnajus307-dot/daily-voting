@@ -971,8 +971,195 @@ window.creditSpecialPoints = async (voteDocId, phoneVal, points) => {
         
         alert("Special task points credited successfully! ✅");
         taskLoad();
+        if (typeof specialTaskLoad === "function") specialTaskLoad();
     } catch (e) {
         console.error("Failed to credit special points:", e);
+        alert("Error: " + e.message);
+    }
+};
+
+window.switchTaskSubTab = (tab) => {
+    document.querySelectorAll('.subtab').forEach(el => {
+        el.style.background = 'transparent';
+        el.style.color = 'var(--text-secondary)';
+    });
+    const activeEl = document.getElementById('subtab-' + tab);
+    if (activeEl) {
+        activeEl.style.background = 'var(--primary)';
+        activeEl.style.color = 'white';
+    }
+    
+    if (tab === 'regular') {
+        document.getElementById('task-regular-container').style.display = 'block';
+        document.getElementById('task-special-container').style.display = 'none';
+    } else {
+        document.getElementById('task-regular-container').style.display = 'none';
+        document.getElementById('task-special-container').style.display = 'block';
+        specialTaskLoad();
+    }
+};
+
+window.specialTaskLoad = async () => {
+    try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        const tasksSnap = await getDocs(collection(db, "tasks"));
+        const votesSnap = await getDocs(collection(db, "votes"));
+
+        const userMap = {};
+        usersSnap.forEach(u => {
+            const d = u.data();
+            userMap[cleanPhone(d.phone)] = d.name || "Unknown";
+        });
+
+        const taskMap = {};
+        tasksSnap.forEach(t => {
+            taskMap[t.id] = t.data().text || "Special Task";
+        });
+
+        const specialVotes = [];
+        votesSnap.forEach(v => {
+            const x = v.data();
+            if (x.isSpecial) {
+                specialVotes.push({
+                    id: v.id,
+                    phone: x.phone,
+                    points: Number(x.points || 0),
+                    date: x.date || "",
+                    taskId: x.taskId || "",
+                    pointsCredited: x.pointsCredited || false,
+                    taskText: taskMap[x.taskId] || "Special Task"
+                });
+            }
+        });
+
+        // Sort special votes by date descending
+        specialVotes.sort((a, b) => b.date.localeCompare(a.date));
+
+        const body = document.getElementById("t_special_body");
+        body.innerHTML = "";
+        
+        const isViewOnly = currentAdminPerms.admin_view_only;
+
+        if (specialVotes.length === 0) {
+            body.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:20px;">No special task votes found.</td></tr>`;
+            return;
+        }
+
+        specialVotes.forEach((v, index) => {
+            const userName = userMap[cleanPhone(v.phone)] || "Unknown";
+            const statusHtml = v.pointsCredited 
+                ? `<span style="color:var(--success); font-weight:700;">Credited ✅</span>` 
+                : `<span style="color:orange; font-weight:700;">Pending ⏳</span>`;
+
+            let actionHtml = "";
+            if (!v.pointsCredited) {
+                actionHtml += `<button class="btn-primary btn-sm" style="background:#10b981; border-color:#10b981; margin-right:5px; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="creditSpecialPoints('${v.id}', '${v.phone}', ${v.points})" ${isViewOnly ? 'disabled' : ''}>Approve</button>`;
+            }
+            actionHtml += `
+                <button class="btn-primary btn-sm" style="background:#3b82f6; border-color:#3b82f6; margin-right:5px; padding: 4px 10px; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="adjustSpecialPoints('${v.id}', '${v.phone}', 1)" ${isViewOnly ? 'disabled' : ''}>+</button>
+                <button class="btn-primary btn-sm" style="background:#ef4444; border-color:#ef4444; margin-right:5px; padding: 4px 10px; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="adjustSpecialPoints('${v.id}', '${v.phone}', -1)" ${isViewOnly ? 'disabled' : ''}>-</button>
+                <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="deleteSpecialVote('${v.id}', '${v.phone}', ${v.points}, ${v.pointsCredited})" ${isViewOnly ? 'disabled' : ''}>Delete</button>
+            `;
+
+            body.innerHTML += `<tr>
+                <td>${v.date}</td>
+                <td><b>${userName}</b><br><span style="font-size:0.8rem; color:var(--text-muted);">${v.phone}</span></td>
+                <td>${v.taskText}</td>
+                <td style="font-weight:700; color:var(--primary);">${v.points} pts</td>
+                <td>${statusHtml}</td>
+                <td>
+                    <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
+                        ${actionHtml}
+                    </div>
+                </td>
+            </tr>`;
+        });
+
+    } catch (e) {
+        console.error("Failed to load special tasks report:", e);
+    }
+};
+
+window.adjustSpecialPoints = async (voteId, phoneVal, delta) => {
+    if (checkViewOnlyBlocked()) return;
+    
+    try {
+        const voteRef = doc(db, "votes", voteId);
+        const voteSnap = await getDoc(voteRef);
+        if (!voteSnap.exists()) return alert("Vote record not found");
+        
+        const currentPoints = Number(voteSnap.data().points || 0);
+        const newPoints = currentPoints + delta;
+        if (newPoints < 0) return alert("Points cannot be negative!");
+        
+        // 1. Update points in the vote record
+        await updateDoc(voteRef, { points: newPoints });
+        
+        // 2. If already credited, sync/update the user's total points as well!
+        if (voteSnap.data().pointsCredited === true) {
+            const userSnap = await getDocs(query(collection(db, "users"), where("phone", "==", phoneVal)));
+            if (userSnap.empty && !isNaN(phoneVal)) {
+                const userSnapNum = await getDocs(query(collection(db, "users"), where("phone", "==", Number(phoneVal))));
+                if (!userSnapNum.empty) {
+                    const uDoc = userSnapNum.docs[0];
+                    const userPoints = Number(uDoc.data().points || 0);
+                    await updateDoc(uDoc.ref, {
+                        points: Math.max(0, userPoints + delta)
+                    });
+                }
+            } else if (!userSnap.empty) {
+                const uDoc = userSnap.docs[0];
+                const userPoints = Number(uDoc.data().points || 0);
+                await updateDoc(uDoc.ref, {
+                    points: Math.max(0, userPoints + delta)
+                });
+            }
+        }
+        
+        // Refresh views
+        specialTaskLoad();
+        dashLoad();
+    } catch (e) {
+        console.error("Adjustment failed:", e);
+        alert("Error: " + e.message);
+    }
+};
+
+window.deleteSpecialVote = async (voteId, phoneVal, points, pointsCredited) => {
+    if (checkViewOnlyBlocked()) return;
+    
+    if (!confirm("Are you sure you want to delete this special task vote record? This will also automatically deduct the points from the user's total score if already credited!")) return;
+    
+    try {
+        // 1. Deduct points from user profile if already credited
+        if (pointsCredited && points > 0) {
+            const userSnap = await getDocs(query(collection(db, "users"), where("phone", "==", phoneVal)));
+            if (userSnap.empty && !isNaN(phoneVal)) {
+                const userSnapNum = await getDocs(query(collection(db, "users"), where("phone", "==", Number(phoneVal))));
+                if (!userSnapNum.empty) {
+                    const uDoc = userSnapNum.docs[0];
+                    const userPoints = Number(uDoc.data().points || 0);
+                    await updateDoc(uDoc.ref, {
+                        points: Math.max(0, userPoints - points)
+                    });
+                }
+            } else if (!userSnap.empty) {
+                const uDoc = userSnap.docs[0];
+                const userPoints = Number(uDoc.data().points || 0);
+                await updateDoc(uDoc.ref, {
+                    points: Math.max(0, userPoints - points)
+                });
+            }
+        }
+        
+        // 2. Delete the vote record
+        await deleteDoc(doc(db, "votes", voteId));
+        
+        alert("Special task vote deleted successfully! ✅");
+        specialTaskLoad();
+        dashLoad();
+    } catch (e) {
+        console.error("Failed to delete special vote:", e);
         alert("Error: " + e.message);
     }
 };
