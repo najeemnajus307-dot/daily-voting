@@ -1132,8 +1132,29 @@ async function showDayTasks(date, votes) {
             // Missed past date! Show request backdate form
             const tasksSnap = await getDocs(collection(db, "tasks"));
             let taskCheckboxes = "";
+            
+            // Parse target date to get day of week (standard 0 = Sun, 1 = Mon, etc.)
+            const parts = date.split("-").map(Number);
+            const targetDateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            const targetDay = targetDateObj.getDay();
+
             tasksSnap.forEach(tDoc => {
                 const t = tDoc.data();
+                
+                // Filter tasks to only show those scheduled for this specific date
+                let isScheduled = false;
+                if (t.startDate) {
+                    const start = t.startDate;
+                    const end = t.endDate || t.startDate;
+                    if (date >= start && date <= end) {
+                        isScheduled = true;
+                    }
+                } else if (t.days && t.days.includes(targetDay)) {
+                    isScheduled = true;
+                }
+
+                if (!isScheduled) return;
+
                 taskCheckboxes += `
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding: 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
                         <div>
@@ -1145,14 +1166,22 @@ async function showDayTasks(date, votes) {
                 `;
             });
             
-            details.innerHTML += `
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 16px; margin-top: 10px; box-shadow: var(--shadow-sm);">
-                    <div style="font-weight:700; color: var(--primary); margin-bottom: 8px; font-size: 0.95rem;">Request Backdate Points</div>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">Forgetting to vote happens! Select the tasks you completed on this day to submit to the admin for point approval.</p>
-                    <div style="margin-bottom: 15px;">${taskCheckboxes}</div>
-                    <button class="btn-primary" onclick="submitBackdateRequest('${date}', this)" style="padding: 10px 20px; font-size: 0.85rem; width: 100%;">Submit Request</button>
-                </div>
-            `;
+            if (taskCheckboxes) {
+                details.innerHTML += `
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 16px; margin-top: 10px; box-shadow: var(--shadow-sm);">
+                        <div style="font-weight:700; color: var(--primary); margin-bottom: 8px; font-size: 0.95rem;">Request Backdate Points</div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">Forgetting to vote happens! Select the tasks you completed on this day to submit to the admin for point approval.</p>
+                        <div style="margin-bottom: 15px;">${taskCheckboxes}</div>
+                        <button class="btn-primary" onclick="submitBackdateRequest('${date}', this)" style="padding: 10px 20px; font-size: 0.85rem; width: 100%;">Submit Request</button>
+                    </div>
+                `;
+            } else {
+                details.innerHTML += `
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 16px; margin-top: 10px; box-shadow: var(--shadow-sm); text-align: center;">
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">No tasks were scheduled for this day.</p>
+                    </div>
+                `;
+            }
         } else {
             details.innerHTML += `<p style="font-size:0.8rem; color:var(--text-muted);">No tasks recorded for this day.</p>`;
         }
