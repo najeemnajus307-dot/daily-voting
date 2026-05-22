@@ -707,7 +707,10 @@ async function loadTasks() {
             <div class="panel animate-fade-in" style="padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <div style="font-weight:600;">${t.text}</div>
-                    <div style="font-size:0.7rem; color:var(--secondary);">+${t.points} pts</div>
+                    <div style="font-size:0.7rem; color:var(--secondary); display:flex; gap:10px; align-items:center; margin-top:4px;">
+                        <span>+${t.points} pts</span>
+                        ${(t.start && t.end) ? `<span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
+                    </div>
                 </div>
                 <input type="checkbox" data-points="${t.points}" data-id="${d.id}" style="width:20px; height:20px;" onchange="updateTaskProgressBar()">
             </div>`;
@@ -1141,6 +1144,15 @@ async function showDayTasks(date, votes) {
             tasksSnap.forEach(tDoc => {
                 const t = tDoc.data();
                 
+                // Prevent task from showing in backdate requests before its creation date or start date
+                if (t.createdAt) {
+                    const createdDateStr = t.createdAt.split('T')[0];
+                    if (date < createdDateStr) return;
+                }
+                if (t.startDate) {
+                    if (date < t.startDate) return;
+                }
+                
                 // Filter tasks to only show those scheduled for this specific date
                 let isScheduled = false;
                 if (t.startDate) {
@@ -1159,7 +1171,10 @@ async function showDayTasks(date, votes) {
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding: 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
                         <div>
                             <div style="font-size: 0.85rem; font-weight:600; color: var(--text-primary);">${t.text}</div>
-                            <div style="font-size:0.7rem; color:var(--secondary);">+${t.points} pts</div>
+                            <div style="font-size:0.7rem; color:var(--secondary); display:flex; gap:10px; align-items:center; margin-top:2px;">
+                                <span>+${t.points} pts</span>
+                                ${(t.start && t.end) ? `<span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
+                            </div>
                         </div>
                         <input type="checkbox" class="backdate-task-chk" data-id="${tDoc.id}" data-text="${t.text}" data-points="${t.points}" style="width:18px; height:18px;">
                     </div>
