@@ -653,73 +653,118 @@ window.updateTaskProgressBar = () => {
 function isTaskActive(task) {
     const now = new Date();
     const hrs = now.getHours();
-    
-    // Active only from 8 PM (20:00) to 12 PM (12:00)
-    const isActiveTime = (hrs >= 20 || hrs < 12);
-    if (!isActiveTime) return false;
+    const currentLocalTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    const currentLocalDate = localDateStr(now);
 
     // Special Task Date Logic
     if (task.startDate) {
-        const voteDate = getVoteDate();
         const start = task.startDate;
         const end = task.endDate || task.startDate;
-        // If current voting date falls within the special task date range, it's active
-        if (voteDate >= start && voteDate <= end) {
-            return true;
+        
+        // If it has a specific time window, check it and bypass the global window
+        if (task.start && task.end) {
+            if (currentLocalDate >= start && currentLocalDate <= end) {
+                return (currentLocalTime >= task.start && currentLocalTime <= task.end);
+            }
+            return false;
+        } else {
+            // No specific time window: follows the global voting window
+            const isActiveTime = (hrs >= 20 || hrs < 12);
+            if (!isActiveTime) return false;
+            
+            const voteDate = getVoteDate();
+            return (voteDate >= start && voteDate <= end);
         }
-        return false;
+    } else {
+        // Recurring Task Logic
+        // If it has a specific time window, check it
+        if (task.start && task.end) {
+            if (currentLocalTime < task.start || currentLocalTime > task.end) {
+                return false;
+            }
+        } else {
+            // No specific time window: must be in global window
+            const isActiveTime = (hrs >= 20 || hrs < 12);
+            if (!isActiveTime) return false;
+        }
+
+        const today = now.getDay();
+        const yesterday = (today + 6) % 7;
+        const targetDay = (hrs >= 20) ? today : yesterday;
+
+        return (task.days || []).includes(targetDay);
     }
-
-    const today = now.getDay();
-    const yesterday = (today + 6) % 7;
-    const targetDay = (hrs >= 20) ? today : yesterday;
-
-    return (task.days || []).includes(targetDay);
 }
 
 async function loadTasks() {
-    const todayStr = getVoteDate();
-    const votedSnap = await getDocsByPhone("votes", phone, [where("date", "==", todayStr)]);
-    
-    if (!votedSnap.empty) {
-        startTimer("Today voting is complete ✅");
-        return;
-    }
-
     const now = new Date();
     const hrs = now.getHours();
-    if (hrs >= 12 && hrs < 20) {
-        startTimer("Voting window is closed 🔒");
-        return;
-    }
-
-    const tasksSnap = await getDocs(collection(db, "tasks"));
-    const taskBox = document.getElementById("taskBox");
-    taskBox.innerHTML = "";
-    let hasActiveTasks = false;
+    const todayStr = getVoteDate();
     
-    tasksSnap.forEach(d => {
-        const t = d.data();
-        if (!isTaskActive(t)) return;
-        
-        hasActiveTasks = true;
-        taskBox.innerHTML += `
-            <div class="panel animate-fade-in" style="padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <div style="font-weight:600;">${t.text}</div>
-                    <div style="font-size:0.7rem; color:var(--secondary); display:flex; gap:10px; align-items:center; margin-top:4px;">
-                        <span>+${t.points} pts</span>
-                        ${(t.start && t.end) ? `<span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
-                    </div>
-                </div>
-                <input type="checkbox" data-points="${t.points}" data-id="${d.id}" style="width:20px; height:20px;" onchange="updateTaskProgressBar()">
-            </div>`;
+    // 1. Fetch all tasks
+    const tasksSnap = await getDocs(collection(db, "tasks"));
+    
+    // 2. Fetch user's votes for today's session
+    const votedSnap = await getDocsByPhone("votes", phone, [where("date", "==", todayStr)]);
+    const votedTaskIds = new Set();
+    votedSnap.forEach(d => {
+        const v = d.data();
+        if (v.taskId) votedTaskIds.add(v.taskId);
     });
 
-    if (!hasActiveTasks) {
-        startTimer("No active tasks for now.");
-    } else {
+    // 3. Find which tasks are currently active
+    const activeTasks = [];
+    tasksSnap.forEach(d => {
+        const t = d.data();
+        t.id = d.id; // Include firestore document ID
+        if (isTaskActive(t)) {
+            activeTasks.push(t);
+        }
+    });
+
+    // 4. Filter out active tasks that have already been voted
+    const unvotedActiveTasks = activeTasks.filter(t => !votedTaskIds.has(t.id));
+
+    const taskBox = document.getElementById("taskBox");
+    taskBox.innerHTML = "";
+
+    // 5. Display unvoted active tasks or show correct timer/completion state
+    if (unvotedActiveTasks.length > 0) {
+        // Hide next vote block / timer if it's currently showing
+        const nextVoteBox = document.getElementById("nextVoteBox");
+        if (nextVoteBox) nextVoteBox.style.display = "none";
+        
+        const submitBtn = document.getElementById("submitBtn");
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+        }
+
+        unvotedActiveTasks.forEach(t => {
+            taskBox.innerHTML += `
+                <div class="panel animate-fade-in" style="padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-weight:600;">${t.text}</div>
+                        <div style="font-size:0.7rem; color:var(--secondary); display:flex; gap:10px; align-items:center; margin-top:4px;">
+                            <span>+${t.points} pts</span>
+                            ${(t.start && t.end) ? `<span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
+                        </div>
+                    </div>
+                    <input type="checkbox" data-points="${t.points}" data-id="${t.id}" style="width:20px; height:20px;" onchange="updateTaskProgressBar()">
+                </div>`;
+        });
         updateTaskProgressBar();
+    } else {
+        // If the user has already voted for some tasks today, and there are no other unvoted active tasks left
+        if (votedTaskIds.size > 0) {
+            startTimer("Today voting is complete ✅");
+        } else if (hrs >= 12 && hrs < 20) {
+            // Global window is closed and no active special task
+            startTimer("Voting window is closed 🔒");
+        } else {
+            // We are within global hours, but no active tasks are scheduled
+            startTimer("No active tasks for now.");
+        }
     }
 }
 

@@ -29,18 +29,58 @@
                 <input id="taskPoints" type="number" placeholder="10">
             </div>
             
-            <label style="font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);">Active Days</label>
-            <div class="days-grid" id="daysBox">
-                <label class="day-check"><input type="checkbox" value="1"> Mon</label>
-                <label class="day-check"><input type="checkbox" value="2"> Tue</label>
-                <label class="day-check"><input type="checkbox" value="3"> Wed</label>
-                <label class="day-check"><input type="checkbox" value="4"> Thu</label>
-                <label class="day-check"><input type="checkbox" value="5"> Fri</label>
-                <label class="day-check"><input type="checkbox" value="6"> Sat</label>
-                <label class="day-check"><input type="checkbox" value="0"> Sun</label>
+            <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 20px 0;">
+
+            <!-- Scheduling Options -->
+            <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--primary); margin-bottom: 15px;">Task Scheduling</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Select Schedule Type:</label>
+                <div style="display: flex; gap: 20px; margin-top: 8px;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; color: var(--text-primary);">
+                        <input type="radio" name="scheduleType" id="typeRecurring" checked onchange="toggleScheduleFields()" style="width: 16px; height: 16px;"> Recurring Days
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; color: var(--text-primary);">
+                        <input type="radio" name="scheduleType" id="typeSpecial" onchange="toggleScheduleFields()" style="width: 16px; height: 16px;"> Special Date
+                    </label>
+                </div>
             </div>
 
-            <div style="display:flex; gap:15px; margin-bottom: 20px;">
+            <!-- Recurring Days Field -->
+            <div id="recurringDaysGroup" style="margin-bottom: 20px;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Active Days</label>
+                <div class="days-grid" id="daysBox">
+                    <label class="day-check"><input type="checkbox" value="1"> Mon</label>
+                    <label class="day-check"><input type="checkbox" value="2"> Tue</label>
+                    <label class="day-check"><input type="checkbox" value="3"> Wed</label>
+                    <label class="day-check"><input type="checkbox" value="4"> Thu</label>
+                    <label class="day-check"><input type="checkbox" value="5"> Fri</label>
+                    <label class="day-check"><input type="checkbox" value="6"> Sat</label>
+                    <label class="day-check"><input type="checkbox" value="0"> Sun</label>
+                </div>
+            </div>
+
+            <!-- Special Dates Field -->
+            <div id="specialDatesGroup" style="display: none; margin-bottom: 20px;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Special Dates</label>
+                <div style="display:flex; gap:15px; margin-top: 5px;">
+                    <div class="input-group" style="flex:1;">
+                        <label>Start Date</label>
+                        <input id="startDate" type="date">
+                    </div>
+                    <div class="input-group" style="flex:1;">
+                        <label>End Date</label>
+                        <input id="endDate" type="date">
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 20px 0;">
+
+            <!-- Time Window Field -->
+            <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--primary); margin-bottom: 5px;">Task Time Window (Optional)</h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">Define a specific time window for performing this task.</p>
+            <div style="display:flex; gap:15px; margin-bottom: 25px;">
                 <div class="input-group" style="flex:1;">
                     <label>Start Time</label>
                     <input id="startTime" type="time">
@@ -48,18 +88,6 @@
                 <div class="input-group" style="flex:1;">
                     <label>End Time</label>
                     <input id="endTime" type="time">
-                </div>
-            </div>
-
-            <label style="font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);">Special Task Dates (Optional)</label>
-            <div style="display:flex; gap:15px; margin-top: 5px; margin-bottom: 20px;">
-                <div class="input-group" style="flex:1;">
-                    <label>Start Date</label>
-                    <input id="startDate" type="date">
-                </div>
-                <div class="input-group" style="flex:1;">
-                    <label>End Date</label>
-                    <input id="endDate" type="date">
                 </div>
             </div>
 
@@ -140,6 +168,12 @@
 
         let editId = null;
 
+        window.toggleScheduleFields = () => {
+            const isRecurring = document.getElementById("typeRecurring").checked;
+            document.getElementById("recurringDaysGroup").style.display = isRecurring ? "block" : "none";
+            document.getElementById("specialDatesGroup").style.display = isRecurring ? "none" : "block";
+        };
+
         async function loadTasks() {
             const list = document.getElementById("taskList");
             list.innerHTML = "";
@@ -152,13 +186,17 @@
                 const t = d.data();
                 const div = document.createElement("div");
                 div.className = "task-list-item";
+                
+                let timeStr = t.start && t.end ? `${t.start} - ${t.end}` : "No time limit";
+                let scheduleDetail = t.startDate ? `Dates: ${t.startDate} to ${t.endDate || 'ongoing'}` : `Days: ${(t.days || []).map(dayNum => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayNum]).join(', ')}`;
+
                 div.innerHTML = `
                     <div style="font-weight:700; color:var(--primary);">${t.text}</div>
                     <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
-                        Points: ${t.points} | Time: ${t.start} - ${t.end} ${t.startDate ? `| Dates: ${t.startDate} to ${t.endDate||' ongoing'}` : ''}
+                        Points: ${t.points} | Time: ${timeStr} | ${scheduleDetail}
                     </div>
                     <div class="task-actions">
-                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start}', '${t.end}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}')" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Edit</button>
+                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start || ''}', '${t.end || ''}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}')" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Edit</button>
                         <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="deleteTask('${d.id}')" ${isViewOnly ? 'disabled' : ''}>Delete</button>
                     </div>`;
                 list.appendChild(div);
@@ -173,13 +211,24 @@
 
             const text = document.getElementById("taskText").value.trim();
             const points = Number(document.getElementById("taskPoints").value);
-            const start = document.getElementById("startTime").value;
-            const end = document.getElementById("endTime").value;
-            const startDate = document.getElementById("startDate").value;
-            const endDate = document.getElementById("endDate").value;
-            const days = [...document.querySelectorAll("#daysBox input:checked")].map(d => Number(d.value));
+            const start = document.getElementById("startTime").value || null;
+            const end = document.getElementById("endTime").value || null;
+            
+            const isRecurring = document.getElementById("typeRecurring").checked;
+            let days = [];
+            let startDate = null;
+            let endDate = null;
 
-            if (!text || points < 0 || (!startDate && days.length === 0)) return alert("Please provide task text, points, and either active days or a start date.");
+            if (isRecurring) {
+                days = [...document.querySelectorAll("#daysBox input:checked")].map(d => Number(d.value));
+                if (days.length === 0) return alert("Please select at least one active day.");
+            } else {
+                startDate = document.getElementById("startDate").value;
+                endDate = document.getElementById("endDate").value || startDate;
+                if (!startDate) return alert("Please select a start date.");
+            }
+
+            if (!text || points < 0) return alert("Please provide task text and valid points.");
 
             const data = { text, points, start, end, days, startDate: startDate || null, endDate: endDate || null };
             if (editId) {
@@ -197,11 +246,20 @@
             editId = id;
             document.getElementById("taskText").value = text;
             document.getElementById("taskPoints").value = points;
-            document.getElementById("startTime").value = start;
-            document.getElementById("endTime").value = end;
-            document.getElementById("startDate").value = startDate;
-            document.getElementById("endDate").value = endDate;
-            document.querySelectorAll("#daysBox input").forEach(c => c.checked = days.includes(Number(c.value)));
+            document.getElementById("startTime").value = start || "";
+            document.getElementById("endTime").value = end || "";
+            document.getElementById("startDate").value = startDate || "";
+            document.getElementById("endDate").value = endDate || "";
+            
+            document.querySelectorAll("#daysBox input").forEach(c => c.checked = false);
+            
+            if (startDate) {
+                document.getElementById("typeSpecial").checked = true;
+            } else {
+                document.getElementById("typeRecurring").checked = true;
+                document.querySelectorAll("#daysBox input").forEach(c => c.checked = days.includes(Number(c.value)));
+            }
+            toggleScheduleFields();
             window.scrollTo(0, 0);
         };
 
