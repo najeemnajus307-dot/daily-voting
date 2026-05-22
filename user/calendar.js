@@ -43,6 +43,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     grid.innerHTML = gridHTML;
 
     try {
+        // Fetch all tasks to identify special task IDs as a backup/robust safeguard
+        const tasksSnap = await getDocs(collection(db, "tasks"));
+        const specialTaskIds = new Set();
+        tasksSnap.forEach(doc => {
+            const taskData = doc.data();
+            if (taskData.startDate) {
+                specialTaskIds.add(doc.id);
+            }
+        });
+
         // Fetch votes for this month
         const prefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
         
@@ -54,7 +64,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         
         snapshot.forEach(doc => {
             const data = doc.data();
-            if (data.isSpecial) return; // Special tasks should not be added/counted in the calendar!
+            // Safeguard: skip if flagged as special OR if the taskId matches a known special task
+            if (data.isSpecial || specialTaskIds.has(data.taskId)) return;
             const dateStr = data.date; // "YYYY-MM-DD"
             if (dateStr && dateStr.startsWith(prefix)) {
                 const dayStr = dateStr.split("-")[2];

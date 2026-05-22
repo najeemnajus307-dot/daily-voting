@@ -381,6 +381,16 @@ window.dashLoad = async () => {
         const votes = await getDocs(collection(db, "votes"));
         document.getElementById("d_users").textContent = users.size;
         
+        // Fetch all tasks to identify special task IDs as a backup safeguard
+        const tasksSnap = await getDocs(collection(db, "tasks"));
+        const specialTaskIds = new Set();
+        tasksSnap.forEach(doc => {
+            const taskData = doc.data();
+            if (taskData.startDate) {
+                specialTaskIds.add(doc.id);
+            }
+        });
+        
         // Load pending backdate requests
         await loadPendingRequests();
         
@@ -421,7 +431,8 @@ window.dashLoad = async () => {
 
         votes.forEach(v => {
             const x = v.data();
-            if (x.isSpecial && !x.pointsCredited) return; // Skip uncredited special task points
+            const isSpecialTask = x.isSpecial || specialTaskIds.has(x.taskId);
+            if (isSpecialTask && !x.pointsCredited) return; // Skip uncredited special task points
             if (from) {
                 if (!x.date || x.date < from || x.date > to) return;
             }
@@ -885,6 +896,10 @@ window.taskLoad = async () => {
     if (!taskId) return alert("Please select a task.");
     const dateVal = document.getElementById("t_date").value || getVoteDate();
     
+    // Fetch the task document to check if it's a special task (has startDate)
+    const taskSnap = await getDoc(doc(db, "tasks", taskId));
+    const isSpecialTask = taskSnap.exists() && !!taskSnap.data().startDate;
+    
     const users = await getDocs(collection(db, "users"));
     
     // Query votes only for this date and task
@@ -900,7 +915,7 @@ window.taskLoad = async () => {
         const cp = cleanPhone(x.phone);
         map[cp] = {
             points: Number(x.points || 0),
-            isSpecial: !!x.isSpecial,
+            isSpecial: !!x.isSpecial || isSpecialTask,
             pointsCredited: x.pointsCredited !== false,
             voteId: v.id
         };
@@ -1012,14 +1027,20 @@ window.specialTaskLoad = async () => {
         });
 
         const taskMap = {};
+        const specialTaskIds = new Set();
         tasksSnap.forEach(t => {
-            taskMap[t.id] = t.data().text || "Special Task";
+            const tData = t.data();
+            taskMap[t.id] = tData.text || "Special Task";
+            if (tData.startDate) {
+                specialTaskIds.add(t.id);
+            }
         });
 
         const specialVotes = [];
         votesSnap.forEach(v => {
             const x = v.data();
-            if (x.isSpecial) {
+            const isSpecialTask = x.isSpecial || specialTaskIds.has(x.taskId);
+            if (isSpecialTask) {
                 specialVotes.push({
                     id: v.id,
                     phone: x.phone,
@@ -1193,13 +1214,24 @@ window.userLoad = async () => {
     const votesSnap = await getDocs(collection(db, "votes"));
     const isViewOnly = currentAdminPerms.admin_view_only;
     
+    // Fetch all tasks to identify special task IDs as a backup safeguard
+    const tasksSnap = await getDocs(collection(db, "tasks"));
+    const specialTaskIds = new Set();
+    tasksSnap.forEach(doc => {
+        const taskData = doc.data();
+        if (taskData.startDate) {
+            specialTaskIds.add(doc.id);
+        }
+    });
+
     // Group votes by date to show daily total points
     const dateGroups = {};
 
     votesSnap.forEach(v => {
         const x = v.data();
         if (x.phone !== phone) return;
-        if (x.isSpecial && !x.pointsCredited) return; // Skip uncredited special votes
+        const isSpecialTask = x.isSpecial || specialTaskIds.has(x.taskId);
+        if (isSpecialTask && !x.pointsCredited) return; // Skip uncredited special votes
         if (from && (x.date < from || (to && x.date > to))) return;
         
         const dateKey = x.date || "no-date";
@@ -1281,6 +1313,16 @@ window.settingsLoad = async () => {
     const usersSnap = await getDocs(collection(db, "users"));
     const votesSnap = await getDocs(collection(db, "votes"));
 
+    // Fetch all tasks to identify special task IDs as a backup safeguard
+    const tasksSnap = await getDocs(collection(db, "tasks"));
+    const specialTaskIds = new Set();
+    tasksSnap.forEach(doc => {
+        const taskData = doc.data();
+        if (taskData.startDate) {
+            specialTaskIds.add(doc.id);
+        }
+    });
+
     const nameMap = {};
     usersSnap.forEach(u => nameMap[u.data().phone] = u.data().name);
 
@@ -1288,7 +1330,8 @@ window.settingsLoad = async () => {
     votesSnap.forEach(v => {
         const x = v.data();
         if (x.source === "admin") return;
-        if (x.isSpecial && !x.pointsCredited) return; // Skip uncredited special votes
+        const isSpecialTask = x.isSpecial || specialTaskIds.has(x.taskId);
+        if (isSpecialTask && !x.pointsCredited) return; // Skip uncredited special votes
         if (from && (x.date < from || (to && x.date > to))) return;
         pointMap[x.phone] = (pointMap[x.phone] || 0) + Number(x.points || 0);
     });

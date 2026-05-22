@@ -302,6 +302,16 @@ async function loadHome() {
     const options = { weekday: 'long', day: 'numeric', month: 'long' };
     document.getElementById("todayDate").textContent = now.toLocaleDateString('en-US', options);
 
+    // Fetch all tasks to identify special task IDs as a backup safeguard
+    const tasksSnap = await getDocs(collection(db, "tasks"));
+    const specialTaskIds = new Set();
+    tasksSnap.forEach(doc => {
+        const taskData = doc.data();
+        if (taskData.startDate) {
+            specialTaskIds.add(doc.id);
+        }
+    });
+
     // Calculate Points from Votes
     let totalPoints = 0;
     
@@ -313,7 +323,8 @@ async function loadHome() {
     votesSnap.forEach(d => {
         const v = d.data();
         const pts = Number(v.points || 0);
-        if (!(v.isSpecial && !v.pointsCredited)) {
+        const isSpecialTask = v.isSpecial || specialTaskIds.has(v.taskId);
+        if (!(isSpecialTask && !v.pointsCredited)) {
             totalPoints += pts;
         }
     });
@@ -327,7 +338,8 @@ async function loadHome() {
         const v = d.data();
         const pts = Number(v.points || 0);
         const date = v.date || "";
-        if (!(v.isSpecial && !v.pointsCredited)) {
+        const isSpecialTask = v.isSpecial || specialTaskIds.has(v.taskId);
+        if (!(isSpecialTask && !v.pointsCredited)) {
             if (date >= sevenDaysAgoStr) {
                 weeklyPointsMap[v.phone] = (weeklyPointsMap[v.phone] || 0) + pts;
             }
@@ -890,6 +902,16 @@ async function loadLeaderboard() {
     const uSnap = await getDocs(collection(db, "users"));
     const vSnap = await getDocs(collection(db, "votes"));
     
+    // Fetch all tasks to identify special task IDs as a backup safeguard
+    const tasksSnap = await getDocs(collection(db, "tasks"));
+    const specialTaskIds = new Set();
+    tasksSnap.forEach(doc => {
+        const taskData = doc.data();
+        if (taskData.startDate) {
+            specialTaskIds.add(doc.id);
+        }
+    });
+    
     const now = new Date();
     
     // Monday to Sunday logic — use LOCAL date to avoid UTC timezone shift (IST = UTC+5:30)
@@ -919,7 +941,8 @@ async function loadLeaderboard() {
         const date = d.date || "";
         const phoneKey = String(d.phone);
         
-        if (!(d.isSpecial && !d.pointsCredited)) {
+        const isSpecialTask = d.isSpecial || specialTaskIds.has(d.taskId);
+        if (!(isSpecialTask && !d.pointsCredited)) {
             mapTotal[phoneKey] = (mapTotal[phoneKey] || 0) + pts;
             if (date >= weekStr) {
                 totalWeeklyVotes++;
@@ -1042,10 +1065,22 @@ async function renderCalendar() {
     grid.innerHTML = "";
     document.getElementById("calTitle").textContent = new Date(curYear, curMonth).toLocaleString("default", { month: "long", year: "numeric" });
 
+    // Fetch all tasks to identify special task IDs as a backup safeguard
+    const tasksSnap = await getDocs(collection(db, "tasks"));
+    const specialTaskIds = new Set();
+    tasksSnap.forEach(doc => {
+        const taskData = doc.data();
+        if (taskData.startDate) {
+            specialTaskIds.add(doc.id);
+        }
+    });
+
     const snap = await getDocsByPhone("votes", phone);
     const votedData = {};
     snap.forEach(d => {
         const v = d.data();
+        // Skip special tasks so they don't color month calendar cells green
+        if (v.isSpecial || specialTaskIds.has(v.taskId)) return;
         if (!votedData[v.date]) votedData[v.date] = [];
         votedData[v.date].push(v);
     });
@@ -1536,16 +1571,27 @@ window.loadProfileData = async () => {
         if (goalDialEl) goalDialEl.style.background = `conic-gradient(#22c55e ${deg}deg, #e2e8f0 ${deg}deg)`;
         if (goalTextEl) goalTextEl.textContent = `${streak}/7`;
 
+        // Fetch all tasks to identify special task IDs as a backup safeguard
+        const tasksSnap = await getDocs(collection(db, "tasks"));
+        const specialTaskIds = new Set();
+        tasksSnap.forEach(doc => {
+            const taskData = doc.data();
+            if (taskData.startDate) {
+                specialTaskIds.add(doc.id);
+            }
+        });
+
         // 2. Fetch User Votes History for Stats Cards & Weekly Node Grid
         const votesSnap = await getDocsByPhone("votes", phone);
         const voteDatesSet = new Set();
         let totalPoints = 0;
         votesSnap.forEach(d => {
             const v = d.data();
-            if (!v.isSpecial) {
+            const isSpecialTask = v.isSpecial || specialTaskIds.has(v.taskId);
+            if (!isSpecialTask) {
                 voteDatesSet.add(v.date);
             }
-            if (!(v.isSpecial && !v.pointsCredited)) {
+            if (!(isSpecialTask && !v.pointsCredited)) {
                 totalPoints += Number(v.points || 0);
             }
         });
@@ -1661,7 +1707,8 @@ window.loadProfileData = async () => {
                 votesSnap.forEach(d => {
                     const v = d.data();
                     if (v.date === loopDateStr) {
-                        if (!(v.isSpecial && !v.pointsCredited)) {
+                        const isSpecialTask = v.isSpecial || specialTaskIds.has(v.taskId);
+                        if (!(isSpecialTask && !v.pointsCredited)) {
                             weekPointsSum += Number(v.points || 0);
                         }
                     }
