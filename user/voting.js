@@ -649,6 +649,18 @@ window.updateTaskProgressBar = () => {
     const checked = document.querySelectorAll("#taskBox input[type='checkbox']:checked").length;
     const progressCard = document.getElementById("progressCard");
     
+    // Also disable/enable submitBtn dynamically
+    const submitBtn = document.getElementById("submitBtn");
+    if (submitBtn) {
+        if (checked > 0) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = "0.5";
+        }
+    }
+    
     if (total === 0) {
         if (progressCard) progressCard.style.display = "none";
         return;
@@ -680,7 +692,12 @@ function isTaskActive(task) {
         // If it has a specific time window, check it and bypass the global window
         if (task.start && task.end) {
             if (currentLocalDate >= start && currentLocalDate <= end) {
-                return (currentLocalTime >= task.start && currentLocalTime <= task.end);
+                if (task.start > task.end) {
+                    // Crosses midnight
+                    return (currentLocalTime >= task.start || currentLocalTime <= task.end);
+                } else {
+                    return (currentLocalTime >= task.start && currentLocalTime <= task.end);
+                }
             }
             return false;
         } else {
@@ -695,8 +712,15 @@ function isTaskActive(task) {
         // Recurring Task Logic
         // If it has a specific time window, check it
         if (task.start && task.end) {
-            if (currentLocalTime < task.start || currentLocalTime > task.end) {
-                return false;
+            if (task.start > task.end) {
+                // Crosses midnight
+                if (currentLocalTime < task.start && currentLocalTime > task.end) {
+                    return false;
+                }
+            } else {
+                if (currentLocalTime < task.start || currentLocalTime > task.end) {
+                    return false;
+                }
             }
         } else {
             // No specific time window: must be in global window
@@ -738,8 +762,15 @@ async function loadTasks() {
         }
     });
 
-    // 4. Filter out active tasks that have already been voted
-    const unvotedActiveTasks = activeTasks.filter(t => !votedTaskIds.has(t.id));
+    // Separate active tasks into Regular and Special
+    const activeRegularTasks = activeTasks.filter(t => !t.startDate);
+    const activeSpecialTasks = activeTasks.filter(t => !!t.startDate);
+
+    // Filter out those that have already been voted
+    const unvotedRegularTasks = activeRegularTasks.filter(t => !votedTaskIds.has(t.id));
+    const unvotedSpecialTasks = activeSpecialTasks.filter(t => !votedTaskIds.has(t.id));
+
+    const unvotedActiveTasks = [...unvotedRegularTasks, ...unvotedSpecialTasks];
 
     const taskBox = document.getElementById("taskBox");
     taskBox.innerHTML = "";
@@ -752,27 +783,63 @@ async function loadTasks() {
         
         const submitBtn = document.getElementById("submitBtn");
         if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = "1";
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = "0.5";
         }
 
-        unvotedActiveTasks.forEach(t => {
+        // Render Special Tasks first with a beautiful visual separation
+        if (unvotedSpecialTasks.length > 0) {
             taskBox.innerHTML += `
-                <div class="panel animate-fade-in" style="padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-weight:600;">${t.text}</div>
-                        <div style="font-size:0.7rem; color:var(--secondary); display:flex; gap:10px; align-items:center; margin-top:4px;">
-                            <span>+${t.points} pts</span>
-                            ${(t.start && t.end) ? `<span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
-                        </div>
-                    </div>
-                    <input type="checkbox" data-points="${t.points}" data-id="${t.id}" data-is-special="${!!t.startDate}" style="width:20px; height:20px;" onchange="updateTaskProgressBar()">
+                <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.1rem;">🌟</span>
+                    <span style="font-size: 0.75rem; font-weight: 800; color: #d97706; letter-spacing: 1px; text-transform: uppercase;">Special Challenge Task</span>
                 </div>`;
-        });
+            unvotedSpecialTasks.forEach(t => {
+                taskBox.innerHTML += `
+                    <div class="panel animate-fade-in" style="padding:15px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 1.5px solid #fcd34d; background: #fffbeb; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.05); border-radius: 16px;">
+                        <div style="max-width: 80%;">
+                            <div style="font-weight:700; color: #b45309;">${t.text}</div>
+                            <div style="font-size:0.7rem; color:#d97706; display:flex; gap:10px; align-items:center; margin-top:4px; font-weight: 600;">
+                                <span>+${t.points} pts (Admin Approval Required)</span>
+                                ${(t.start && t.end) ? `<span style="color:#b45309; display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
+                            </div>
+                        </div>
+                        <input type="checkbox" data-points="${t.points}" data-id="${t.id}" data-is-special="true" style="width:22px; height:22px; accent-color: #d97706; cursor: pointer;" onchange="updateTaskProgressBar()">
+                    </div>`;
+            });
+        }
+
+        // Render Regular Tasks next with visual separation
+        if (unvotedRegularTasks.length > 0) {
+            if (unvotedSpecialTasks.length > 0) {
+                taskBox.innerHTML += `<div style="height: 10px;"></div>`; // Spacer
+            }
+            taskBox.innerHTML += `
+                <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.1rem;">📋</span>
+                    <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary); letter-spacing: 1px; text-transform: uppercase;">Daily Recurring Tasks</span>
+                </div>`;
+            unvotedRegularTasks.forEach(t => {
+                taskBox.innerHTML += `
+                    <div class="panel animate-fade-in" style="padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <div style="max-width: 80%;">
+                            <div style="font-weight:600;">${t.text}</div>
+                            <div style="font-size:0.7rem; color:var(--secondary); display:flex; gap:10px; align-items:center; margin-top:4px;">
+                                <span>+${t.points} pts</span>
+                                ${(t.start && t.end) ? `<span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
+                            </div>
+                        </div>
+                        <input type="checkbox" data-points="${t.points}" data-id="${t.id}" data-is-special="false" style="width:20px; height:20px; cursor: pointer;" onchange="updateTaskProgressBar()">
+                    </div>`;
+            });
+        }
         updateTaskProgressBar();
     } else {
-        // If the user has already voted for some tasks today, and there are no other unvoted active tasks left
-        if (votedTaskIds.size > 0) {
+        // We consider today's voting complete ONLY if they have voted on the active regular tasks (and special tasks if any were active)
+        const hasVotedRegular = activeRegularTasks.length > 0 && activeRegularTasks.every(t => votedTaskIds.has(t.id));
+        const hasVotedSpecial = activeSpecialTasks.length > 0 && activeSpecialTasks.every(t => votedTaskIds.has(t.id));
+        
+        if (votedTaskIds.size > 0 && (hasVotedRegular || hasVotedSpecial || activeTasks.length === 0)) {
             startTimer("Today voting is complete ✅");
         } else if (hrs >= 12 && hrs < 20) {
             // Global window is closed and no active special task
@@ -1141,6 +1208,18 @@ window.submitBackdateRequest = async (date, btn) => {
         }
         return;
     }
+
+    const reasonEl = document.getElementById("backdateReason");
+    const reason = reasonEl ? reasonEl.value.trim() : "";
+    if (!reason) {
+        alert("Please enter a reason or detail for this request (കാരണം രേഖപ്പെടുത്തുക).");
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.textContent = "Submit Request";
+        }
+        return;
+    }
     
     const selectedTasks = [];
     let totalPoints = 0;
@@ -1165,6 +1244,8 @@ window.submitBackdateRequest = async (date, btn) => {
             tasks: selectedTasks,
             totalPoints: totalPoints,
             status: "pending",
+            reason: reason,
+            requestType: "backdate",
             createdAt: new Date().toISOString()
         });
         
@@ -1183,6 +1264,165 @@ window.submitBackdateRequest = async (date, btn) => {
     }
 };
 
+window.showCorrectionForm = async (date) => {
+    const details = document.getElementById("calendarTaskDetails");
+    if (!details) return;
+    
+    details.innerHTML = `
+        <h4 class="font-serif" style="margin-bottom:10px;">Request Edit: ${date}</h4>
+        <div style="text-align: center; padding: 10px; font-size: 0.85rem; color: var(--text-muted);">Loading tasks...</div>
+    `;
+
+    try {
+        // Query the votes for that date to see which task IDs were already voted
+        const q = query(collection(db, "votes"), where("phone", "==", phone), where("date", "==", date));
+        const votesSnap = await getDocs(q);
+        const votedTaskIds = new Set();
+        votesSnap.forEach(doc => {
+            const v = doc.data();
+            if (v.taskId) votedTaskIds.add(v.taskId);
+        });
+
+        const tasksSnap = await getDocs(collection(db, "tasks"));
+        let taskCheckboxes = "";
+        
+        const parts = date.split("-").map(Number);
+        const targetDateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        const targetDay = targetDateObj.getDay();
+
+        tasksSnap.forEach(tDoc => {
+            const t = tDoc.data();
+            
+            // Prevent task from showing before its creation or start date
+            if (t.createdAt) {
+                const createdDateStr = t.createdAt.split('T')[0];
+                if (date < createdDateStr) return;
+            }
+            if (t.startDate) {
+                if (date < t.startDate) return;
+            }
+            
+            // Filter tasks to only show those scheduled for this specific date
+            let isScheduled = false;
+            if (t.startDate) {
+                const start = t.startDate;
+                const end = t.endDate || t.startDate;
+                if (date >= start && date <= end) {
+                    isScheduled = true;
+                }
+            } else if (t.days && t.days.includes(targetDay)) {
+                isScheduled = true;
+            }
+
+            if (!isScheduled) return;
+
+            const isChecked = votedTaskIds.has(tDoc.id);
+
+            taskCheckboxes += `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding: 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div>
+                        <div style="font-size: 0.85rem; font-weight:600; color: var(--text-primary);">${t.text}</div>
+                        <div style="font-size:0.7rem; color:var(--secondary); display:flex; gap:10px; align-items:center; margin-top:2px;">
+                            <span>+${t.points} pts</span>
+                            ${(t.start && t.end) ? `<span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
+                        </div>
+                    </div>
+                    <input type="checkbox" class="correction-task-chk" data-id="${tDoc.id}" data-text="${t.text}" data-points="${t.points}" ${isChecked ? 'checked' : ''} style="width:18px; height:18px; cursor: pointer;">
+                </div>
+            `;
+        });
+
+        if (!taskCheckboxes) {
+            taskCheckboxes = `<div style="text-align: center; padding: 10px; font-size: 0.8rem; color: var(--text-muted);">No scheduled tasks found for this date.</div>`;
+        }
+
+        details.innerHTML = `
+            <h4 class="font-serif" style="margin-bottom:10px;">Request Correction: ${date}</h4>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 16px; margin-top: 10px; box-shadow: var(--shadow-sm);">
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+                    Modify your submissions for this day. You can select new tasks, uncheck tasks to remove them, or edit your selections.
+                </p>
+                <div style="margin-bottom: 15px;">${taskCheckboxes}</div>
+                
+                <div style="margin-bottom: 12px;">
+                    <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-primary); margin-bottom:6px;">REASON / DETAIL (കാരണം) <span style="color:#ef4444;">*</span></label>
+                    <textarea id="correctionReason" placeholder="Describe why you need this correction..." style="width:100%; min-height:60px; padding:8px 12px; font-size:0.8rem; border:1px solid #cbd5e1; border-radius:8px; resize:vertical; outline:none; font-family:inherit; box-sizing:border-box;"></textarea>
+                </div>
+
+                <button class="btn-primary" onclick="submitCorrectionRequest('${date}', this)" style="padding: 10px 20px; font-size: 0.85rem; width: 100%; background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">Submit Correction Request</button>
+                <button class="btn-secondary" onclick="location.reload()" style="padding: 10px 20px; font-size: 0.85rem; width: 100%; margin-top: 8px; background: transparent; border: 1px solid #cbd5e1; color: var(--text-primary);">Cancel</button>
+            </div>
+        `;
+    } catch (e) {
+        console.error("Load correction form failed:", e);
+        details.innerHTML = `<div style="color:var(--error); font-size:0.85rem; padding: 10px;">Error loading tasks: ${e.message}</div>`;
+    }
+};
+
+window.submitCorrectionRequest = async (date, btn) => {
+    const submitBtn = btn;
+    if (submitBtn) {
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.5";
+        submitBtn.textContent = "Submitting...";
+    }
+
+    const chks = document.querySelectorAll(".correction-task-chk:checked");
+    const reasonEl = document.getElementById("correctionReason");
+    const reason = reasonEl ? reasonEl.value.trim() : "";
+    if (!reason) {
+        alert("Please enter a reason or detail for this correction (കാരണം രേഖപ്പെടുത്തുക).");
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.textContent = "Submit Correction Request";
+        }
+        return;
+    }
+
+    const selectedTasks = [];
+    let totalPoints = 0;
+    
+    chks.forEach(chk => {
+        const pts = Number(chk.dataset.points);
+        selectedTasks.push({
+            id: chk.dataset.id,
+            text: chk.dataset.text,
+            points: pts
+        });
+        totalPoints += pts;
+    });
+
+    try {
+        const userName = document.getElementById("userNameHeader").textContent || "User";
+        
+        await addDoc(collection(db, "backdate_requests"), {
+            phone: phone,
+            name: userName,
+            date: date,
+            tasks: selectedTasks,
+            totalPoints: totalPoints,
+            status: "pending",
+            reason: reason,
+            requestType: "edit",
+            createdAt: new Date().toISOString()
+        });
+        
+        alert("Correction request submitted successfully! Pending Admin approval. ⏳");
+        renderCalendar();
+        document.getElementById("calendarTaskDetails").innerHTML = "";
+    } catch (e) {
+        console.error("Correction request failed:", e);
+        alert("Error: " + e.message);
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.textContent = "Submit Correction Request";
+        }
+    }
+};
+
 async function showDayTasks(date, votes) {
     const details = document.getElementById("calendarTaskDetails");
     if (!details) return;
@@ -1194,31 +1434,36 @@ async function showDayTasks(date, votes) {
     
     if (!reqSnap.empty) {
         const req = reqSnap.docs[0].data();
+        const isEdit = req.requestType === "edit";
+        const typeLabel = isEdit ? "Correction" : "Backdate";
         if (req.status === "pending") {
             details.innerHTML += `
                 <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 15px; border-radius: 12px; margin-top: 10px;">
-                    <div style="font-weight: 700; color: #b45309; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">⏳ Request Pending Approval</div>
-                    <p style="font-size: 0.8rem; color: #666; margin-bottom: 8px;">You requested backdate points for completing:</p>
+                    <div style="font-weight: 700; color: #b45309; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">⏳ ${typeLabel} Request Pending Approval</div>
+                    <p style="font-size: 0.8rem; color: #666; margin-bottom: 8px;">You requested a ${typeLabel.toLowerCase()} correction for completing:</p>
                     <ul style="font-size: 0.8rem; color: #444; padding-left: 15px; margin-bottom: 10px;">
-                        ${req.tasks.map(t => `<li>${t.text} (+${t.points} pts)</li>`).join("")}
+                        ${req.tasks && req.tasks.length ? req.tasks.map(t => `<li>${t.text} (+${t.points} pts)</li>`).join("") : "<li>No tasks selected (Delete All)</li>"}
                     </ul>
                     <div style="font-weight: 700; font-size: 0.85rem; color: var(--primary);">Total requested: +${req.totalPoints} pts</div>
+                    ${req.reason ? `<div style="font-size: 0.75rem; color: #666; font-style: italic; margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 8px;"><b>Reason:</b> ${req.reason}</div>` : ''}
                 </div>
             `;
             return;
         } else if (req.status === "approved") {
             details.innerHTML += `
                 <div style="background: #f0fdf4; border: 1px solid #dcfce7; padding: 15px; border-radius: 12px; margin-top: 10px;">
-                    <div style="font-weight: 700; color: #166534; display: flex; align-items: center; gap: 6px;">✅ Approved by Admin</div>
-                    <p style="font-size: 0.8rem; color: #666; margin-top: 4px;">Points of this request are added to your total score.</p>
+                    <div style="font-weight: 700; color: #166534; display: flex; align-items: center; gap: 6px;">✅ ${typeLabel} Approved by Admin</div>
+                    <p style="font-size: 0.8rem; color: #666; margin-top: 4px;">Changes for this day have been applied, and your score was updated.</p>
+                    ${req.reason ? `<div style="font-size: 0.75rem; color: #666; font-style: italic; margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 8px;"><b>Reason:</b> ${req.reason}</div>` : ''}
                 </div>
             `;
             return;
         } else if (req.status === "rejected") {
             details.innerHTML += `
                 <div style="background: #fff1f2; border: 1px solid #ffe4e6; padding: 15px; border-radius: 12px; margin-top: 10px;">
-                    <div style="font-weight: 700; color: #9f1239; display: flex; align-items: center; gap: 6px;">❌ Rejected by Admin</div>
+                    <div style="font-weight: 700; color: #9f1239; display: flex; align-items: center; gap: 6px;">❌ ${typeLabel} Rejected by Admin</div>
                     <p style="font-size: 0.8rem; color: #666; margin-top: 4px;">This request was rejected by the admin.</p>
+                    ${req.reason ? `<div style="font-size: 0.75rem; color: #666; font-style: italic; margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 8px;"><b>Reason:</b> ${req.reason}</div>` : ''}
                 </div>
             `;
             return;
@@ -1284,6 +1529,12 @@ async function showDayTasks(date, votes) {
                         <div style="font-weight:700; color: var(--primary); margin-bottom: 8px; font-size: 0.95rem;">Request Backdate Points</div>
                         <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">Forgetting to vote happens! Select the tasks you completed on this day to submit to the admin for point approval.</p>
                         <div style="margin-bottom: 15px;">${taskCheckboxes}</div>
+                        
+                        <div style="margin-bottom: 12px;">
+                            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-primary); margin-bottom:6px;">REASON / DETAIL (കാരണം) <span style="color:#ef4444;">*</span></label>
+                            <textarea id="backdateReason" placeholder="Describe why you missed or need this backdate..." style="width:100%; min-height:60px; padding:8px 12px; font-size:0.8rem; border:1px solid #cbd5e1; border-radius:8px; resize:vertical; outline:none; font-family:inherit; box-sizing:border-box;"></textarea>
+                        </div>
+
                         <button class="btn-primary" onclick="submitBackdateRequest('${date}', this)" style="padding: 10px 20px; font-size: 0.85rem; width: 100%;">Submit Request</button>
                     </div>
                 `;
@@ -1326,6 +1577,12 @@ async function showDayTasks(date, votes) {
             </div>
         `;
     });
+
+    details.innerHTML += `
+        <button class="btn-primary animate-fade-in" onclick="showCorrectionForm('${date}')" style="margin-top: 15px; padding: 10px 20px; font-size: 0.85rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.2);">
+            <span>✏️</span> Request Correction / Edit
+        </button>
+    `;
 }
 
 // --- SETTINGS & PROFILE ---
