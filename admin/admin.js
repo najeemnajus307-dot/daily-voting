@@ -1382,20 +1382,36 @@ window.loadPendingRequests = async () => {
         
         snap.forEach(d => {
             const r = d.data();
+            const isEdit = r.requestType === "edit";
+            const typeLabel = isEdit 
+                ? `<span style="background:#fef3c7; color:#d97706; padding: 2px 6px; border-radius: 4px; font-size:0.65rem; font-weight:800; border: 1px solid #fde68a; margin-left: 8px; text-transform: uppercase;">✏️ Correction</span>`
+                : `<span style="background:#e0f2fe; color:#0369a1; padding: 2px 6px; border-radius: 4px; font-size:0.65rem; font-weight:800; border: 1px solid #bae6fd; margin-left: 8px; text-transform: uppercase;">⏳ Backdate</span>`;
+            
+            const reasonText = r.reason 
+                ? `<div style="font-size: 0.75rem; color: #475569; background: #f8fafc; padding: 8px; border-radius: 8px; margin-top: 8px; border-left: 3px solid #94a3b8; font-style: italic; line-height: 1.4;">
+                    <b>Reason / Detail:</b> ${r.reason}
+                   </div>`
+                : ``;
+
             list.innerHTML += `
-                <div class="panel" style="padding: 15px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: #fffdf5; border-radius: 12px; margin-bottom: 5px; box-shadow: var(--shadow-sm);">
-                    <div>
-                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--primary);">${r.name} (${r.phone})</div>
-                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
-                            Requested Date: <b>${r.date}</b> • Points: <b style="color: var(--success);">+${r.totalPoints} pts</b>
+                <div class="panel" style="padding: 15px; border: 1px solid var(--border-light); display: flex; flex-direction: column; gap: 8px; background: #fffdf5; border-radius: 12px; margin-bottom: 10px; box-shadow: var(--shadow-sm);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <div style="font-weight: 700; font-size: 0.95rem; color: var(--primary); display: flex; align-items: center; gap: 4px;">
+                                ${r.name} (${r.phone}) ${typeLabel}
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
+                                Requested Date: <b>${r.date}</b> • Proposed Points: <b style="color: var(--success);">+${r.totalPoints} pts</b>
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                                <b>Proposed Tasks:</b> ${r.tasks && r.tasks.length ? r.tasks.map(t => t.text).join(", ") : "No tasks selected (Delete All)"}
+                            </div>
+                            ${reasonText}
                         </div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; font-style: italic;">
-                            Tasks: ${r.tasks.map(t => t.text).join(", ")}
+                        <div style="display: flex; gap: 8px; align-self: center;">
+                            <button class="btn-primary btn-sm" onclick="approveRequest('${d.id}')" style="background: var(--success); border-color: var(--success); padding: 6px 12px; font-size: 0.8rem; cursor: pointer; color: white; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewOnly ? 'disabled' : ''}>Approve</button>
+                            <button class="btn-secondary btn-sm" onclick="rejectRequest('${d.id}')" style="color: var(--error); border-color: var(--error); padding: 6px 12px; font-size: 0.8rem; cursor: pointer; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewOnly ? 'disabled' : ''}>Reject</button>
                         </div>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn-primary btn-sm" onclick="approveRequest('${d.id}')" style="background: var(--success); border-color: var(--success); padding: 6px 12px; font-size: 0.8rem; cursor: pointer; color: white; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewOnly ? 'disabled' : ''}>Approve</button>
-                        <button class="btn-secondary btn-sm" onclick="rejectRequest('${d.id}')" style="color: var(--error); border-color: var(--error); padding: 6px 12px; font-size: 0.8rem; cursor: pointer; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewOnly ? 'disabled' : ''}>Reject</button>
                     </div>
                 </div>
             `;
@@ -1415,31 +1431,54 @@ window.approveRequest = async (id) => {
         if (!reqSnap.exists()) return alert("Request not found");
         
         const r = reqSnap.data();
+        const isEdit = r.requestType === "edit";
         
-        // 1. Add a single consolidated vote entry for the total points of all selected tasks
+        let pointsToDeduct = 0;
+        
+        // 1. If it's a correction request, find and delete all existing votes for this user on this date
+        if (isEdit) {
+            const votesQuery = query(
+                collection(db, "votes"), 
+                where("phone", "==", r.phone), 
+                where("date", "==", r.date)
+            );
+            const votesSnap = await getDocs(votesQuery);
+            for (const voteDoc of votesSnap.docs) {
+                const vData = voteDoc.data();
+                // Deduct points only if it's not a special task, or if it is a special task and points are already credited
+                if (!vData.isSpecial || vData.pointsCredited) {
+                    pointsToDeduct += Number(vData.points || 0);
+                }
+                await deleteDoc(voteDoc.ref);
+            }
+        }
+        
+        // 2. Add a single consolidated vote entry for the total points of all selected tasks
         await addDoc(collection(db, "votes"), {
             phone: r.phone,
             points: Number(r.totalPoints),
             taskId: "backdate_consolidated",
             date: r.date,
             timestamp: new Date().toISOString(),
-            source: "backdate_approval",
-            tasks: r.tasks.map(t => t.text).join(", ")
+            source: isEdit ? "correction_approval" : "backdate_approval",
+            tasks: r.tasks && r.tasks.length ? r.tasks.map(t => t.text).join(", ") : "No tasks selected (Delete All)"
         });
         
-        // 2. Update user's points
+        // 3. Update user's points (deducting previous and adding new)
         const userSnap = await getDocs(query(collection(db, "users"), where("phone", "==", r.phone)));
         if (!userSnap.empty) {
             const uDoc = userSnap.docs[0];
+            const currentPoints = uDoc.data().points || 0;
+            const newPoints = Math.max(0, currentPoints - pointsToDeduct + Number(r.totalPoints));
             await updateDoc(uDoc.ref, {
-                points: (uDoc.data().points || 0) + Number(r.totalPoints)
+                points: newPoints
             });
         }
         
-        // 3. Mark request as approved
+        // 4. Mark request as approved
         await updateDoc(docRef, { status: "approved" });
         
-        alert("Request approved successfully! Points added. ✅");
+        alert("Request approved successfully! Changes applied. ✅");
         dashLoad(); // Reload dashboard to update scores and requests list
     } catch (e) {
         console.error("Approve failed:", e);
