@@ -691,12 +691,14 @@ function isTaskActive(task) {
         
         // If it has a specific time window, check it and bypass the global window
         if (task.start && task.end) {
+            const tStart = String(task.start).trim();
+            const tEnd = String(task.end).trim();
             if (currentLocalDate >= start && currentLocalDate <= end) {
-                if (task.start > task.end) {
+                if (tStart > tEnd) {
                     // Crosses midnight
-                    return (currentLocalTime >= task.start || currentLocalTime <= task.end);
+                    return (currentLocalTime >= tStart || currentLocalTime <= tEnd);
                 } else {
-                    return (currentLocalTime >= task.start && currentLocalTime <= task.end);
+                    return (currentLocalTime >= tStart && currentLocalTime <= tEnd);
                 }
             }
             return false;
@@ -712,13 +714,15 @@ function isTaskActive(task) {
         // Recurring Task Logic
         // If it has a specific time window, check it
         if (task.start && task.end) {
-            if (task.start > task.end) {
+            const tStart = String(task.start).trim();
+            const tEnd = String(task.end).trim();
+            if (tStart > tEnd) {
                 // Crosses midnight
-                if (currentLocalTime < task.start && currentLocalTime > task.end) {
+                if (currentLocalTime < tStart && currentLocalTime > tEnd) {
                     return false;
                 }
             } else {
-                if (currentLocalTime < task.start || currentLocalTime > task.end) {
+                if (currentLocalTime < tStart || currentLocalTime > tEnd) {
                     return false;
                 }
             }
@@ -732,7 +736,7 @@ function isTaskActive(task) {
         const yesterday = (today + 6) % 7;
         const targetDay = (hrs >= 20) ? today : yesterday;
 
-        return (task.days || []).includes(targetDay);
+        return (task.days || []).some(d => Number(d) === targetDay);
     }
 }
 
