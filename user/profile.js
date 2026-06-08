@@ -2,7 +2,7 @@ import { db } from "../firebase.js";
 import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
-    const myPhone = localStorage.getItem("ff_phone");
+    const myPhone = localStorage.getItem("userPhone");
     if (!myPhone) {
         window.location.replace("../auth/login.html");
         return;
@@ -103,6 +103,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Logout
     logoutBtn.addEventListener("click", () => {
         if(confirm("Are you sure you want to logout?")) {
+            localStorage.removeItem("userPhone");
             localStorage.removeItem("ff_phone");
             localStorage.removeItem("ff_logged_in");
             window.location.replace("../auth/login.html");
