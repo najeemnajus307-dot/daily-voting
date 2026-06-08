@@ -1048,7 +1048,8 @@ window.specialTaskLoad = async () => {
                     date: x.date || "",
                     taskId: x.taskId || "",
                     pointsCredited: x.pointsCredited || false,
-                    taskText: taskMap[x.taskId] || "Special Task"
+                    taskText: taskMap[x.taskId] || "Special Task",
+                    specialAnswer: x.specialAnswer || ""
                 });
             }
         });
@@ -1082,10 +1083,14 @@ window.specialTaskLoad = async () => {
                 <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="deleteSpecialVote('${v.id}', '${v.phone}', ${v.points}, ${v.pointsCredited})" ${isViewOnly ? 'disabled' : ''}>Delete</button>
             `;
 
+            let answerHtml = v.specialAnswer 
+                ? `<div style="margin-top: 4px; font-size: 0.75rem; background: #fffbeb; padding: 4px 8px; border-radius: 4px; border-left: 2px solid #d97706; color: #92400e; font-style: italic;"><b>Ans:</b> ${v.specialAnswer}</div>`
+                : '';
+
             body.innerHTML += `<tr>
                 <td>${v.date}</td>
                 <td><b>${userName}</b><br><span style="font-size:0.8rem; color:var(--text-muted);">${v.phone}</span></td>
-                <td>${v.taskText}</td>
+                <td>${v.taskText}${answerHtml}</td>
                 <td style="font-weight:700; color:var(--primary);">${v.points} pts</td>
                 <td>${statusHtml}</td>
                 <td>
