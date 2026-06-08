@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where, orderBy, getDoc, updateDoc, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where, orderBy, getDoc, updateDoc, limit, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const app = initializeApp({
@@ -77,7 +77,7 @@ function applyAdminPermissionsUI() {
     const isTaskOnly = currentAdminPerms.admin_task_only;
     
     if (isSettingsOnly) {
-        const toHide = ["nav-dash", "nav-task", "nav-user", "nav-lib", "nav-announcement", "nav-task-editor"];
+        const toHide = ["nav-dash", "nav-task", "nav-user", "nav-lib", "nav-announcement", "nav-task-editor", "nav-whatsapp"];
         toHide.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = "none";
@@ -86,7 +86,7 @@ function applyAdminPermissionsUI() {
             window.showPage('settings');
         }, 100);
     } else if (isTaskOnly) {
-        const toHide = ["nav-dash", "nav-user", "nav-lib", "nav-announcement", "nav-settings"];
+        const toHide = ["nav-dash", "nav-user", "nav-lib", "nav-announcement", "nav-settings", "nav-whatsapp"];
         toHide.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = "none";
@@ -196,6 +196,9 @@ window.showPage = (id) => {
     }
     if(id === 'settings') {
         settingsLoad();
+    }
+    if(id === 'whatsapp') {
+        whatsappLoad();
     }
 };
 
@@ -461,6 +464,7 @@ window.dashLoad = async () => {
         });
 
         renderDashTable();
+        loadWhatsAppDashboardStats();
     } catch (e) {
         console.error(e);
         alert("Dashboard Load Error: " + e.message);
@@ -1903,6 +1907,7 @@ async function initAdmin() {
 
     try {
         await loadBanner();
+        await loadWhatsAppConfig();
         await loadLastResetInfo();
         await dashLoad();
     } catch (e) {
@@ -1950,6 +1955,437 @@ window.saveBanner = async () => {
         console.error("Save banner failed:", e);
         msg.textContent = "Error saving banner";
         msg.style.color = "var(--error)";
+    }
+};
+// loadBanner is now called directly inside initAdmin()
+
+// --- WHATSAPP BUSINESS API REMINDERS ---
+
+// Helper to check days since last vote
+function getDaysIdle(lastVoteDateStr) {
+    if (!lastVoteDateStr) return 999; // Never voted, default to high number
+    const lastVote = new Date(lastVoteDateStr);
+    const now = new Date();
+    lastVote.setHours(0,0,0,0);
+    now.setHours(0,0,0,0);
+    const diffTime = Math.abs(now - lastVote);
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+}
+
+// Load WhatsApp config from Firestore
+window.loadWhatsAppConfig = async () => {
+    try {
+        const snap = await getDoc(doc(db, "settings", "whatsapp"));
+        if (snap.exists()) {
+            const data = snap.data();
+            if (document.getElementById("wa_phone_id")) document.getElementById("wa_phone_id").value = data.phoneId || "";
+            if (document.getElementById("wa_waba_id")) document.getElementById("wa_waba_id").value = data.wabaId || "";
+            if (document.getElementById("wa_template_name")) document.getElementById("wa_template_name").value = data.templateName || "";
+            if (document.getElementById("wa_template_lang")) document.getElementById("wa_template_lang").value = data.templateLang || "en_US";
+            if (document.getElementById("wa_access_token")) document.getElementById("wa_access_token").value = data.accessToken || "";
+        }
+    } catch (e) {
+        console.error("Failed to load WhatsApp API configs:", e);
+    }
+};
+
+// Save WhatsApp config to Firestore
+window.saveWhatsAppConfig = async () => {
+    if (checkViewOnlyBlocked()) return;
+    const msg = document.getElementById("wa_config_msg");
+    const phoneId = document.getElementById("wa_phone_id").value.trim();
+    const wabaId = document.getElementById("wa_waba_id").value.trim();
+    const templateName = document.getElementById("wa_template_name").value.trim();
+    const templateLang = document.getElementById("wa_template_lang").value.trim() || "en_US";
+    const accessToken = document.getElementById("wa_access_token").value.trim();
+
+    if (!phoneId || !templateName || !accessToken) {
+        alert("Please fill Phone Number ID, Template Name, and Access Token!");
+        return;
+    }
+
+    try {
+        await setDoc(doc(db, "settings", "whatsapp"), {
+            phoneId,
+            wabaId,
+            templateName,
+            templateLang,
+            accessToken,
+            updatedAt: new Date().toISOString()
+        });
+        msg.textContent = "Configuration saved successfully! ✅";
+        setTimeout(() => msg.textContent = "", 3000);
+    } catch (e) {
+        console.error("Failed to save WhatsApp config:", e);
+        alert("Error saving config: " + e.message);
+    }
+};
+
+// Load WhatsApp page (idle users and sent logs)
+window.whatsappLoad = async () => {
+    await loadWhatsAppConfig();
+    await loadIdleUsersTable();
+    await loadWhatsAppLogsTable();
+};
+
+// Load list of idle users (7+ days since last vote)
+async function loadIdleUsersTable() {
+    const tbody = document.getElementById("wa_idle_body");
+    tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; color:var(--text-muted);">Scanning database for idle users...</td></tr>`;
+
+    try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        const logsSnap = await getDocs(collection(db, "whatsapp_logs"));
+        
+        // Map to quickly find last reminder time for duplicate prevention (24 hours)
+        const lastReminderMap = {};
+        logsSnap.forEach(d => {
+            const log = d.data();
+            if (log.phone && log.sentAt) {
+                const sentTime = new Date(log.sentAt).getTime();
+                if (!lastReminderMap[log.phone] || sentTime > lastReminderMap[log.phone]) {
+                    lastReminderMap[log.phone] = sentTime;
+                }
+            }
+        });
+
+        const idleUsers = [];
+        const nowMs = Date.now();
+
+        usersSnap.forEach(u => {
+            const userData = u.data();
+            const lastVoteDate = userData.lastVoteDate || "";
+            const daysIdle = getDaysIdle(lastVoteDate);
+            const userPhone = String(userData.phone || "").trim();
+
+            if (daysIdle >= 7 && userData.role !== "admin" && userPhone) {
+                // Determine reminder cooldown status
+                let reminderStatus = "Ready to send";
+                let canSend = true;
+                const lastSentTime = lastReminderMap[userPhone];
+                if (lastSentTime) {
+                    const hoursSinceLast = (nowMs - lastSentTime) / (1000 * 60 * 60);
+                    if (hoursSinceLast < 24) {
+                        reminderStatus = `Sent recently (${Math.round(24 - hoursSinceLast)}h cooldown)`;
+                        canSend = false;
+                    }
+                }
+
+                idleUsers.push({
+                    id: u.id,
+                    name: userData.name || "Unknown",
+                    phone: userPhone,
+                    lastVoteDate: lastVoteDate || "Never",
+                    daysIdle,
+                    reminderStatus,
+                    canSend
+                });
+            }
+        });
+
+        // Sort by longest idle time
+        idleUsers.sort((a, b) => b.daysIdle - a.daysIdle);
+
+        tbody.innerHTML = "";
+        if (idleUsers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; color:var(--success); font-weight:700;">🎉 Excellent! No users are currently idle for 7+ days.</td></tr>`;
+            return;
+        }
+
+        const isViewOnly = currentAdminPerms.admin_view_only;
+
+        idleUsers.forEach(u => {
+            const btnDisable = (!u.canSend || isViewOnly) ? "disabled style='opacity:0.5; cursor:not-allowed;'" : "";
+            tbody.innerHTML += `
+                <tr>
+                    <td><b>${u.name}</b></td>
+                    <td>${u.phone}</td>
+                    <td>${u.lastVoteDate}</td>
+                    <td><span style="color:${u.daysIdle > 30 ? 'var(--error)' : '#d97706'}; font-weight:bold;">${u.daysIdle === 999 ? 'Never Voted' : u.daysIdle + ' days'}</span></td>
+                    <td style="font-size:0.8rem; color:${u.canSend ? 'var(--success)' : 'var(--text-muted)'}; font-weight:600;">${u.reminderStatus}</td>
+                    <td>
+                        <button class="btn-primary btn-sm" onclick="sendWhatsAppReminderNow('${u.id}', '${u.name}', '${u.phone}', ${u.daysIdle})" ${btnDisable}>💬 Send</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+    } catch (e) {
+        console.error("Failed to load idle users:", e);
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; color:var(--error);">Error: ${e.message}</td></tr>`;
+    }
+}
+
+// Load logs of sent WhatsApp messages
+async function loadWhatsAppLogsTable() {
+    const tbody = document.getElementById("wa_logs_body");
+    try {
+        const snap = await getDocs(query(collection(db, "whatsapp_logs"), orderBy("sentAt", "desc"), limit(30)));
+        tbody.innerHTML = "";
+        if (snap.empty) {
+            tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; color:var(--text-muted);">No broadcast logs yet.</td></tr>`;
+            return;
+        }
+
+        snap.forEach(d => {
+            const log = d.data();
+            const statusColor = log.status === "delivered" ? "var(--success)" : (log.status === "failed" ? "var(--error)" : "#3b82f6");
+            const sentDate = log.sentAt ? new Date(log.sentAt).toLocaleString() : "N/A";
+            tbody.innerHTML += `
+                <tr>
+                    <td><b>${log.name || 'N/A'}</b></td>
+                    <td>${log.phone || 'N/A'}</td>
+                    <td style="font-size:0.75rem;">${sentDate}</td>
+                    <td><code>${log.templateName || 'N/A'}</code></td>
+                    <td><span style="color:${statusColor}; font-weight:700; text-transform:uppercase; font-size:0.75rem;">${log.status || 'sent'}</span></td>
+                    <td style="font-size:0.75rem; color:var(--text-muted); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${log.error || 'Successful'}">${log.error || 'OK'}</td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        console.error("Failed to load WhatsApp logs:", e);
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; color:var(--error);">Error loading logs: ${e.message}</td></tr>`;
+    }
+}
+
+// Helper to trigger API request to Meta Business Cloud API
+async function triggerWhatsAppCloudAPI(phoneId, accessToken, recipientPhone, templateName, templateLang, userName, daysIdle) {
+    // Format recipient phone number: ensure country code (remove +, spaces, leading zero)
+    let formattedPhone = recipientPhone.replace(/[^0-9]/g, "");
+    // Default country code to 91 (India) if it looks like a 10 digit number
+    if (formattedPhone.length === 10) {
+        formattedPhone = "91" + formattedPhone;
+    }
+
+    const cleanDaysIdle = daysIdle === 999 ? "many" : String(daysIdle);
+
+    const payload = {
+        messaging_product: "whatsapp",
+        to: formattedPhone,
+        type: "template",
+        template: {
+            name: templateName,
+            language: { code: templateLang || "en_US" },
+            components: [
+                {
+                    type: "body",
+                    parameters: [
+                        { type: "text", text: userName },
+                        { type: "text", text: cleanDaysIdle }
+                    ]
+                }
+            ]
+        }
+    };
+
+    const url = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error?.message || "WhatsApp API Error");
+    }
+    return data;
+}
+
+// Trigger single reminder manually
+window.sendWhatsAppReminderNow = async (userId, name, phone, daysIdle) => {
+    if (checkViewOnlyBlocked()) return;
+
+    try {
+        const snap = await getDoc(doc(db, "settings", "whatsapp"));
+        if (!snap.exists()) {
+            return alert("WhatsApp Business API settings are not configured yet!");
+        }
+
+        const config = snap.data();
+        if (!config.phoneId || !config.accessToken || !config.templateName) {
+            return alert("API Configuration is incomplete. Save configuration details first.");
+        }
+
+        console.log(`Sending WhatsApp reminder to ${name} (${phone})`);
+        
+        // Log "sending" state
+        const logRef = await addDoc(collection(db, "whatsapp_logs"), {
+            userId,
+            phone,
+            name,
+            templateName: config.templateName,
+            sentAt: new Date().toISOString(),
+            status: "sending",
+            error: ""
+        });
+
+        try {
+            await triggerWhatsAppCloudAPI(
+                config.phoneId,
+                config.accessToken,
+                phone,
+                config.templateName,
+                config.templateLang,
+                name,
+                daysIdle
+            );
+
+            // Update log as delivered/sent
+            await updateDoc(logRef, { status: "delivered", error: "Delivered successfully" });
+            alert(`Reminder sent successfully to ${name}! ✅`);
+        } catch (apiError) {
+            // Update log as failed
+            await updateDoc(logRef, { status: "failed", error: apiError.message });
+            alert(`Failed to send: ${apiError.message}`);
+        }
+
+        whatsappLoad();
+        loadWhatsAppDashboardStats();
+    } catch (e) {
+        console.error("Reminder trigger failed:", e);
+        alert("Error: " + e.message);
+    }
+};
+
+// Trigger reminders to all idle users
+window.sendWhatsAppReminderToAll = async () => {
+    if (checkViewOnlyBlocked()) return;
+
+    const snap = await getDoc(doc(db, "settings", "whatsapp"));
+    if (!snap.exists()) {
+        return alert("WhatsApp API settings are not configured!");
+    }
+
+    const config = snap.data();
+    if (!config.phoneId || !config.accessToken || !config.templateName) {
+        return alert("API Configuration is incomplete.");
+    }
+
+    const confirmSend = confirm("Are you sure you want to send WhatsApp reminders to ALL idle users (7+ days since voting)?");
+    if (!confirmSend) return;
+
+    const btn = document.getElementById("wa_send_all_btn");
+    btn.disabled = true;
+    btn.textContent = "⏳ Broadcasting...";
+
+    try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        const logsSnap = await getDocs(collection(db, "whatsapp_logs"));
+        
+        // Check cooldown map
+        const lastReminderMap = {};
+        logsSnap.forEach(d => {
+            const log = d.data();
+            if (log.phone && log.sentAt) {
+                const sentTime = new Date(log.sentAt).getTime();
+                if (!lastReminderMap[log.phone] || sentTime > lastReminderMap[log.phone]) {
+                    lastReminderMap[log.phone] = sentTime;
+                }
+            }
+        });
+
+        const nowMs = Date.now();
+        let totalSent = 0;
+        let totalFailed = 0;
+
+        for (const u of usersSnap.docs) {
+            const userData = u.data();
+            const userPhone = String(userData.phone || "").trim();
+            const lastVoteDate = userData.lastVoteDate || "";
+            const daysIdle = getDaysIdle(lastVoteDate);
+
+            if (daysIdle >= 7 && userData.role !== "admin" && userPhone) {
+                const lastSentTime = lastReminderMap[userPhone];
+                const hoursSinceLast = lastSentTime ? (nowMs - lastSentTime) / (1000 * 60 * 60) : Infinity;
+
+                if (hoursSinceLast >= 24) {
+                    const logRef = await addDoc(collection(db, "whatsapp_logs"), {
+                        userId: u.id,
+                        phone: userPhone,
+                        name: userData.name || "Unknown",
+                        templateName: config.templateName,
+                        sentAt: new Date().toISOString(),
+                        status: "sending",
+                        error: ""
+                    });
+
+                    try {
+                        await triggerWhatsAppCloudAPI(
+                            config.phoneId,
+                            config.accessToken,
+                            userPhone,
+                            config.templateName,
+                            config.templateLang,
+                            userData.name || "Unknown",
+                            daysIdle
+                        );
+                        await updateDoc(logRef, { status: "delivered", error: "Delivered successfully" });
+                        totalSent++;
+                    } catch (apiError) {
+                        await updateDoc(logRef, { status: "failed", error: apiError.message });
+                        totalFailed++;
+                    }
+                }
+            }
+        }
+
+        alert(`Broadcast complete! Sent: ${totalSent}, Failed: ${totalFailed}`);
+        whatsappLoad();
+        loadWhatsAppDashboardStats();
+    } catch (e) {
+        console.error("Bulk sending failed:", e);
+        alert("Error during broadcast: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "💬 Send Reminders to All";
+    }
+};
+
+// Load stats for Dashboard summary metrics
+window.loadWhatsAppDashboardStats = async () => {
+    try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        const logsSnap = await getDocs(collection(db, "whatsapp_logs"));
+
+        // 1. Calculate Idle users count
+        let totalIdle = 0;
+        usersSnap.forEach(u => {
+            const d = u.data();
+            if (d.role !== "admin" && getDaysIdle(d.lastVoteDate) >= 7) {
+                totalIdle++;
+            }
+        });
+        const elIdle = document.getElementById("d_whatsapp_idle");
+        if (elIdle) elIdle.textContent = totalIdle;
+
+        // 2. Calculate today's sent logs status
+        let sentToday = 0;
+        let deliveredToday = 0;
+        let failedToday = 0;
+
+        const todayDateStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD local prefix check
+
+        logsSnap.forEach(l => {
+            const log = l.data();
+            if (log.sentAt && log.sentAt.startsWith(todayDateStr)) {
+                sentToday++;
+                if (log.status === "delivered") {
+                    deliveredToday++;
+                } else if (log.status === "failed") {
+                    failedToday++;
+                }
+            }
+        });
+
+        const elStats = document.getElementById("d_whatsapp_stats");
+        if (elStats) elStats.textContent = `${sentToday} / ${deliveredToday} / ${failedToday}`;
+
+    } catch (e) {
+        console.error("Failed to load WhatsApp dashboard stats:", e);
     }
 };
 // loadBanner is now called directly inside initAdmin()

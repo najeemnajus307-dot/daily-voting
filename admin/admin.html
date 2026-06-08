@@ -68,6 +68,7 @@
                 <div id="nav-lib" class="nav-link" onclick="showPage('lib')">📚 Library Edit</div>
                 <div id="nav-announcement" class="nav-link" onclick="showPage('announcement')">📢 Announcements</div>
                 <div id="nav-settings" class="nav-link" onclick="showPage('settings')">⚙️ Settings</div>
+                <div id="nav-whatsapp" class="nav-link" onclick="showPage('whatsapp')">💬 WhatsApp Reminders</div>
                 <a id="nav-task-editor" href="task-editor.html" class="nav-link" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">📝 Task Editor</a>
                 <a id="nav-back" href="../user/voting.html" class="nav-link" style="margin-top: 5px; background: rgba(0,0,0,0.2); border-radius: 12px; display: flex; align-items: center; gap: 8px;">📱 Back to App</a>
             </nav>
@@ -85,6 +86,8 @@
                 <div class="stat-grid">
                     <div class="stat-card">Total Users <b id="d_users">0</b></div>
                     <div class="stat-card">Rows Shown <b id="d_shown">0</b></div>
+                    <div class="stat-card" style="border-left: 4px solid var(--secondary);">Idle (7+ Days) <b id="d_whatsapp_idle">0</b></div>
+                    <div class="stat-card" style="border-left: 4px solid var(--primary);">WA Sent/Deliv/Fail Today <b id="d_whatsapp_stats">0 / 0 / 0</b></div>
                     <div class="stat-card">
                         <label style="font-size: 0.8rem; color: var(--text-muted);">Quick Search & Filter</label>
                         <input type="text" id="d_search" placeholder="Search name or phone..." style="width:100%; padding:8px; margin-top:5px; border-radius:8px; border:1px solid #ddd;" oninput="dashFilter()">
@@ -343,8 +346,96 @@
                         <button class="btn-secondary" onclick="loadResetHistory()" style="width: auto; font-size: 0.85rem; padding: 10px 20px; border-color: #9f1239; color: #9f1239;">📋 View Reset History</button>
                     </div>
                     
-                    <div id="resetHistoryList" style="display: none; margin-top: 20px; padding-top: 15px; border-top: 1px dashed #fecaca;">
-                        <!-- Reset history will load here -->
+                </div>
+            </section>
+
+            <!-- WHATSAPP REMINDERS -->
+            <section id="page-whatsapp">
+                <h1 class="font-serif" style="margin-bottom: 20px;">💬 WhatsApp Business API Reminders</h1>
+
+                <!-- API Credentials Config -->
+                <div class="panel" style="padding: 20px; margin-bottom: 30px; border-left: 4px solid var(--primary);">
+                    <h3 class="font-serif" style="margin-bottom: 10px; font-size:1.1rem; color:var(--primary);">⚙️ WhatsApp Business Cloud API Settings</h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:15px;">
+                        <div>
+                            <label style="font-size:0.75rem; font-weight:700;">PHONE NUMBER ID</label>
+                            <input id="wa_phone_id" type="text" placeholder="e.g. 1059483726154" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:5px;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; font-weight:700;">WHATSAPP BUSINESS ACCOUNT ID (WABA ID)</label>
+                            <input id="wa_waba_id" type="text" placeholder="e.g. 9876543210123" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:5px;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; font-weight:700;">TEMPLATE NAME (APPROVED IN META)</label>
+                            <input id="wa_template_name" type="text" placeholder="e.g. voting_reminder" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:5px;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; font-weight:700;">TEMPLATE LANGUAGE CODE</label>
+                            <input id="wa_template_lang" type="text" placeholder="en_US" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:5px;">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size:0.75rem; font-weight:700;">PERMANENT ACCESS TOKEN</label>
+                            <input id="wa_access_token" type="password" placeholder="EAAG..." style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:5px;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
+                        <button class="btn-primary" style="width: auto; padding: 10px 20px; font-size:0.9rem;" onclick="saveWhatsAppConfig()">Save Config</button>
+                        <span id="wa_config_msg" style="font-size: 0.85rem; color: var(--success);"></span>
+                    </div>
+                    <div style="margin-top: 15px; padding: 12px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; font-size: 0.8rem; color: #1e3a8a;">
+                        💡 <b>Important API info</b>: Your WhatsApp Template should be pre-approved in the Meta Developer Console. Ensure your template contains parameters for <code>{{1}}</code> ({name}) and <code>{{2}}</code> ({days_idle}) if you want to pass dynamic values.
+                    </div>
+                </div>
+
+                <!-- Action Bar & Idle Users Table -->
+                <div class="panel" style="padding: 20px; margin-bottom: 25px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-bottom:15px;">
+                        <div>
+                            <h3 class="font-serif" style="margin:0; font-size:1.1rem; color:var(--primary);">⏳ Inactive Users (7+ Days)</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Users who have not voted in the last 7 days (or never voted).</p>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button id="wa_send_all_btn" class="btn-primary" style="width: auto; background: var(--secondary); border-color: var(--secondary);" onclick="sendWhatsAppReminderToAll()">💬 Send Reminders to All</button>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto; width:100%;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Last Voted</th>
+                                    <th>Days Idle</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wa_idle_body">
+                                <tr><td colspan="6" style="padding:20px; color:var(--text-muted);">Loading inactive users...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Message Logs -->
+                <div class="panel" style="padding: 20px; margin-bottom: 25px;">
+                    <h3 class="font-serif" style="margin-top:0; margin-bottom:15px; font-size:1.1rem; color:var(--primary);">📋 Broadcast & Delivery Log History</h3>
+                    <div style="overflow-x: auto; width:100%;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Recipient</th>
+                                    <th>Phone</th>
+                                    <th>Sent At</th>
+                                    <th>Template</th>
+                                    <th>Status</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wa_logs_body">
+                                <tr><td colspan="6" style="padding:20px; color:var(--text-muted);">No logs recorded yet.</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
