@@ -161,9 +161,7 @@ window.showSection = (id) => {
     if (id === 'achievementsSection') loadAchievements();
 };
 
-window.switchToAdminPanel = () => {
-    window.location.href = '../admin/admin.html';
-};
+// switchToAdminPanel is defined below (line ~2006) with admin_bypass_auth logic
 
 // --- WORKOUT LIBRARY ---
 window.loadWorkouts = async () => {
@@ -397,7 +395,7 @@ async function loadHome() {
         const todayStr = getVoteDate();
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split("T")[0];
+        const yesterdayStr = localDateStr(yesterday); // Fixed: use local date to avoid IST/UTC timezone shift bug
 
         let streak = u.streak || 0;
         const lastVote = u.lastVoteDate || "";
@@ -516,11 +514,8 @@ async function checkBroadcastMessages() {
         }
 
         const todayStr = getVoteDate();
-        const votedSnap = await getDocs(query(
-            collection(db, "votes"),
-            where("phone", "==", phone),
-            where("date", "==", todayStr)
-        ));
+        // Use getDocsByPhone to handle both string and number phone types in Firestore
+        const votedSnap = await getDocsByPhone("votes", phone, [where("date", "==", todayStr)]);
         const hasVoted = !votedSnap.empty;
 
         // Query messages
@@ -1278,9 +1273,8 @@ window.showCorrectionForm = async (date) => {
     `;
 
     try {
-        // Query the votes for that date to see which task IDs were already voted
-        const q = query(collection(db, "votes"), where("phone", "==", phone), where("date", "==", date));
-        const votesSnap = await getDocs(q);
+        // Use getDocsByPhone to handle both string and number phone types in Firestore
+        const votesSnap = await getDocsByPhone("votes", phone, [where("date", "==", date)]);
         const votedTaskIds = new Set();
         votesSnap.forEach(doc => {
             const v = doc.data();
@@ -2127,8 +2121,6 @@ function renderAchievements() {
     });
 }
 
-// Init
+// Init — only load home on startup; other sections load lazily via showSection()
 loadHome();
-loadLeaderboard();
-renderCalendar();
 registerFCMToken(); // Register for push notifications
