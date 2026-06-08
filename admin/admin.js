@@ -469,9 +469,11 @@ window.dashLoad = async () => {
 
 window.renderDashTable = () => {
     const term = (document.getElementById("d_search")?.value || "").toLowerCase();
+    const roleFilter = document.getElementById("d_role_filter")?.value || "all";
     if (!window.allUsersRows) return;
     const rows = window.allUsersRows.filter(r => 
-        (r.name || "").toLowerCase().includes(term) || (r.phone || "").includes(term)
+        ((r.name || "").toLowerCase().includes(term) || (r.phone || "").includes(term)) &&
+        (roleFilter === "all" || r.role === roleFilter)
     );
 
     rows.sort((a, b) => b.total - a.total);

@@ -86,8 +86,12 @@
                     <div class="stat-card">Total Users <b id="d_users">0</b></div>
                     <div class="stat-card">Rows Shown <b id="d_shown">0</b></div>
                     <div class="stat-card">
-                        <label style="font-size: 0.8rem; color: var(--text-muted);">Quick Search</label>
+                        <label style="font-size: 0.8rem; color: var(--text-muted);">Quick Search & Filter</label>
                         <input type="text" id="d_search" placeholder="Search name or phone..." style="width:100%; padding:8px; margin-top:5px; border-radius:8px; border:1px solid #ddd;" oninput="dashFilter()">
+                        <select id="d_role_filter" style="width:100%; padding:8px; margin-top:5px; border-radius:8px; border:1px solid #ddd;" onchange="dashFilter()">
+                            <option value="all">All Users</option>
+                            <option value="admin">Admins Only</option>
+                        </select>
                     </div>
                     <div class="stat-card">
                         <label style="font-size: 0.8rem; color: var(--text-muted);">Date Range</label>
