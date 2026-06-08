@@ -91,6 +91,31 @@
                 </div>
             </div>
 
+            <!-- Special Task Question Section -->
+            <div id="questionSection" style="display: none; margin-bottom: 20px; background: #fffbeb; border: 1.5px dashed #fcd34d; border-radius: 14px; padding: 18px;">
+                <h3 style="font-size: 0.9rem; font-weight: 800; color: #b45309; margin-bottom: 4px;">🌟 Special Task Question (Optional)</h3>
+                <p style="font-size: 0.72rem; color: #92400e; margin-bottom: 14px;">When user checks this task, a question popup will appear. They must answer before submitting.</p>
+
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 0.78rem; color: #b45309;">Question Text</label>
+                    <input id="taskQuestion" placeholder="e.g. How many reps did you complete?" style="border-color: #fcd34d;">
+                </div>
+
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 0.78rem; color: #b45309;">Answer Type</label>
+                    <select id="taskQuestionType" onchange="toggleChoicesField()" style="width:100%; padding:10px; border-radius:8px; border:1px solid #fcd34d; font-family:inherit; font-size:0.9rem;">
+                        <option value="">-- No question --</option>
+                        <option value="short">Short Answer (User types text)</option>
+                        <option value="choice">Multiple Choice (User selects option)</option>
+                    </select>
+                </div>
+
+                <div id="choicesField" style="display:none;">
+                    <label style="font-size: 0.78rem; color: #b45309; font-weight: 700;">Choices (one per line)</label>
+                    <textarea id="taskChoices" placeholder="Option A&#10;Option B&#10;Option C" style="width:100%; min-height:80px; padding:8px 12px; font-size:0.85rem; border:1px solid #fcd34d; border-radius:8px; resize:vertical; outline:none; font-family:inherit; margin-top:5px; box-sizing:border-box;"></textarea>
+                </div>
+            </div>
+
             <button class="btn-primary" onclick="saveTask()">Save Task</button>
         </div>
 
@@ -172,6 +197,12 @@
             const isRecurring = document.getElementById("typeRecurring").checked;
             document.getElementById("recurringDaysGroup").style.display = isRecurring ? "block" : "none";
             document.getElementById("specialDatesGroup").style.display = isRecurring ? "none" : "block";
+            document.getElementById("questionSection").style.display = isRecurring ? "none" : "block";
+        };
+
+        window.toggleChoicesField = () => {
+            const type = document.getElementById("taskQuestionType").value;
+            document.getElementById("choicesField").style.display = type === "choice" ? "block" : "none";
         };
 
         async function loadTasks() {
@@ -190,13 +221,15 @@
                 let timeStr = t.start && t.end ? `${t.start} - ${t.end}` : "No time limit";
                 let scheduleDetail = t.startDate ? `Dates: ${t.startDate} to ${t.endDate || 'ongoing'}` : `Days: ${(t.days || []).map(dayNum => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayNum]).join(', ')}`;
 
+                const hasQ = t.question ? `✅ Q: ${t.question}` : '';
                 div.innerHTML = `
                     <div style="font-weight:700; color:var(--primary);">${t.text}</div>
                     <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
                         Points: ${t.points} | Time: ${timeStr} | ${scheduleDetail}
+                        ${hasQ ? `<br><span style="color:#b45309; font-weight:600;">${hasQ} (${t.questionType})</span>` : ''}
                     </div>
                     <div class="task-actions">
-                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start || ''}', '${t.end || ''}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}')" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Edit</button>
+                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start || ''}', '${t.end || ''}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}', '${(t.question || '').replace(/'/g, &quot;\\&quot;)}', '${t.questionType || ''}', ${JSON.stringify(t.questionChoices || [])})" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Edit</button>
                         <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="deleteTask('${d.id}')" ${isViewOnly ? 'disabled' : ''}>Delete</button>
                     </div>`;
                 list.appendChild(div);
@@ -230,7 +263,29 @@
 
             if (!text || points < 0) return alert("Please provide task text and valid points.");
 
-            const data = { text, points, start, end, days, startDate: startDate || null, endDate: endDate || null };
+            // Question data (only for special tasks)
+            let question = null;
+            let questionType = null;
+            let questionChoices = [];
+            if (!isRecurring) {
+                questionType = document.getElementById("taskQuestionType").value || null;
+                const qText = document.getElementById("taskQuestion").value.trim();
+                if (questionType && qText) {
+                    question = qText;
+                    if (questionType === "choice") {
+                        const raw = document.getElementById("taskChoices").value.trim();
+                        questionChoices = raw.split("\n").map(s => s.trim()).filter(Boolean);
+                    }
+                }
+            }
+
+            const data = {
+                text, points, start, end, days,
+                startDate: startDate || null, endDate: endDate || null,
+                question: question || null,
+                questionType: questionType || null,
+                questionChoices: questionChoices.length ? questionChoices : []
+            };
             if (editId) {
                 await updateDoc(doc(db, "tasks", editId), data);
                 editId = null;
@@ -241,7 +296,7 @@
             location.reload();
         };
 
-        window.editTask = (id, text, points, start, end, days, startDate, endDate) => {
+        window.editTask = (id, text, points, start, end, days, startDate, endDate, question, questionType, questionChoices) => {
             if (currentAdminPerms.admin_view_only) return;
             editId = id;
             document.getElementById("taskText").value = text;
@@ -250,6 +305,12 @@
             document.getElementById("endTime").value = end || "";
             document.getElementById("startDate").value = startDate || "";
             document.getElementById("endDate").value = endDate || "";
+
+            // Restore question fields
+            document.getElementById("taskQuestion").value = question || "";
+            document.getElementById("taskQuestionType").value = questionType || "";
+            document.getElementById("taskChoices").value = (questionChoices || []).join("\n");
+            toggleChoicesField();
             
             document.querySelectorAll("#daysBox input").forEach(c => c.checked = false);
             

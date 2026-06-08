@@ -73,6 +73,31 @@
         .filter-bar { display: flex; background: white; padding: 6px; border-radius: 12px; border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); margin-bottom: 15px; }
         .filter-btn { flex: 1; padding: 8px; border-radius: 8px; border: none; background: transparent; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
         .filter-btn.active { background: var(--primary); color: white; }
+        /* Special Task Question Modal */
+        #specialQuestionModal {
+            display: none; position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+            align-items: center; justify-content: center;
+        }
+        #specialQuestionModal.open { display: flex; }
+        .sq-modal-card {
+            background: white; border-radius: 24px; padding: 28px 22px;
+            max-width: 360px; width: 92%; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+        .sq-choice-btn {
+            display: block; width: 100%; text-align: left; padding: 10px 14px;
+            border: 1.5px solid #e2e8f0; border-radius: 10px; background: #f8fafc;
+            font-size: 0.88rem; font-weight: 600; color: var(--text-primary);
+            cursor: pointer; margin-bottom: 8px; transition: all 0.18s;
+        }
+        .sq-choice-btn:hover, .sq-choice-btn.selected {
+            border-color: #d97706; background: #fffbeb; color: #b45309;
+        }
     </style>
 </head>
 <body>
@@ -183,6 +208,36 @@
 
             <button class="btn-primary" id="submitBtn" onclick="submitVote()">Submit Vote</button>
         </section>
+
+        <!-- SPECIAL TASK QUESTION MODAL -->
+        <div id="specialQuestionModal" role="dialog" aria-modal="true">
+            <div class="sq-modal-card">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:18px;">
+                    <div style="font-size:1.8rem;">🌟</div>
+                    <div>
+                        <div style="font-size:0.6rem; font-weight:800; color:#d97706; letter-spacing:1px; text-transform:uppercase;">Special Challenge</div>
+                        <div id="sqModalTaskName" style="font-size:1rem; font-weight:800; color:#b45309; line-height:1.2;"></div>
+                    </div>
+                </div>
+                <div id="sqModalQuestion" style="font-size:0.95rem; font-weight:700; color:var(--text-primary); margin-bottom:16px; line-height:1.4;"></div>
+                <!-- Short Answer Input -->
+                <div id="sqShortAnswer" style="display:none; margin-bottom:16px;">
+                    <textarea id="sqAnswerText" placeholder="Type your answer here..." rows="3"
+                        style="width:100%; padding:10px 12px; font-size:0.88rem; border:1.5px solid #fcd34d; border-radius:12px; outline:none; font-family:inherit; resize:vertical; box-sizing:border-box; background:#fffbeb;"></textarea>
+                </div>
+                <!-- Multiple Choice Buttons -->
+                <div id="sqChoicesArea" style="display:none; margin-bottom:16px;"></div>
+
+                <button class="btn-primary" id="sqConfirmBtn" onclick="confirmSpecialTaskAnswer()"
+                    style="background:linear-gradient(135deg,#f59e0b,#d97706); border:none; width:100%; font-weight:800; border-radius:14px; padding:12px; font-size:0.95rem;">
+                    Confirm ✅
+                </button>
+                <button onclick="cancelSpecialTaskAnswer()"
+                    style="display:block; margin-top:8px; width:100%; background:transparent; border:1px solid #e2e8f0; border-radius:12px; padding:10px; font-size:0.85rem; color:var(--text-muted); cursor:pointer;">
+                    Cancel
+                </button>
+            </div>
+        </div>
 
         <!-- LEADERBOARD SECTION -->
         <section id="leaderboardSection" class="section animate-fade-in">

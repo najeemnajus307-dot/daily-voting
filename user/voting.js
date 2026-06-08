@@ -788,22 +788,41 @@ async function loadTasks() {
 
         // Render Special Tasks first with a beautiful visual separation
         if (unvotedSpecialTasks.length > 0) {
+            // Dynamic day label: e.g. "Sunday Special Task", "Saturday Special Task"
+            const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const dayLabel = dayNames[new Date().getDay()];
             taskBox.innerHTML += `
                 <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 1.1rem;">🌟</span>
-                    <span style="font-size: 0.75rem; font-weight: 800; color: #d97706; letter-spacing: 1px; text-transform: uppercase;">Special Challenge Task</span>
+                    <span style="font-size: 1.2rem;">🌟</span>
+                    <span style="font-size: 0.78rem; font-weight: 900; color: #d97706; letter-spacing: 1.2px; text-transform: uppercase;">${dayLabel} Special Task</span>
                 </div>`;
             unvotedSpecialTasks.forEach(t => {
+                const hasQ = t.question && t.questionType ? '❓' : '';
+                // Encode task data for the modal
+                const safeQuestion    = encodeURIComponent(t.question    || '');
+                const safeChoices     = encodeURIComponent(JSON.stringify(t.questionChoices || []));
+                const safeText        = encodeURIComponent(t.text);
                 taskBox.innerHTML += `
-                    <div class="panel animate-fade-in" style="padding:15px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 1.5px solid #fcd34d; background: #fffbeb; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.05); border-radius: 16px;">
+                    <div class="panel animate-fade-in" style="padding:15px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 2px solid #fcd34d; background: linear-gradient(135deg,#fffbeb,#fef9ee); box-shadow: 0 6px 18px rgba(217,119,6,0.1); border-radius: 18px;">
                         <div style="max-width: 80%;">
-                            <div style="font-weight:700; color: #b45309;">${t.text}</div>
-                            <div style="font-size:0.7rem; color:#d97706; display:flex; gap:10px; align-items:center; margin-top:4px; font-weight: 600;">
+                            <div style="font-weight:900; color: #92400e; font-size:1rem; letter-spacing:0.2px;">${t.text} ${hasQ}</div>
+                            <div style="font-size:0.7rem; color:#d97706; display:flex; gap:10px; align-items:center; margin-top:5px; font-weight: 700;">
                                 <span>+${t.points} pts (Admin Approval Required)</span>
                                 ${(t.start && t.end) ? `<span style="color:#b45309; display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
                             </div>
+                            ${hasQ ? `<div style="font-size:0.65rem; color:#b45309; margin-top:4px; font-weight:700;">📝 Answer required before submit</div>` : ''}
                         </div>
-                        <input type="checkbox" data-points="${t.points}" data-id="${t.id}" data-is-special="true" style="width:22px; height:22px; accent-color: #d97706; cursor: pointer;" onchange="updateTaskProgressBar()">
+                        <input type="checkbox"
+                            data-points="${t.points}"
+                            data-id="${t.id}"
+                            data-is-special="true"
+                            data-question="${safeQuestion}"
+                            data-question-type="${t.questionType || ''}"
+                            data-choices="${safeChoices}"
+                            data-task-text="${safeText}"
+                            data-answer=""
+                            style="width:24px; height:24px; accent-color: #d97706; cursor: pointer;"
+                            onchange="handleSpecialTaskCheck(this)">
                     </div>`;
             });
         }
@@ -915,6 +934,9 @@ window.submitVote = async () => {
             if (isSpecial) {
                 voteDoc.isSpecial = true;
                 voteDoc.pointsCredited = false;
+                // Save the user's answer to the question (if any)
+                const answer = c.dataset.answer || '';
+                if (answer) voteDoc.specialAnswer = answer;
             } else {
                 totalRegularPts += pts;
             }
@@ -2120,6 +2142,83 @@ function renderAchievements() {
         grid.appendChild(card);
     });
 }
+
+// --- SPECIAL TASK QUESTION MODAL ---
+let _sqActiveCheckbox = null;
+
+window.handleSpecialTaskCheck = (chk) => {
+    const question    = decodeURIComponent(chk.dataset.question || '');
+    const qType       = chk.dataset.questionType || '';
+    const choices     = JSON.parse(decodeURIComponent(chk.dataset.choices || '[]'));
+    const taskText    = decodeURIComponent(chk.dataset.taskText || '');
+
+    if (chk.checked && question && qType) {
+        // Show modal
+        _sqActiveCheckbox = chk;
+        document.getElementById('sqModalTaskName').textContent  = taskText;
+        document.getElementById('sqModalQuestion').textContent  = question;
+
+        const shortDiv   = document.getElementById('sqShortAnswer');
+        const choicesDiv = document.getElementById('sqChoicesArea');
+        const answerEl   = document.getElementById('sqAnswerText');
+
+        if (qType === 'short') {
+            shortDiv.style.display   = 'block';
+            choicesDiv.style.display = 'none';
+            answerEl.value = '';
+        } else if (qType === 'choice') {
+            shortDiv.style.display   = 'none';
+            choicesDiv.style.display = 'block';
+            choicesDiv.innerHTML = '';
+            choices.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'sq-choice-btn';
+                btn.textContent = opt;
+                btn.onclick = () => {
+                    choicesDiv.querySelectorAll('.sq-choice-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                };
+                choicesDiv.appendChild(btn);
+            });
+        }
+
+        document.getElementById('specialQuestionModal').classList.add('open');
+    } else {
+        // No question or unchecked — just update progress bar normally
+        updateTaskProgressBar();
+    }
+};
+
+window.confirmSpecialTaskAnswer = () => {
+    const qType = _sqActiveCheckbox?.dataset.questionType || '';
+    let answer = '';
+
+    if (qType === 'short') {
+        answer = document.getElementById('sqAnswerText').value.trim();
+        if (!answer) { alert('Please type your answer before confirming.'); return; }
+    } else if (qType === 'choice') {
+        const selected = document.querySelector('#sqChoicesArea .sq-choice-btn.selected');
+        if (!selected) { alert('Please select one option before confirming.'); return; }
+        answer = selected.textContent;
+    }
+
+    if (_sqActiveCheckbox) {
+        _sqActiveCheckbox.dataset.answer = answer; // Store answer on checkbox
+    }
+
+    document.getElementById('specialQuestionModal').classList.remove('open');
+    _sqActiveCheckbox = null;
+    updateTaskProgressBar();
+};
+
+window.cancelSpecialTaskAnswer = () => {
+    if (_sqActiveCheckbox) {
+        _sqActiveCheckbox.checked = false; // Uncheck if cancelled
+        _sqActiveCheckbox = null;
+    }
+    document.getElementById('specialQuestionModal').classList.remove('open');
+    updateTaskProgressBar();
+};
 
 // Init — only load home on startup; other sections load lazily via showSection()
 loadHome();
