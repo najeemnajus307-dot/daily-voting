@@ -200,6 +200,9 @@ window.showPage = (id) => {
     if(id === 'whatsapp') {
         whatsappLoad();
     }
+    if(id === 'adminlogs') {
+        loadAdminLogs();
+    }
 };
 
 let editLibId = null;
@@ -293,9 +296,11 @@ window.libSave = async () => {
 
         if (editLibId) {
             await updateDoc(doc(db, "library", editLibId), data);
+            await logAdminAction("Edit Library Item", `Updated library item "${title}" in category "${cat}"`);
             alert("Updated successfully!");
         } else {
             await addDoc(collection(db, "library"), data);
+            await logAdminAction("Add Library Item", `Created library item "${title}" in category "${cat}"`);
             alert("Saved successfully!");
         }
         
@@ -314,6 +319,12 @@ window.libToggleActive = async (id, currentStatus) => {
     if (checkViewOnlyBlocked()) return;
     try {
         await updateDoc(doc(db, "library", id), { active: !currentStatus });
+        
+        // Log action
+        const docSnap = await getDoc(doc(db, "library", id));
+        const title = docSnap.exists() ? docSnap.data().title : "Unknown";
+        await logAdminAction("Toggle Library Status", `Changed library item "${title}" visibility to ${!currentStatus ? 'Active' : 'Hidden'}`);
+        
         libLoad();
     } catch (e) {
         console.error("Toggle active failed:", e);
@@ -354,9 +365,20 @@ window.libLoad = async () => {
 window.libDel = async (id) => {
     if (checkViewOnlyBlocked()) return;
     if (!confirm("Delete?")) return;
-    await deleteDoc(doc(db, "library", id));
-    if (editLibId === id) window.resetLibForm();
-    libLoad();
+    
+    try {
+        const docSnap = await getDoc(doc(db, "library", id));
+        const title = docSnap.exists() ? docSnap.data().title : "Unknown";
+        
+        await deleteDoc(doc(db, "library", id));
+        await logAdminAction("Delete Library Item", `Removed library item "${title}"`);
+        
+        if (editLibId === id) window.resetLibForm();
+        libLoad();
+    } catch (e) {
+        console.error("Delete library failed:", e);
+        alert("Error: " + e.message);
+    }
 };
 
 const today = () => new Date().toISOString().split("T")[0];
@@ -545,6 +567,9 @@ window.addPoint = async (phone, mode) => {
         console.error("Failed to sync user doc points directly:", err);
     }
     
+    // Log admin action
+    await logAdminAction("Adjusted Points", `Manually adjusted points for ${userRow.name} (${phone}) by ${v} points (Mode: ${mode})`);
+    
     vInput.value = "";
     dashLoad();
 };
@@ -557,6 +582,13 @@ window.toggleAdmin = async (userId, currentRole) => {
     
     try {
         await updateDoc(doc(db, "users", userId), { role: newRole });
+        
+        // Log action
+        const userRow = window.allUsersRows.find(r => r.id === userId);
+        const name = userRow ? userRow.name : "Unknown User";
+        const phone = userRow ? userRow.phone : "---";
+        await logAdminAction("Toggle Role", `Changed role of user ${name} (${phone}) to ${newRole}`);
+        
         alert(`User role updated to ${newRole}!`);
         dashLoad();
     } catch (e) {
@@ -821,6 +853,9 @@ window.saveAdminUserChanges = async () => {
 
         await updateDoc(doc(db, "users", userId), updateData);
 
+        // Log action
+        await logAdminAction("Updated User Details", `Updated details of user ${name} (${phone}). Points delta: ${pointsDelta}.`);
+
         alert("User details updated successfully! ✅");
         closeAdminUserModal();
         dashLoad();
@@ -888,6 +923,8 @@ window.addPointForTask = async (phone, taskId, dateVal) => {
                     points: Math.max(0, currentPoints + points)
                 });
             }
+            // Log action
+            await logAdminAction("Award Task Points", `Awarded ${points} points to ${phone} for completing task "${taskData.text}" on date ${dateVal}`);
             
             alert("Points added successfully! ✅");
             taskLoad();
@@ -991,6 +1028,9 @@ window.creditSpecialPoints = async (voteDocId, phoneVal, points) => {
             console.warn(`User with phone ${phoneVal} not found in users collection to add special points!`);
         }
         
+        // Log action
+        await logAdminAction("Credit Special Task", `Credited ${points} points to user ${phoneVal} for completed Special Task`);
+
         alert("Special task points credited successfully! ✅");
         taskLoad();
         if (typeof specialTaskLoad === "function") specialTaskLoad();
@@ -1149,6 +1189,9 @@ window.adjustSpecialPoints = async (voteId, phoneVal, delta) => {
             }
         }
         
+        // Log action
+        await logAdminAction("Adjust Special Points", `Adjusted special task points for user ${phoneVal} (Vote ID: ${voteId}) by ${delta} points`);
+        
         // Refresh views
         specialTaskLoad();
         dashLoad();
@@ -1187,6 +1230,9 @@ window.deleteSpecialVote = async (voteId, phoneVal, points, pointsCredited) => {
         
         // 2. Delete the vote record
         await deleteDoc(doc(db, "votes", voteId));
+        
+        // Log action
+        await logAdminAction("Delete Special Vote", `Deleted Special Task vote record (Vote ID: ${voteId}) for user ${phoneVal} (deducted ${points} points)`);
         
         alert("Special task vote deleted successfully! ✅");
         specialTaskLoad();
@@ -1329,6 +1375,9 @@ window.delVotes = async (idsStr) => {
                 });
             }
         }
+
+        // Log action
+        await logAdminAction("Delete Vote Records", `Deleted voting records for phone ${userPhone} (deducted total of ${totalDeductedPoints} points)`);
 
         alert("Records deleted successfully, and user points updated! ✅");
         userLoad();
@@ -1510,6 +1559,9 @@ window.approveRequest = async (id) => {
         // 4. Mark request as approved
         await updateDoc(docRef, { status: "approved" });
         
+        // Log action
+        await logAdminAction("Approve Backdate Request", `Approved ${r.requestType || 'backdate'} request for user ${r.name} (${r.phone}) for date ${r.date} (+${r.totalPoints} pts)`);
+        
         alert("Request approved successfully! Changes applied. ✅");
         dashLoad(); // Reload dashboard to update scores and requests list
     } catch (e) {
@@ -1523,7 +1575,19 @@ window.rejectRequest = async (id) => {
     if (!confirm("Are you sure you want to reject this request?")) return;
     
     try {
-        await updateDoc(doc(db, "backdate_requests", id), { status: "rejected" });
+        const docRef = doc(db, "backdate_requests", id);
+        const reqSnap = await getDoc(docRef);
+        const r = reqSnap.exists() ? reqSnap.data() : null;
+        
+        await updateDoc(docRef, { status: "rejected" });
+        
+        // Log action
+        if (r) {
+            await logAdminAction("Reject Backdate Request", `Rejected ${r.requestType || 'backdate'} request for user ${r.name} (${r.phone}) for date ${r.date}`);
+        } else {
+            await logAdminAction("Reject Backdate Request", `Rejected request ID ${id}`);
+        }
+        
         alert("Request rejected. ❌");
         dashLoad(); // Reload dashboard
     } catch (e) {
@@ -1661,6 +1725,7 @@ window.saveMessage = async () => {
                 schedTime: schedType === "scheduled" ? schedTime : "",
                 timestamp: new Date().toISOString()
             });
+            await logAdminAction("Update Broadcast", `Updated announcement message: "${text.substring(0, 50)}..."`);
             alert("Broadcast message updated successfully! ✅");
         } else {
             // Add new broadcast
@@ -1669,6 +1734,9 @@ window.saveMessage = async () => {
                 schedTime: schedType === "scheduled" ? schedTime : "",
                 timestamp: new Date().toISOString()
             });
+
+            // Log action
+            await logAdminAction("Send Broadcast", `Broadcasted message: "${text.substring(0, 50)}..."`);
 
             // Send FCM push immediately (even if scheduled — still notifies)
             await sendFCMPushToAll('\uD83D\uDD4A\uFE0F Faith & Fitness', text);
@@ -1762,7 +1830,12 @@ window.deleteMessage = async (id) => {
     if (checkViewOnlyBlocked()) return;
     if (!confirm("Are you sure you want to delete this broadcast?")) return;
     try {
+        const docSnap = await getDoc(doc(db, "messages", id));
+        const text = docSnap.exists() ? docSnap.data().text : "";
+        
         await deleteDoc(doc(db, "messages", id));
+        await logAdminAction("Delete Broadcast", `Removed announcement: "${text.substring(0, 50)}..."`);
+        
         alert("Broadcast deleted successfully. ✅");
         loadRecentMessages();
     } catch (e) {
@@ -1908,6 +1981,9 @@ window.triggerWeeklyReset = async () => {
         const voteBatch = votesSnap.docs.map(v => deleteDoc(v.ref));
         await Promise.all(voteBatch);
         
+        // Log action
+        await logAdminAction("Weekly Leaderboard Reset", `Archived & reset points for ${usersSnap.size} users for week ${weekLabel}. Wiped total ${totalPointsWiped} pts.`);
+        
         alert(`✅ Weekly reset complete!\n\n${usersSnap.size} users reset.\n${votesSnap.size} vote records cleared.\n\nWeek archived: ${weekLabel}`);
         
         await loadLastResetInfo();
@@ -1969,6 +2045,10 @@ window.saveBanner = async () => {
             announcement: text,
             announcementActive: active
         });
+        
+        // Log action
+        await logAdminAction("Update Banner", `Changed Daily Reflection banner status to active=${active}, Text: "${text.substring(0, 50)}..."`);
+        
         msg.textContent = "Banner saved ✅";
         msg.style.color = "var(--success)";
         setTimeout(() => msg.textContent = "", 2500);
@@ -2037,6 +2117,10 @@ window.saveWhatsAppConfig = async () => {
             manualTemplate,
             updatedAt: new Date().toISOString()
         });
+        
+        // Log action
+        await logAdminAction("Update WhatsApp Config", `Updated WhatsApp API Settings: Phone ID=${phoneId}, Template Name=${templateName}`);
+        
         msg.textContent = "Configuration saved successfully! ✅";
         setTimeout(() => msg.textContent = "", 3000);
     } catch (e) {
@@ -2267,6 +2351,9 @@ window.sendWhatsAppManualLink = async (name, phone, daysIdle) => {
             error: "Sent via WhatsApp Web/App Link"
         });
         
+        // Log admin action
+        await logAdminAction("WhatsApp Manual Link", `Opened WhatsApp Web reminder link for ${name} (${phone})`);
+        
         // Refresh tables and stats
         whatsappLoad();
         loadWhatsAppDashboardStats();
@@ -2316,10 +2403,18 @@ window.sendWhatsAppReminderNow = async (userId, name, phone, daysIdle) => {
 
             // Update log as delivered/sent
             await updateDoc(logRef, { status: "delivered", error: "Delivered successfully" });
+            
+            // Log admin action
+            await logAdminAction("WhatsApp API Reminder", `Sent Cloud API reminder to ${name} (${phone})`);
+            
             alert(`Reminder sent successfully to ${name}! ✅`);
         } catch (apiError) {
             // Update log as failed
             await updateDoc(logRef, { status: "failed", error: apiError.message });
+            
+            // Log admin action failure
+            await logAdminAction("WhatsApp API Failure", `Failed Cloud API reminder to ${name} (${phone}): ${apiError.message}`);
+            
             alert(`Failed to send: ${apiError.message}`);
         }
 
@@ -2469,5 +2564,69 @@ window.loadWhatsAppDashboardStats = async () => {
     }
 };
 // loadBanner is now called directly inside initAdmin()
+
+// --- ADMIN AUDIT LOGS SYSTEM ---
+
+// Helper to log admin actions to Firestore
+async function logAdminAction(action, details) {
+    const adminPhone = localStorage.getItem("userPhone") || "Bypassed Admin";
+    let adminName = "Admin";
+    
+    if (window.allUsersRows) {
+        const u = window.allUsersRows.find(row => String(row.phone) === String(adminPhone));
+        if (u) adminName = u.name;
+    }
+    
+    try {
+        await addDoc(collection(db, "admin_logs"), {
+            adminPhone: String(adminPhone),
+            adminName,
+            action,
+            details,
+            timestamp: new Date().toISOString()
+        });
+    } catch (e) {
+        console.error("Failed to write admin audit log:", e);
+    }
+}
+
+// Load and render the admin audit log list
+window.loadAdminLogs = async () => {
+    const tbody = document.getElementById("admin_logs_body");
+    if (!tbody) return;
+    
+    tbody.innerHTML = `<tr><td colspan="5" style="padding:20px; color:var(--text-muted);">Fetching system audit history...</td></tr>`;
+    
+    try {
+        const snap = await getDocs(query(
+            collection(db, "admin_logs"),
+            orderBy("timestamp", "desc"),
+            limit(50)
+        ));
+        
+        tbody.innerHTML = "";
+        if (snap.empty) {
+            tbody.innerHTML = `<tr><td colspan="5" style="padding:20px; color:var(--text-muted);">No administrative actions logged yet.</td></tr>`;
+            return;
+        }
+        
+        snap.forEach(d => {
+            const log = d.data();
+            const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleString() : "N/A";
+            tbody.innerHTML += `
+                <tr>
+                    <td><b>${log.adminName || "Admin"}</b></td>
+                    <td>${log.adminPhone || "---"}</td>
+                    <td><span style="background: rgba(2, 132, 199, 0.08); color: #0284c7; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">${log.action || "Action"}</span></td>
+                    <td style="text-align: left; font-size: 0.85rem; max-width: 400px; overflow-wrap: break-word;">${log.details || "---"}</td>
+                    <td style="font-size: 0.8rem; color: var(--text-muted);">${timeStr}</td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        console.error("Failed to load admin logs:", e);
+        tbody.innerHTML = `<tr><td colspan="5" style="padding:20px; color:var(--error);">Error loading logs: ${e.message}</td></tr>`;
+    }
+};
 
 

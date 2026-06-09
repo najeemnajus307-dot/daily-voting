@@ -69,6 +69,7 @@
                 <div id="nav-announcement" class="nav-link" onclick="showPage('announcement')">📢 Announcements</div>
                 <div id="nav-settings" class="nav-link" onclick="showPage('settings')">⚙️ Settings</div>
                 <div id="nav-whatsapp" class="nav-link" onclick="showPage('whatsapp')">💬 WhatsApp Reminders</div>
+                <div id="nav-adminlogs" class="nav-link" onclick="showPage('adminlogs')">📜 Admin Action Logs</div>
                 <a id="nav-task-editor" href="task-editor.html" class="nav-link" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">📝 Task Editor</a>
                 <a id="nav-back" href="../user/voting.html" class="nav-link" style="margin-top: 5px; background: rgba(0,0,0,0.2); border-radius: 12px; display: flex; align-items: center; gap: 8px;">📱 Back to App</a>
             </nav>
@@ -438,6 +439,36 @@
                             </thead>
                             <tbody id="wa_logs_body">
                                 <tr><td colspan="6" style="padding:20px; color:var(--text-muted);">No logs recorded yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ADMIN ACTION LOGS -->
+            <section id="page-adminlogs">
+                <h1 class="font-serif" style="margin-bottom: 20px;">📜 Admin Action & Audit Logs</h1>
+                <div class="panel" style="padding: 20px; margin-bottom: 25px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-bottom:15px;">
+                        <div>
+                            <h3 class="font-serif" style="margin:0; font-size:1.1rem; color:var(--primary);">System Audit History</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Real-time log of administrative modifications, adjustments, and setting updates.</p>
+                        </div>
+                        <button class="btn-primary btn-sm" style="width: auto; background: var(--secondary); border-color: var(--secondary);" onclick="loadAdminLogs()">🔄 Refresh Logs</button>
+                    </div>
+                    <div style="overflow-x: auto; width:100%;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Admin</th>
+                                    <th>Phone</th>
+                                    <th>Action</th>
+                                    <th>Details</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin_logs_body">
+                                <tr><td colspan="5" style="padding:20px; color:var(--text-muted);">Loading system logs...</td></tr>
                             </tbody>
                         </table>
                     </div>
