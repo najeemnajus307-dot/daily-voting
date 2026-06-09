@@ -31,18 +31,21 @@ async function triggerWhatsAppCloudAPI(phoneId, accessToken, recipientPhone, tem
         type: "template",
         template: {
             name: templateName,
-            language: { code: templateLang || "en_US" },
-            components: [
-                {
-                    type: "body",
-                    parameters: [
-                        { type: "text", text: userName },
-                        { type: "text", text: cleanDaysIdle }
-                    ]
-                }
-            ]
+            language: { code: templateLang || "en_US" }
         }
     };
+
+    if (templateName !== "hello_world") {
+        payload.template.components = [
+            {
+                type: "body",
+                parameters: [
+                    { type: "text", text: userName },
+                    { type: "text", text: cleanDaysIdle }
+                ]
+            }
+        ];
+    }
 
     const url = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
     const response = await fetch(url, {

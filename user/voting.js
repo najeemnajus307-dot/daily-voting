@@ -300,132 +300,137 @@ async function loadHome() {
     const options = { weekday: 'long', day: 'numeric', month: 'long' };
     document.getElementById("todayDate").textContent = now.toLocaleDateString('en-US', options);
 
-    // Fetch all tasks to identify special task IDs as a backup safeguard
-    const tasksSnap = await getDocs(collection(db, "tasks"));
-    const specialTaskIds = new Set();
-    tasksSnap.forEach(doc => {
-        const taskData = doc.data();
-        if (taskData.startDate) {
-            specialTaskIds.add(doc.id);
-        }
-    });
-
-    // Calculate Points from Votes
-    let totalPoints = 0;
-    
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sevenDaysAgoStr = localDateStr(sevenDaysAgo); // use local date to avoid UTC shift
-
-    const votesSnap = await getDocsByPhone("votes", phone);
-    votesSnap.forEach(d => {
-        const v = d.data();
-        const pts = Number(v.points || 0);
-        const isSpecialTask = v.isSpecial || specialTaskIds.has(v.taskId);
-        if (!(isSpecialTask && !v.pointsCredited)) {
-            totalPoints += pts;
-        }
-    });
-
-    // Calculate actual weekly rank among all users
-    const allUsersSnap = await getDocs(collection(db, "users"));
-    const allVotesSnap = await getDocs(collection(db, "votes"));
-    
-    const weeklyPointsMap = {};
-    allVotesSnap.forEach(d => {
-        const v = d.data();
-        const pts = Number(v.points || 0);
-        const date = v.date || "";
-        const isSpecialTask = v.isSpecial || specialTaskIds.has(v.taskId);
-        if (!(isSpecialTask && !v.pointsCredited)) {
-            if (date >= sevenDaysAgoStr) {
-                weeklyPointsMap[v.phone] = (weeklyPointsMap[v.phone] || 0) + pts;
+    try {
+        // Fetch all tasks to identify special task IDs as a backup safeguard
+        const tasksSnap = await getDocs(collection(db, "tasks"));
+        const specialTaskIds = new Set();
+        tasksSnap.forEach(doc => {
+            const taskData = doc.data();
+            if (taskData.startDate) {
+                specialTaskIds.add(doc.id);
             }
-        }
-    });
-
-    const userList = [];
-    allUsersSnap.forEach(u => {
-        const d = u.data();
-        userList.push({
-            phone: d.phone,
-            weeklyPoints: weeklyPointsMap[d.phone] || 0
         });
-    });
 
-    // Sort users by weekly points descending
-    userList.sort((a, b) => b.weeklyPoints - a.weeklyPoints);
-
-    // Determine logged in user's rank with tie-handling
-    let myWeeklyRank = 1;
-    let prevPoints = null;
-    let actualRank = 1;
-    for (let i = 0; i < userList.length; i++) {
-        const currentPoints = userList[i].weeklyPoints;
-        if (prevPoints !== null && currentPoints < prevPoints) {
-            actualRank = i + 1;
-        }
-        if (String(userList[i].phone) === String(phone)) {
-            myWeeklyRank = actualRank;
-            break;
-        }
-        prevPoints = currentPoints;
-    }
-    
-    document.getElementById("userPoints").textContent = totalPoints;
-    document.getElementById("statWeeklyRank").textContent = `#${myWeeklyRank}`;
-
-    // Load User Data & Handle Streak
-    const userSnap = await getDocsByPhone("users", phone);
-    if (!userSnap.empty) {
-        const uDoc = userSnap.docs[0];
-        const u = uDoc.data();
-        document.getElementById("userNameHeader").textContent = u.name || "User";
-        document.getElementById("editName").value = u.name || "";
-
-        // Check if user is admin to display Switch to Admin Banner
-        const adminNumbers = ["7904302567"];
-        const isAdmin = adminNumbers.includes(String(phone)) || u.role === "admin";
-        const adminBanner = document.getElementById("adminSwitchBanner");
-        if (adminBanner) {
-            adminBanner.style.display = isAdmin ? "flex" : "none";
-        }
-
-        // Streak Logic: Check last vote date
-        const todayStr = getVoteDate();
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = localDateStr(yesterday); // Fixed: use local date to avoid IST/UTC timezone shift bug
-
-        let streak = u.streak || 0;
-        const lastVote = u.lastVoteDate || "";
-
-        if (lastVote !== todayStr && lastVote !== yesterdayStr && lastVote !== "") {
-            streak = 0; // Reset if more than a day gap
-            await updateDoc(uDoc.ref, { streak: 0 });
-        }
-        document.getElementById("streakCounter").textContent = streak;
+        // Calculate Points from Votes
+        let totalPoints = 0;
         
-        // Update Streak Milestone Badge
-        const badgeEl = document.getElementById("streakBadge");
-        if (badgeEl) {
-            if (streak === 0) {
-                badgeEl.innerHTML = "🌱 Seedling Streak";
-            } else if (streak >= 1 && streak < 3) {
-                badgeEl.innerHTML = "🌱 Seedling Badge";
-            } else if (streak >= 3 && streak < 7) {
-                badgeEl.innerHTML = "🥉 Bronze Streak Badge";
-            } else if (streak >= 7 && streak < 15) {
-                badgeEl.innerHTML = "🥈 Silver Streak Badge";
-            } else {
-                badgeEl.innerHTML = "👑 Golden Warrior Badge";
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const sevenDaysAgoStr = localDateStr(sevenDaysAgo); // use local date to avoid UTC shift
+
+        const votesSnap = await getDocsByPhone("votes", phone);
+        votesSnap.forEach(d => {
+            const v = d.data();
+            const pts = Number(v.points || 0);
+            const isSpecialTask = v.isSpecial || specialTaskIds.has(v.taskId);
+            if (!(isSpecialTask && !v.pointsCredited)) {
+                totalPoints += pts;
+            }
+        });
+
+        // Calculate actual weekly rank among all users
+        const allUsersSnap = await getDocs(collection(db, "users"));
+        // Optimized: Only query votes from the last 7 days to avoid resource exhaustion
+        const allVotesSnap = await getDocs(query(collection(db, "votes"), where("date", ">=", sevenDaysAgoStr)));
+        
+        const weeklyPointsMap = {};
+        allVotesSnap.forEach(d => {
+            const v = d.data();
+            const pts = Number(v.points || 0);
+            const date = v.date || "";
+            const isSpecialTask = v.isSpecial || specialTaskIds.has(v.taskId);
+            if (!(isSpecialTask && !v.pointsCredited)) {
+                if (date >= sevenDaysAgoStr) {
+                    weeklyPointsMap[v.phone] = (weeklyPointsMap[v.phone] || 0) + pts;
+                }
+            }
+        });
+
+        const userList = [];
+        allUsersSnap.forEach(u => {
+            const d = u.data();
+            userList.push({
+                phone: d.phone,
+                weeklyPoints: weeklyPointsMap[d.phone] || 0
+            });
+        });
+
+        // Sort users by weekly points descending
+        userList.sort((a, b) => b.weeklyPoints - a.weeklyPoints);
+
+        // Determine logged in user's rank with tie-handling
+        let myWeeklyRank = 1;
+        let prevPoints = null;
+        let actualRank = 1;
+        for (let i = 0; i < userList.length; i++) {
+            const currentPoints = userList[i].weeklyPoints;
+            if (prevPoints !== null && currentPoints < prevPoints) {
+                actualRank = i + 1;
+            }
+            if (String(userList[i].phone) === String(phone)) {
+                myWeeklyRank = actualRank;
+                break;
+            }
+            prevPoints = currentPoints;
+        }
+        
+        document.getElementById("userPoints").textContent = totalPoints;
+        document.getElementById("statWeeklyRank").textContent = `#${myWeeklyRank}`;
+
+        // Load User Data & Handle Streak
+        const userSnap = await getDocsByPhone("users", phone);
+        if (!userSnap.empty) {
+            const uDoc = userSnap.docs[0];
+            const u = uDoc.data();
+            document.getElementById("userNameHeader").textContent = u.name || "User";
+            document.getElementById("editName").value = u.name || "";
+
+            // Check if user is admin to display Switch to Admin Banner
+            const adminNumbers = ["7904302567"];
+            const isAdmin = adminNumbers.includes(String(phone)) || u.role === "admin";
+            const adminBanner = document.getElementById("adminSwitchBanner");
+            if (adminBanner) {
+                adminBanner.style.display = isAdmin ? "flex" : "none";
+            }
+
+            // Streak Logic: Check last vote date
+            const todayStr = getVoteDate();
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = localDateStr(yesterday); // Fixed: use local date to avoid IST/UTC timezone shift bug
+
+            let streak = u.streak || 0;
+            const lastVote = u.lastVoteDate || "";
+
+            if (lastVote !== todayStr && lastVote !== yesterdayStr && lastVote !== "") {
+                streak = 0; // Reset if more than a day gap
+                await updateDoc(uDoc.ref, { streak: 0 });
+            }
+            document.getElementById("streakCounter").textContent = streak;
+            
+            // Update Streak Milestone Badge
+            const badgeEl = document.getElementById("streakBadge");
+            if (badgeEl) {
+                if (streak === 0) {
+                    badgeEl.innerHTML = "🌱 Seedling Streak";
+                } else if (streak >= 1 && streak < 3) {
+                    badgeEl.innerHTML = "🌱 Seedling Badge";
+                } else if (streak >= 3 && streak < 7) {
+                    badgeEl.innerHTML = "🥉 Bronze Streak Badge";
+                } else if (streak >= 7 && streak < 15) {
+                    badgeEl.innerHTML = "🥈 Silver Streak Badge";
+                } else {
+                    badgeEl.innerHTML = "👑 Golden Warrior Badge";
+                }
             }
         }
+    } catch (e) {
+        console.error("Error loading home page details:", e);
+        if (e.message && e.message.includes("quota")) {
+            document.getElementById("userPoints").textContent = "Error (Quota Exceeded)";
+            document.getElementById("statWeeklyRank").textContent = "N/A";
+        }
     }
-
-
-
-
 
     // Load Pinned Banner
     await loadPinnedBanner();
@@ -722,7 +727,7 @@ function isTaskActive(task) {
                 }
             }
         } else {
-            // No specific time window: must be in global window
+        // No specific time window: must be in global window
             const isActiveTime = (hrs >= 20 || hrs < 12);
             if (!isActiveTime) return false;
         }
@@ -736,135 +741,142 @@ function isTaskActive(task) {
 }
 
 async function loadTasks() {
-    const now = new Date();
-    const hrs = now.getHours();
-    const todayStr = getVoteDate();
-    
-    // 1. Fetch all tasks
-    const tasksSnap = await getDocs(collection(db, "tasks"));
-    
-    // 2. Fetch user's votes for today's session
-    const votedSnap = await getDocsByPhone("votes", phone, [where("date", "==", todayStr)]);
-    const votedTaskIds = new Set();
-    votedSnap.forEach(d => {
-        const v = d.data();
-        if (v.taskId) votedTaskIds.add(v.taskId);
-    });
-
-    // 3. Find which tasks are currently active
-    const activeTasks = [];
-    tasksSnap.forEach(d => {
-        const t = d.data();
-        t.id = d.id; // Include firestore document ID
-        if (isTaskActive(t)) {
-            activeTasks.push(t);
-        }
-    });
-
-    // Separate active tasks into Regular and Special
-    const activeRegularTasks = activeTasks.filter(t => !t.startDate);
-    const activeSpecialTasks = activeTasks.filter(t => !!t.startDate);
-
-    // Filter out those that have already been voted
-    const unvotedRegularTasks = activeRegularTasks.filter(t => !votedTaskIds.has(t.id));
-    const unvotedSpecialTasks = activeSpecialTasks.filter(t => !votedTaskIds.has(t.id));
-
-    const unvotedActiveTasks = [...unvotedRegularTasks, ...unvotedSpecialTasks];
-
     const taskBox = document.getElementById("taskBox");
-    taskBox.innerHTML = "";
-
-    // 5. Display unvoted active tasks or show correct timer/completion state
-    if (unvotedActiveTasks.length > 0) {
-        // Hide next vote block / timer if it's currently showing
-        const nextVoteBox = document.getElementById("nextVoteBox");
-        if (nextVoteBox) nextVoteBox.style.display = "none";
+    try {
+        const now = new Date();
+        const hrs = now.getHours();
+        const todayStr = getVoteDate();
         
-        const submitBtn = document.getElementById("submitBtn");
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.style.opacity = "0.5";
-        }
+        // 1. Fetch all tasks
+        const tasksSnap = await getDocs(collection(db, "tasks"));
+        
+        // 2. Fetch user's votes for today's session
+        const votedSnap = await getDocsByPhone("votes", phone, [where("date", "==", todayStr)]);
+        const votedTaskIds = new Set();
+        votedSnap.forEach(d => {
+            const v = d.data();
+            if (v.taskId) votedTaskIds.add(v.taskId);
+        });
 
-        // Render Special Tasks first with a beautiful visual separation
-        if (unvotedSpecialTasks.length > 0) {
-            // Dynamic day label: e.g. "Sunday Special Task", "Saturday Special Task"
-            const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-            const dayLabel = dayNames[new Date().getDay()];
-            taskBox.innerHTML += `
-                <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 1.2rem;">🌟</span>
-                    <span style="font-size: 0.78rem; font-weight: 900; color: #d97706; letter-spacing: 1.2px; text-transform: uppercase;">${dayLabel} Special Task</span>
-                </div>`;
-            unvotedSpecialTasks.forEach(t => {
-                const hasQ = t.question && t.questionType ? '❓' : '';
-                // Encode task data for the modal
-                const safeQuestion    = encodeURIComponent(t.question    || '');
-                const safeChoices     = encodeURIComponent(JSON.stringify(t.questionChoices || []));
-                const safeText        = encodeURIComponent(t.text);
-                taskBox.innerHTML += `
-                    <div class="panel animate-fade-in" style="padding:15px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 2px solid #fcd34d; background: linear-gradient(135deg,#fffbeb,#fef9ee); box-shadow: 0 6px 18px rgba(217,119,6,0.1); border-radius: 18px;">
-                        <div style="max-width: 80%;">
-                            <div style="font-weight:900; color: #92400e; font-size:1rem; letter-spacing:0.2px;">${t.text} ${hasQ}</div>
-                            <div style="font-size:0.7rem; color:#d97706; display:flex; gap:10px; align-items:center; margin-top:5px; font-weight: 700;">
-                                <span>+${t.points} pts (Admin Approval Required)</span>
-                                ${(t.start && t.end) ? `<span style="color:#b45309; display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
-                            </div>
-                            ${hasQ ? `<div style="font-size:0.65rem; color:#b45309; margin-top:4px; font-weight:700;">📝 Answer required before submit</div>` : ''}
-                        </div>
-                        <input type="checkbox"
-                            data-points="${t.points}"
-                            data-id="${t.id}"
-                            data-is-special="true"
-                            data-question="${safeQuestion}"
-                            data-question-type="${t.questionType || ''}"
-                            data-choices="${safeChoices}"
-                            data-task-text="${safeText}"
-                            data-answer=""
-                            style="width:24px; height:24px; accent-color: #d97706; cursor: pointer;"
-                            onchange="handleSpecialTaskCheck(this)">
-                    </div>`;
-            });
-        }
-
-        // Render Regular Tasks next with visual separation
-        if (unvotedRegularTasks.length > 0) {
-            if (unvotedSpecialTasks.length > 0) {
-                taskBox.innerHTML += `<div style="height: 10px;"></div>`; // Spacer
+        // 3. Find which tasks are currently active
+        const activeTasks = [];
+        tasksSnap.forEach(d => {
+            const t = d.data();
+            t.id = d.id; // Include firestore document ID
+            if (isTaskActive(t)) {
+                activeTasks.push(t);
             }
-            taskBox.innerHTML += `
-                <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 1.1rem;">📋</span>
-                    <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary); letter-spacing: 1px; text-transform: uppercase;">Daily Recurring Tasks</span>
-                </div>`;
-            unvotedRegularTasks.forEach(t => {
+        });
+
+        // Separate active tasks into Regular and Special
+        const activeRegularTasks = activeTasks.filter(t => !t.startDate);
+        const activeSpecialTasks = activeTasks.filter(t => !!t.startDate);
+
+        // Filter out those that have already been voted
+        const unvotedRegularTasks = activeRegularTasks.filter(t => !votedTaskIds.has(t.id));
+        const unvotedSpecialTasks = activeSpecialTasks.filter(t => !votedTaskIds.has(t.id));
+
+        const unvotedActiveTasks = [...unvotedRegularTasks, ...unvotedSpecialTasks];
+
+        taskBox.innerHTML = "";
+
+        // 5. Display unvoted active tasks or show correct timer/completion state
+        if (unvotedActiveTasks.length > 0) {
+            // Hide next vote block / timer if it's currently showing
+            const nextVoteBox = document.getElementById("nextVoteBox");
+            if (nextVoteBox) nextVoteBox.style.display = "none";
+            
+            const submitBtn = document.getElementById("submitBtn");
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = "0.5";
+            }
+
+            // Render Special Tasks first with a beautiful visual separation
+            if (unvotedSpecialTasks.length > 0) {
+                // Dynamic day label: e.g. "Sunday Special Task", "Saturday Special Task"
+                const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                const dayLabel = dayNames[new Date().getDay()];
                 taskBox.innerHTML += `
-                    <div class="panel animate-fade-in" style="padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-                        <div style="max-width: 80%;">
-                            <div style="font-weight:600;">${t.text}</div>
-                            <div style="font-size:0.7rem; color:var(--secondary); display:flex; gap:10px; align-items:center; margin-top:4px;">
-                                <span>+${t.points} pts</span>
-                                ${(t.start && t.end) ? `<span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
-                            </div>
-                        </div>
-                        <input type="checkbox" data-points="${t.points}" data-id="${t.id}" data-is-special="false" style="width:20px; height:20px; cursor: pointer;" onchange="updateTaskProgressBar()">
+                    <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2rem;">🌟</span>
+                        <span style="font-size: 0.78rem; font-weight: 900; color: #d97706; letter-spacing: 1.2px; text-transform: uppercase;">${dayLabel} Special Task</span>
                     </div>`;
-            });
-        }
-        updateTaskProgressBar();
-    } else {
-        // We consider today's voting complete ONLY if they have voted on the active regular tasks (and special tasks if any were active)
-        const hasVotedRegular = activeRegularTasks.length > 0 && activeRegularTasks.every(t => votedTaskIds.has(t.id));
-        const hasVotedSpecial = activeSpecialTasks.length > 0 && activeSpecialTasks.every(t => votedTaskIds.has(t.id));
-        
-        if (votedTaskIds.size > 0 && (hasVotedRegular || hasVotedSpecial || activeTasks.length === 0)) {
-            startTimer("Today voting is complete ✅");
-        } else if (hrs >= 12 && hrs < 20) {
-            // Global window is closed and no active special task
-            startTimer("Voting window is closed 🔒");
+                unvotedSpecialTasks.forEach(t => {
+                    const hasQ = t.question && t.questionType ? '❓' : '';
+                    // Encode task data for the modal
+                    const safeQuestion    = encodeURIComponent(t.question    || '');
+                    const safeChoices     = encodeURIComponent(JSON.stringify(t.questionChoices || []));
+                    const safeText        = encodeURIComponent(t.text);
+                    taskBox.innerHTML += `
+                        <div class="panel animate-fade-in" style="padding:15px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; border: 2px solid #fcd34d; background: linear-gradient(135deg,#fffbeb,#fef9ee); box-shadow: 0 6px 18px rgba(217,119,6,0.1); border-radius: 18px;">
+                            <div style="max-width: 80%;">
+                                <div style="font-weight:900; color: #92400e; font-size:1rem; letter-spacing:0.2px;">${t.text} ${hasQ}</div>
+                                <div style="font-size:0.7rem; color:#d97706; display:flex; gap:10px; align-items:center; margin-top:5px; font-weight: 700;">
+                                    <span>+${t.points} pts (Admin Approval Required)</span>
+                                    ${(t.start && t.end) ? `<span style="color:#b45309; display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
+                                </div>
+                                ${hasQ ? `<div style="font-size:0.65rem; color:#b45309; margin-top:4px; font-weight:700;">📝 Answer required before submit</div>` : ''}
+                            </div>
+                            <input type="checkbox"
+                                data-points="${t.points}"
+                                data-id="${t.id}"
+                                data-is-special="true"
+                                data-question="${safeQuestion}"
+                                data-question-type="${t.questionType || ''}"
+                                data-choices="${safeChoices}"
+                                data-task-text="${safeText}"
+                                data-answer=""
+                                style="width:24px; height:24px; accent-color: #d97706; cursor: pointer;"
+                                onchange="handleSpecialTaskCheck(this)">
+                        </div>`;
+                });
+            }
+
+            // Render Regular Tasks next with visual separation
+            if (unvotedRegularTasks.length > 0) {
+                if (unvotedSpecialTasks.length > 0) {
+                    taskBox.innerHTML += `<div style="height: 10px;"></div>`; // Spacer
+                }
+                taskBox.innerHTML += `
+                    <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.1rem;">📋</span>
+                        <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary); letter-spacing: 1px; text-transform: uppercase;">Daily Recurring Tasks</span>
+                    </div>`;
+                unvotedRegularTasks.forEach(t => {
+                    taskBox.innerHTML += `
+                        <div class="panel animate-fade-in" style="padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="max-width: 80%;">
+                                <div style="font-weight:600;">${t.text}</div>
+                                <div style="font-size:0.7rem; color:var(--secondary); display:flex; gap:10px; align-items:center; margin-top:4px;">
+                                    <span>+${t.points} pts</span>
+                                    ${(t.start && t.end) ? `<span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:3px;">⏰ ${t.start} - ${t.end}</span>` : ''}
+                                </div>
+                            </div>
+                            <input type="checkbox" data-points="${t.points}" data-id="${t.id}" data-is-special="false" style="width:20px; height:20px; cursor: pointer;" onchange="updateTaskProgressBar()">
+                        </div>`;
+                });
+            }
+            updateTaskProgressBar();
         } else {
-            // We are within global hours, but no active tasks are scheduled
-            startTimer("No active tasks for now.");
+            // We consider today's voting complete ONLY if they have voted on the active regular tasks (and special tasks if any were active)
+            const hasVotedRegular = activeRegularTasks.length > 0 && activeRegularTasks.every(t => votedTaskIds.has(t.id));
+            const hasVotedSpecial = activeSpecialTasks.length > 0 && activeSpecialTasks.every(t => votedTaskIds.has(t.id));
+            
+            if (votedTaskIds.size > 0 && (hasVotedRegular || hasVotedSpecial || activeTasks.length === 0)) {
+                startTimer("Today voting is complete ✅");
+            } else if (hrs >= 12 && hrs < 20) {
+                // Global window is closed and no active special task
+                startTimer("Voting window is closed 🔒");
+            } else {
+                // We are within global hours, but no active tasks are scheduled
+                startTimer("No active tasks for now.");
+            }
+        }
+    } catch (err) {
+        console.error("Failed to load tasks:", err);
+        if (taskBox) {
+            taskBox.innerHTML = `<div style="color: var(--error); text-align: center; padding: 20px;">Failed to load tasks (Database limit reached). Please try again later.</div>`;
         }
     }
 }
