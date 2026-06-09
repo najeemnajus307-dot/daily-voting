@@ -2167,16 +2167,12 @@ async function loadIdleUsersTable() {
             const userPhone = String(userData.phone || "").trim();
 
             if (daysIdle >= 7 && userData.role !== "admin" && userPhone) {
-                // Determine reminder cooldown status
-                let reminderStatus = "Ready to send";
                 let canSend = true;
                 const lastSentTime = lastReminderMap[userPhone];
-                const currentTemplate = document.getElementById("wa_template_name")?.value || "";
-                if (lastSentTime && currentTemplate !== "hello_world") {
+                if (lastSentTime) {
                     const hoursSinceLast = (nowMs - lastSentTime) / (1000 * 60 * 60);
                     if (hoursSinceLast < 24) {
-                        reminderStatus = `Sent recently (${Math.round(24 - hoursSinceLast)}h cooldown)`;
-                        canSend = false;
+                        return; // Hide user from the list entirely if sent in the last 24h
                     }
                 }
 
@@ -2186,8 +2182,8 @@ async function loadIdleUsersTable() {
                     phone: userPhone,
                     lastVoteDate: lastVoteDate || "Never",
                     daysIdle,
-                    reminderStatus,
-                    canSend
+                    reminderStatus: "Ready to send",
+                    canSend: true
                 });
             }
         });
