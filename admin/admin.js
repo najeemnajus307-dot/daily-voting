@@ -507,6 +507,7 @@ window.renderDashTable = () => {
                     <button class="btn-primary btn-sm" style="background:#444; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="addPoint('${r.phone}', 'set')" ${isViewOnly ? 'disabled' : ''}>Set</button>
                     <button class="btn-primary btn-sm" style="background:${r.role === 'admin' ? 'var(--error)' : '#10b981'}; font-size: 0.7rem; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="toggleAdmin('${r.id}', '${r.role}')" ${isViewOnly ? 'disabled' : ''}>${r.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}</button>
                     <button class="btn-primary btn-sm" style="background:var(--secondary); font-size: 0.7rem;" onclick="openAdminUserModal('${r.phone}')">👤 Manage</button>
+                    <button class="btn-primary btn-sm" style="background:#0284c7; font-size: 0.7rem;" onclick="viewUserHistory('${r.phone}')">📜 History</button>
                 </div>
             </td>`;
         body.appendChild(tr);
@@ -1217,6 +1218,26 @@ async function userInit() {
         sel.appendChild(opt);
     });
 }
+
+window.viewUserHistory = async (phone) => {
+    closeAdminUserModal();
+    // Navigate to user page styling
+    document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+    document.getElementById('page-user').classList.add('active');
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const navUser = document.getElementById('nav-user');
+    if (navUser) navUser.classList.add('active');
+    
+    // Initialize user report select menu
+    await userInit();
+    
+    // Select the phone number and load history
+    const sel = document.getElementById("u_user");
+    if (sel) {
+        sel.value = phone;
+    }
+    userLoad();
+};
 
 window.userLoad = async () => {
     const phone = document.getElementById("u_user").value;
