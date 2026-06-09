@@ -95,7 +95,7 @@ exports.dailyWhatsAppReminder = functions.pubsub
             const lastReminderMap = {};
             logsSnap.forEach(d => {
                 const log = d.data();
-                if (log.phone && log.sentAt) {
+                if (log.phone && log.sentAt && log.status !== "failed") {
                     const sentTime = new Date(log.sentAt).getTime();
                     if (!lastReminderMap[log.phone] || sentTime > lastReminderMap[log.phone]) {
                         lastReminderMap[log.phone] = sentTime;
