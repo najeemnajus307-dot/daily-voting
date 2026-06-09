@@ -2004,6 +2004,7 @@ window.loadWhatsAppConfig = async () => {
             if (document.getElementById("wa_template_name")) document.getElementById("wa_template_name").value = data.templateName || "";
             if (document.getElementById("wa_template_lang")) document.getElementById("wa_template_lang").value = data.templateLang || "en_US";
             if (document.getElementById("wa_access_token")) document.getElementById("wa_access_token").value = data.accessToken || "";
+            if (document.getElementById("wa_manual_template")) document.getElementById("wa_manual_template").value = data.manualTemplate || "";
         }
     } catch (e) {
         console.error("Failed to load WhatsApp API configs:", e);
@@ -2019,6 +2020,7 @@ window.saveWhatsAppConfig = async () => {
     const templateName = document.getElementById("wa_template_name").value.trim();
     const templateLang = document.getElementById("wa_template_lang").value.trim() || "en_US";
     const accessToken = document.getElementById("wa_access_token").value.trim();
+    const manualTemplate = document.getElementById("wa_manual_template").value.trim();
 
     if (!phoneId || !templateName || !accessToken) {
         alert("Please fill Phone Number ID, Template Name, and Access Token!");
@@ -2032,6 +2034,7 @@ window.saveWhatsAppConfig = async () => {
             templateName,
             templateLang,
             accessToken,
+            manualTemplate,
             updatedAt: new Date().toISOString()
         });
         msg.textContent = "Configuration saved successfully! ✅";
@@ -2126,7 +2129,10 @@ async function loadIdleUsersTable() {
                     <td><span style="color:${u.daysIdle > 30 ? 'var(--error)' : '#d97706'}; font-weight:bold;">${u.daysIdle === 999 ? 'Never Voted' : u.daysIdle + ' days'}</span></td>
                     <td style="font-size:0.8rem; color:${u.canSend ? 'var(--success)' : 'var(--text-muted)'}; font-weight:600;">${u.reminderStatus}</td>
                     <td>
-                        <button class="btn-primary btn-sm" onclick="sendWhatsAppReminderNow('${u.id}', '${u.name}', '${u.phone}', ${u.daysIdle})" ${btnDisable}>💬 Send</button>
+                        <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
+                            <button class="btn-primary btn-sm" onclick="sendWhatsAppReminderNow('${u.id}', '${u.name}', '${u.phone}', ${u.daysIdle})" ${btnDisable}>💬 Send (API)</button>
+                            <button class="btn-primary btn-sm" style="background:#0284c7; border-color:#0284c7; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="sendWhatsAppManualLink('${u.name}', '${u.phone}', ${u.daysIdle})" ${isViewOnly ? 'disabled' : ''}>💬 Send (WA Web)</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -2219,6 +2225,55 @@ async function triggerWhatsAppCloudAPI(phoneId, accessToken, recipientPhone, tem
     }
     return data;
 }
+
+// Trigger manual semi-automatic reminder via WhatsApp Web/App Click-to-chat link
+window.sendWhatsAppManualLink = async (name, phone, daysIdle) => {
+    if (checkViewOnlyBlocked()) return;
+
+    let formattedPhone = phone.replace(/[^0-9]/g, "");
+    if (formattedPhone.length === 10) {
+        formattedPhone = "91" + formattedPhone;
+    }
+    
+    // Default fallback message
+    let message = `Hi ${name}, you haven't voted in the last ${daysIdle === 999 ? 'several' : daysIdle} days on Faith & Fitness. Please submit your daily votes to maintain your streak!`;
+    
+    try {
+        const snap = await getDoc(doc(db, "settings", "whatsapp"));
+        if (snap.exists() && snap.data().manualTemplate) {
+            const template = snap.data().manualTemplate;
+            message = template
+                .replace(/{name}/g, name)
+                .replace(/{days}/g, daysIdle === 999 ? "many" : daysIdle);
+        }
+    } catch (e) {
+        console.error("Failed to load custom manual template, using default:", e);
+    }
+    
+    const encodedMessage = encodeURIComponent(message);
+    const url = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+    
+    // Open WhatsApp link in new tab
+    window.open(url, "_blank");
+    
+    // Log in database
+    try {
+        await addDoc(collection(db, "whatsapp_logs"), {
+            phone,
+            name,
+            templateName: "manual_link",
+            sentAt: new Date().toISOString(),
+            status: "delivered",
+            error: "Sent via WhatsApp Web/App Link"
+        });
+        
+        // Refresh tables and stats
+        whatsappLoad();
+        loadWhatsAppDashboardStats();
+    } catch (e) {
+        console.error("Failed to log manual send link:", e);
+    }
+};
 
 // Trigger single reminder manually
 window.sendWhatsAppReminderNow = async (userId, name, phone, daysIdle) => {

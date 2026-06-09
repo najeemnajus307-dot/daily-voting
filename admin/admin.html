@@ -377,6 +377,10 @@
                             <label style="font-size:0.75rem; font-weight:700;">PERMANENT ACCESS TOKEN</label>
                             <input id="wa_access_token" type="password" placeholder="EAAG..." style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:5px;">
                         </div>
+                        <div style="grid-column: span 2;">
+                            <label style="font-size:0.75rem; font-weight:700;">SEMI-AUTOMATIC MESSAGE TEMPLATE (TEXT LINK)</label>
+                            <textarea id="wa_manual_template" placeholder="Hi {name}, you have not voted in the last {days} days on Faith & Fitness. Please submit your votes!" style="width:100%; height:60px; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:5px; font-family:inherit; font-size:0.9rem; box-sizing:border-box;"></textarea>
+                        </div>
                     </div>
                     <div style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
                         <button class="btn-primary" style="width: auto; padding: 10px 20px; font-size:0.9rem;" onclick="saveWhatsAppConfig()">Save Config</button>
