@@ -399,7 +399,8 @@
                             <h3 class="font-serif" style="margin:0; font-size:1.1rem; color:var(--primary);">⏳ Inactive Users (7+ Days)</h3>
                             <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Users who have not voted in the last 7 days (or never voted).</p>
                         </div>
-                        <div style="display:flex; gap:10px;">
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <input type="text" id="wa_search" placeholder="Search name or phone..." style="padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.85rem; width: 200px;" oninput="filterWhatsAppIdleTable()">
                             <button id="wa_send_all_btn" class="btn-primary" style="width: auto; background: var(--secondary); border-color: var(--secondary);" onclick="sendWhatsAppReminderToAll()">💬 Send Reminders to All</button>
                         </div>
                     </div>

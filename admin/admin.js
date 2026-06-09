@@ -2131,6 +2131,9 @@ window.saveWhatsAppConfig = async () => {
 
 // Load WhatsApp page (idle users and sent logs)
 window.whatsappLoad = async () => {
+    const searchInput = document.getElementById("wa_search");
+    if (searchInput) searchInput.value = ""; // Clear search when reloading WABA page
+    
     await loadWhatsAppConfig();
     await loadIdleUsersTable();
     await loadWhatsAppLogsTable();
@@ -2188,41 +2191,58 @@ async function loadIdleUsersTable() {
             }
         });
 
-        // Sort by longest idle time
-        idleUsers.sort((a, b) => b.daysIdle - a.daysIdle);
+        // Sort alphabetically by name per user request
+        idleUsers.sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
 
-        tbody.innerHTML = "";
-        if (idleUsers.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; color:var(--success); font-weight:700;">🎉 Excellent! No users are currently idle for 7+ days.</td></tr>`;
-            return;
-        }
-
-        const isViewOnly = currentAdminPerms.admin_view_only;
-
-        idleUsers.forEach(u => {
-            const btnDisable = (!u.canSend || isViewOnly) ? "disabled style='opacity:0.5; cursor:not-allowed;'" : "";
-            tbody.innerHTML += `
-                <tr>
-                    <td><b>${u.name}</b></td>
-                    <td>${u.phone}</td>
-                    <td>${u.lastVoteDate}</td>
-                    <td><span style="color:${u.daysIdle > 30 ? 'var(--error)' : '#d97706'}; font-weight:bold;">${u.daysIdle === 999 ? 'Never Voted' : u.daysIdle + ' days'}</span></td>
-                    <td style="font-size:0.8rem; color:${u.canSend ? 'var(--success)' : 'var(--text-muted)'}; font-weight:600;">${u.reminderStatus}</td>
-                    <td>
-                        <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
-                            <button class="btn-primary btn-sm" onclick="sendWhatsAppReminderNow('${u.id}', '${u.name}', '${u.phone}', ${u.daysIdle})" ${btnDisable}>💬 Send (API)</button>
-                            <button class="btn-primary btn-sm" style="background:#0284c7; border-color:#0284c7; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="sendWhatsAppManualLink('${u.name}', '${u.phone}', ${u.daysIdle})" ${isViewOnly ? 'disabled' : ''}>💬 Send (WA Web)</button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
+        // Cache the list for real-time filtering
+        window.allIdleUsers = idleUsers;
+        
+        // Render the filtered table (handles initial render with empty search query)
+        window.filterWhatsAppIdleTable();
 
     } catch (e) {
         console.error("Failed to load idle users:", e);
         tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; color:var(--error);">Error: ${e.message}</td></tr>`;
     }
 }
+
+// Client-side real-time filtering of WhatsApp idle users
+window.filterWhatsAppIdleTable = () => {
+    const term = (document.getElementById("wa_search")?.value || "").toLowerCase().trim();
+    const tbody = document.getElementById("wa_idle_body");
+    if (!tbody || !window.allIdleUsers) return;
+    
+    const filtered = window.allIdleUsers.filter(u => 
+        (u.name || "").toLowerCase().includes(term) || (u.phone || "").includes(term)
+    );
+    
+    tbody.innerHTML = "";
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; color:var(--text-muted); text-align:center;">No matching idle users found.</td></tr>`;
+        return;
+    }
+    
+    const isViewOnly = currentAdminPerms.admin_view_only;
+    
+    filtered.forEach(u => {
+        const btnDisable = (!u.canSend || isViewOnly) ? "disabled style='opacity:0.5; cursor:not-allowed;'" : "";
+        tbody.innerHTML += `
+            <tr>
+                <td><b>${u.name}</b></td>
+                <td>${u.phone}</td>
+                <td>${u.lastVoteDate}</td>
+                <td><span style="color:${u.daysIdle > 30 ? 'var(--error)' : '#d97706'}; font-weight:bold;">${u.daysIdle === 999 ? 'Never Voted' : u.daysIdle + ' days'}</span></td>
+                <td style="font-size:0.8rem; color:${u.canSend ? 'var(--success)' : 'var(--text-muted)'}; font-weight:600;">${u.reminderStatus}</td>
+                <td>
+                    <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
+                        <button class="btn-primary btn-sm" onclick="sendWhatsAppReminderNow('${u.id}', '${u.name}', '${u.phone}', ${u.daysIdle})" ${btnDisable}>💬 Send (API)</button>
+                        <button class="btn-primary btn-sm" style="background:#0284c7; border-color:#0284c7; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="sendWhatsAppManualLink('${u.name}', '${u.phone}', ${u.daysIdle})" ${isViewOnly ? 'disabled' : ''}>💬 Send (WA Web)</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+};
 
 // Load logs of sent WhatsApp messages
 async function loadWhatsAppLogsTable() {
