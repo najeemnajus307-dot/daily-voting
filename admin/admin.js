@@ -470,7 +470,7 @@ window.dashLoad = async () => {
             window.allUsersRows.push({ 
                 id: u.id, 
                 name: d.name || "Unknown", 
-                phone: d.phone || "---", 
+                phone: d.phone !== undefined && d.phone !== null ? String(d.phone) : "---", 
                 total: map[d.phone] || 0, 
                 role: d.role || "user", 
                 password: d.password || "",
@@ -498,7 +498,7 @@ window.renderDashTable = () => {
     const roleFilter = document.getElementById("d_role_filter")?.value || "all";
     if (!window.allUsersRows) return;
     const rows = window.allUsersRows.filter(r => 
-        ((r.name || "").toLowerCase().includes(term) || (r.phone || "").includes(term)) &&
+        ((r.name || "").toLowerCase().includes(term) || String(r.phone || "").includes(term)) &&
         (roleFilter === "all" || r.role === roleFilter)
     );
 
