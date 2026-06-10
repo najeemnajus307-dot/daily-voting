@@ -1318,12 +1318,16 @@ window.userLoad = async () => {
                 date: x.date || "",
                 points: 0,
                 sources: new Set(),
-                ids: []
+                ids: [],
+                reasons: new Set()
             };
         }
         dateGroups[dateKey].points += Number(x.points || 0);
         dateGroups[dateKey].sources.add(x.source || "user");
         dateGroups[dateKey].ids.push(v.id);
+        if (x.reason) {
+            dateGroups[dateKey].reasons.add(x.reason);
+        }
     });
 
     const rows = Object.values(dateGroups);
@@ -1333,11 +1337,16 @@ window.userLoad = async () => {
     body.innerHTML = "";
     rows.forEach(r => {
         const sourceStr = Array.from(r.sources).join(", ");
+        const reasonHtml = r.reasons && r.reasons.size 
+            ? `<div style="font-size: 0.72rem; color: #64748b; font-style: italic; margin-top: 4px; border-top: 1px dashed #e2e8f0; padding-top: 4px; text-transform: none;">
+                <b>Reason:</b> ${Array.from(r.reasons).join(", ")}
+               </div>` 
+            : '';
         body.innerHTML += `
             <tr>
                 <td>${r.date || "-"}</td>
                 <td style="font-weight: 700; color: var(--primary);">${r.points}</td>
-                <td style="text-transform: capitalize;">${sourceStr}</td>
+                <td style="text-transform: capitalize;"><b>${sourceStr}</b>${reasonHtml}</td>
                 <td>
                     <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="delVotes('${r.ids.join(",")}')" ${isViewOnly ? 'disabled' : ''}>Delete</button>
                 </td>
@@ -1542,7 +1551,8 @@ window.approveRequest = async (id) => {
             date: r.date,
             timestamp: new Date().toISOString(),
             source: isEdit ? "correction_approval" : "backdate_approval",
-            tasks: r.tasks && r.tasks.length ? r.tasks.map(t => t.text).join(", ") : "No tasks selected (Delete All)"
+            tasks: r.tasks && r.tasks.length ? r.tasks.map(t => t.text).join(", ") : "No tasks selected (Delete All)",
+            reason: r.reason || ""
         });
         
         // 3. Update user's points (deducting previous and adding new)
@@ -1560,7 +1570,8 @@ window.approveRequest = async (id) => {
         await updateDoc(docRef, { status: "approved" });
         
         // Log action
-        await logAdminAction("Approve Backdate Request", `Approved ${r.requestType || 'backdate'} request for user ${r.name} (${r.phone}) for date ${r.date} (+${r.totalPoints} pts)`);
+        const approveLogMsg = `Approved ${r.requestType || 'backdate'} request for user ${r.name} (${r.phone}) for date ${r.date} (+${r.totalPoints} pts). Reason: ${r.reason || 'No reason provided'}`;
+        await logAdminAction("Approve Backdate Request", approveLogMsg);
         
         alert("Request approved successfully! Changes applied. ✅");
         dashLoad(); // Reload dashboard to update scores and requests list
@@ -1583,7 +1594,8 @@ window.rejectRequest = async (id) => {
         
         // Log action
         if (r) {
-            await logAdminAction("Reject Backdate Request", `Rejected ${r.requestType || 'backdate'} request for user ${r.name} (${r.phone}) for date ${r.date}`);
+            const rejectLogMsg = `Rejected ${r.requestType || 'backdate'} request for user ${r.name} (${r.phone}) for date ${r.date}. Reason: ${r.reason || 'No reason provided'}`;
+            await logAdminAction("Reject Backdate Request", rejectLogMsg);
         } else {
             await logAdminAction("Reject Backdate Request", `Rejected request ID ${id}`);
         }
