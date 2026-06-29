@@ -70,6 +70,7 @@
                 <div id="nav-settings" class="nav-link" onclick="showPage('settings')">⚙️ Settings</div>
                 <div id="nav-whatsapp" class="nav-link" onclick="showPage('whatsapp')">💬 WhatsApp Reminders</div>
                 <div id="nav-adminlogs" class="nav-link" onclick="showPage('adminlogs')">📜 Admin Action Logs</div>
+                <div id="nav-winner" class="nav-link" onclick="showPage('winner')">🏆 Special Winner</div>
                 <a id="nav-task-editor" href="task-editor.html" class="nav-link" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">📝 Task Editor</a>
                 <a id="nav-back" href="../user/voting.html" class="nav-link" style="margin-top: 5px; background: rgba(0,0,0,0.2); border-radius: 12px; display: flex; align-items: center; gap: 8px;">📱 Back to App</a>
             </nav>
@@ -472,6 +473,80 @@
                                 <tr><td colspan="5" style="padding:20px; color:var(--text-muted);">Loading system logs...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SPECIAL WINNER -->
+            <section id="page-winner">
+                <h1 class="font-serif" style="margin-bottom: 20px;">🏆 Sunday Special Winner Configuration</h1>
+                <div class="panel" style="padding: 20px; margin-bottom: 25px; border-left: 4px solid #f59e0b;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-bottom:20px;">
+                        <div>
+                            <h3 class="font-serif" style="margin:0; font-size:1.1rem; color:var(--primary);">Popup Settings</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Configure the beautiful celebration popup for the top 3 users.</p>
+                        </div>
+                        <div style="display:flex; align-items:center; gap: 8px;">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Enable Popup</label>
+                            <input type="checkbox" id="winner_active" style="width: 20px; height: 20px; cursor: pointer;">
+                        </div>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom: 20px; background: #fffbeb; padding: 15px; border-radius: 12px; border: 1px solid #fef3c7;">
+                        <div>
+                            <label style="font-size:0.75rem; font-weight:700; color: #b45309;">SHOW START DATE</label>
+                            <input type="date" id="winner_date" style="width:100%; padding:10px; border-radius:8px; border:1px solid #fcd34d; margin-top:5px; background: white;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; font-weight:700; color: #b45309;">SHOW START TIME</label>
+                            <input type="time" id="winner_time" style="width:100%; padding:10px; border-radius:8px; border:1px solid #fcd34d; margin-top:5px; background: white;">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <!-- Rank 1 -->
+                        <div style="display: grid; grid-template-columns: 60px 1fr 120px; gap: 10px; align-items: center; background: linear-gradient(90deg, #fef08a 0%, white 100%); padding: 12px; border-radius: 12px; border: 1px solid #fde047;">
+                            <div style="font-size: 1.5rem; text-align: center;">👑</div>
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:700; color: #854d0e;">1ST RANK NAME</label>
+                                <input type="text" id="w_r1_name" placeholder="Enter name..." style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:4px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:700; color: #854d0e;">POINTS</label>
+                                <input type="number" id="w_r1_pts" placeholder="0" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:4px;">
+                            </div>
+                        </div>
+                        
+                        <!-- Rank 2 -->
+                        <div style="display: grid; grid-template-columns: 60px 1fr 120px; gap: 10px; align-items: center; background: linear-gradient(90deg, #f1f5f9 0%, white 100%); padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                            <div style="font-size: 1.5rem; text-align: center;">🥈</div>
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:700; color: #334155;">2ND RANK NAME</label>
+                                <input type="text" id="w_r2_name" placeholder="Enter name..." style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:4px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:700; color: #334155;">POINTS</label>
+                                <input type="number" id="w_r2_pts" placeholder="0" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:4px;">
+                            </div>
+                        </div>
+
+                        <!-- Rank 3 -->
+                        <div style="display: grid; grid-template-columns: 60px 1fr 120px; gap: 10px; align-items: center; background: linear-gradient(90deg, #ffedd5 0%, white 100%); padding: 12px; border-radius: 12px; border: 1px solid #fed7aa;">
+                            <div style="font-size: 1.5rem; text-align: center;">🥉</div>
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:700; color: #9a3412;">3RD RANK NAME</label>
+                                <input type="text" id="w_r3_name" placeholder="Enter name..." style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:4px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:700; color: #9a3412;">POINTS</label>
+                                <input type="number" id="w_r3_pts" placeholder="0" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; margin-top:4px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
+                        <button class="btn-primary" style="width: auto; padding: 12px 25px; font-size:0.9rem;" onclick="saveSpecialWinnerConfig()">Save Configuration</button>
+                        <span id="winner_config_msg" style="font-size: 0.85rem; color: var(--success);"></span>
                     </div>
                 </div>
             </section>

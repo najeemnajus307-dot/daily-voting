@@ -203,6 +203,9 @@ window.showPage = (id) => {
     if(id === 'adminlogs') {
         loadAdminLogs();
     }
+    if(id === 'winner') {
+        loadSpecialWinnerConfig();
+    }
 };
 
 let editLibId = null;
@@ -2654,6 +2657,82 @@ window.loadAdminLogs = async () => {
     } catch (e) {
         console.error("Failed to load admin logs:", e);
         tbody.innerHTML = `<tr><td colspan="5" style="padding:20px; color:var(--error);">Error loading logs: ${e.message}</td></tr>`;
+    }
+};
+
+// --- SPECIAL WINNER CONFIG ---
+window.loadSpecialWinnerConfig = async () => {
+    try {
+        const snap = await getDoc(doc(db, "settings", "special_winner"));
+        if (snap.exists()) {
+            const data = snap.data();
+            document.getElementById("winner_active").checked = data.active || false;
+            document.getElementById("winner_date").value = data.showDate || "";
+            document.getElementById("winner_time").value = data.showTime || "";
+            
+            if (data.winners && data.winners.length === 3) {
+                document.getElementById("w_r1_name").value = data.winners[0].name || "";
+                document.getElementById("w_r1_pts").value = data.winners[0].points || "";
+                document.getElementById("w_r2_name").value = data.winners[1].name || "";
+                document.getElementById("w_r2_pts").value = data.winners[1].points || "";
+                document.getElementById("w_r3_name").value = data.winners[2].name || "";
+                document.getElementById("w_r3_pts").value = data.winners[2].points || "";
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load special winner config:", e);
+    }
+};
+
+window.saveSpecialWinnerConfig = async () => {
+    if (checkViewOnlyBlocked()) return;
+    
+    const active = document.getElementById("winner_active").checked;
+    const showDate = document.getElementById("winner_date").value;
+    const showTime = document.getElementById("winner_time").value;
+    
+    const winners = [
+        {
+            rank: 1,
+            name: document.getElementById("w_r1_name").value.trim(),
+            points: Number(document.getElementById("w_r1_pts").value) || 0
+        },
+        {
+            rank: 2,
+            name: document.getElementById("w_r2_name").value.trim(),
+            points: Number(document.getElementById("w_r2_pts").value) || 0
+        },
+        {
+            rank: 3,
+            name: document.getElementById("w_r3_name").value.trim(),
+            points: Number(document.getElementById("w_r3_pts").value) || 0
+        }
+    ];
+
+    const msgSpan = document.getElementById("winner_config_msg");
+    const btn = document.querySelector("button[onclick='saveSpecialWinnerConfig()']");
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+    msgSpan.textContent = "";
+    
+    try {
+        await setDoc(doc(db, "settings", "special_winner"), {
+            active,
+            showDate,
+            showTime,
+            winners
+        });
+        
+        await logAdminAction("Update Special Winner", `Updated special winner popup config (Active: ${active})`);
+        
+        msgSpan.textContent = "Configuration saved successfully!";
+        setTimeout(() => msgSpan.textContent = "", 3000);
+    } catch (e) {
+        console.error("Failed to save special winner config:", e);
+        alert("Error: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Save Configuration";
     }
 };
 

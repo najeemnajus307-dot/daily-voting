@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Faith & Fitness | Home</title>
     <link rel="stylesheet" href="../assets/global.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         /* Specific Styles for Voting SPA */
         .section { display: none; }
@@ -684,6 +685,53 @@
             </div>
         </section>
 
+    </div>
+
+    <!-- SPECIAL WINNER MODAL -->
+    <div id="specialWinnerModal" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
+        <h1 class="font-serif" style="color: #fef08a; font-size: 2.2rem; text-align: center; text-shadow: 0 4px 15px rgba(0,0,0,0.6); margin-bottom: 30px; animation: scaleIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);">Congratulations to all! 🎉</h1>
+        
+        <div style="display: flex; align-items: flex-end; justify-content: center; gap: 12px; min-height: 200px; width: 100%; max-width: 450px;">
+            <!-- Rank 2 -->
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; animation: slideUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); animation-delay: 0.3s; animation-fill-mode: backwards;">
+                <div style="background: rgba(255,255,255,0.95); padding: 8px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); width: 100%; text-align: center;">
+                    <div id="sw_r2_name" style="font-size: 0.8rem; font-weight: 800; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</div>
+                    <div id="sw_r2_pts" style="font-size: 0.75rem; font-weight: 800; color: #64748b;">0 pts</div>
+                </div>
+                <div style="width: 100%; height: 90px; background: linear-gradient(180deg, #f1f5f9 0%, #cbd5e1 100%); border-radius: 16px 16px 0 0; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; border-bottom: none; box-shadow: inset 0 4px 10px rgba(255,255,255,0.8), 0 -4px 15px rgba(148,163,184,0.3);">
+                     <div style="font-size: 2rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">🥈</div>
+                </div>
+            </div>
+            
+            <!-- Rank 1 -->
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; animation: slideUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); animation-delay: 0.6s; animation-fill-mode: backwards; z-index: 2;">
+                <div style="background: white; padding: 10px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 6px 25px rgba(234, 179, 8, 0.6); width: 110%; text-align: center; border: 2px solid #fef08a;">
+                    <div id="sw_r1_name" style="font-size: 0.95rem; font-weight: 800; color: #854d0e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</div>
+                    <div id="sw_r1_pts" style="font-size: 0.85rem; font-weight: 800; color: #b45309;">0 pts</div>
+                </div>
+                <div style="width: 110%; height: 130px; background: linear-gradient(180deg, #fef08a 0%, #eab308 100%); border-radius: 16px 16px 0 0; display: flex; align-items: center; justify-content: center; border: 1px solid #facc15; border-bottom: none; box-shadow: inset 0 4px 12px rgba(255,255,255,0.6), 0 -6px 20px rgba(234, 179, 8, 0.4);">
+                     <div style="font-size: 2.8rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">👑</div>
+                </div>
+            </div>
+            
+            <!-- Rank 3 -->
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; animation: slideUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); animation-delay: 0.9s; animation-fill-mode: backwards;">
+                <div style="background: rgba(255,255,255,0.95); padding: 8px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); width: 100%; text-align: center;">
+                    <div id="sw_r3_name" style="font-size: 0.8rem; font-weight: 800; color: #7c2d12; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</div>
+                    <div id="sw_r3_pts" style="font-size: 0.75rem; font-weight: 800; color: #9a3412;">0 pts</div>
+                </div>
+                <div style="width: 100%; height: 70px; background: linear-gradient(180deg, #ffedd5 0%, #fdba74 100%); border-radius: 16px 16px 0 0; display: flex; align-items: center; justify-content: center; border: 1px solid #fed7aa; border-bottom: none; box-shadow: inset 0 4px 10px rgba(255,255,255,0.8), 0 -4px 15px rgba(251,146,60,0.3);">
+                     <div style="font-size: 1.8rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">🥉</div>
+                </div>
+            </div>
+        </div>
+        
+        <button onclick="closeSpecialWinnerModal()" class="btn-primary" style="margin-top: 50px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(8px); width: auto; padding: 12px 35px; border-radius: 25px; font-weight: 700; animation: fadeIn 1s ease; animation-delay: 2s; animation-fill-mode: backwards; transition: all 0.3s; cursor: pointer;">Continue ➔</button>
+        
+        <!-- Celebration Sound (Using mixkit free sound effect) -->
+        <audio id="celebrationAudio" preload="auto">
+            <source src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3" type="audio/mpeg">
+        </audio>
     </div>
 
     <!-- Bottom Navigation -->

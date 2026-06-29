@@ -93,6 +93,100 @@ window.requestNotificationPermissionManual = async () => {
     }
 };
 
+// Define global utility for backdating manually without going through UI
+window.manualBackdateTest = async (daysAgo, testTaskId, testPoints = 10) => {
+    try {
+        const d = new Date();
+        d.setDate(d.getDate() - daysAgo);
+        const testDateStr = localDateStr(d);
+        
+        await addDoc(collection(db, "votes"), {
+            phone: phone,
+            taskId: testTaskId,
+            date: testDateStr,
+            points: testPoints
+        });
+        console.log(`Successfully logged backdated test task on ${testDateStr} for ${testPoints} points!`);
+        alert("Backdated vote injected. Check calendar.");
+    } catch (e) {
+        console.error("Manual backdate failed:", e);
+    }
+};
+
+// --- SPECIAL WINNER LOGIC ---
+async function checkSpecialWinnerPopup() {
+    try {
+        const snap = await getDoc(doc(db, "settings", "special_winner"));
+        if (!snap.exists()) return;
+        
+        const data = snap.data();
+        if (!data.active) return;
+        
+        const showDateTime = new Date(`${data.showDate}T${data.showTime}:00`);
+        const now = new Date();
+        
+        // If current time is before the configured time, do not show
+        if (now < showDateTime) return;
+        
+        // Use the showDateTime as a unique config ID
+        const configId = `${data.showDate}_${data.showTime}`;
+        if (localStorage.getItem("specialWinnerSeen") === configId) return;
+        
+        // Show modal and update UI
+        if (data.winners && data.winners.length === 3) {
+            document.getElementById("sw_r1_name").textContent = data.winners[0].name || "--";
+            document.getElementById("sw_r1_pts").textContent = (data.winners[0].points || 0) + " pts";
+            
+            document.getElementById("sw_r2_name").textContent = data.winners[1].name || "--";
+            document.getElementById("sw_r2_pts").textContent = (data.winners[1].points || 0) + " pts";
+            
+            document.getElementById("sw_r3_name").textContent = data.winners[2].name || "--";
+            document.getElementById("sw_r3_pts").textContent = (data.winners[2].points || 0) + " pts";
+            
+            document.getElementById("specialWinnerModal").style.display = "flex";
+            
+            // Trigger Confetti
+            if (window.confetti) {
+                var duration = 3 * 1000;
+                var animationEnd = Date.now() + duration;
+                var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10001 };
+
+                function randomInRange(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+
+                var interval = setInterval(function() {
+                    var timeLeft = animationEnd - Date.now();
+
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+
+                    var particleCount = 50 * (timeLeft / duration);
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+                }, 250);
+            }
+            
+            // Play Audio
+            const audio = document.getElementById("celebrationAudio");
+            if (audio) {
+                audio.volume = 0.5;
+                audio.play().catch(e => console.log("Audio autoplay prevented by browser:", e));
+            }
+            
+            // Mark as seen
+            localStorage.setItem("specialWinnerSeen", configId);
+        }
+    } catch (e) {
+        console.error("Failed to check special winner:", e);
+    }
+}
+
+window.closeSpecialWinnerModal = () => {
+    document.getElementById("specialWinnerModal").style.display = "none";
+};
+
 // Show notification when app is OPEN (foreground)
 if (messaging) {
     try {
@@ -440,6 +534,9 @@ async function loadHome() {
     
     // Load voting tasks
     await loadTasks();
+
+    // Check for special winner popup
+    await checkSpecialWinnerPopup();
 }
 
 async function loadPinnedBanner() {
