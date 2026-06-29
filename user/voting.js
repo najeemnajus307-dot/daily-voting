@@ -163,6 +163,17 @@ async function checkSpecialWinnerPopup() {
 }
 
 window.revealSpecialWinners = () => {
+    // Hide reveal screen, show winners
+    document.getElementById("sw_reveal_screen").style.display = "none";
+    document.getElementById("sw_winners_content").style.display = "flex";
+
+    // Play coin sound
+    const coinAudio = document.getElementById("coinAudio");
+    if (coinAudio) {
+        coinAudio.volume = 0.7;
+        coinAudio.currentTime = 0;
+        coinAudio.play().catch(e => console.log("Coin audio autoplay prevented:", e));
+    }
     document.getElementById("sw_reveal_screen").style.display = "none";
     document.getElementById("sw_winners_content").style.display = "flex";
     
