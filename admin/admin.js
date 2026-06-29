@@ -2669,6 +2669,8 @@ window.loadSpecialWinnerConfig = async () => {
             document.getElementById("winner_active").checked = data.active || false;
             document.getElementById("winner_date").value = data.showDate || "";
             document.getElementById("winner_time").value = data.showTime || "";
+            document.getElementById("winner_end_date").value = data.endDate || "";
+            document.getElementById("winner_end_time").value = data.endTime || "";
             
             if (data.winners && data.winners.length === 3) {
                 document.getElementById("w_r1_name").value = data.winners[0].name || "";
@@ -2690,6 +2692,8 @@ window.saveSpecialWinnerConfig = async () => {
     const active = document.getElementById("winner_active").checked;
     const showDate = document.getElementById("winner_date").value;
     const showTime = document.getElementById("winner_time").value;
+    const endDate = document.getElementById("winner_end_date").value;
+    const endTime = document.getElementById("winner_end_time").value;
     
     const winners = [
         {
@@ -2720,6 +2724,8 @@ window.saveSpecialWinnerConfig = async () => {
             active,
             showDate,
             showTime,
+            endDate,
+            endTime,
             winners
         });
         

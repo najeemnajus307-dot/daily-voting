@@ -128,6 +128,12 @@ async function checkSpecialWinnerPopup() {
         // If current time is before the configured time, do not show
         if (now < showDateTime) return;
         
+        // If end date/time is provided, check if current time is past it
+        if (data.endDate && data.endTime) {
+            const endDateTime = new Date(`${data.endDate}T${data.endTime}:00`);
+            if (now > endDateTime) return;
+        }
+        
         // Use the showDateTime as a unique config ID
         const configId = `${data.showDate}_${data.showTime}`;
         if (localStorage.getItem("specialWinnerSeen") === configId) return;
@@ -143,37 +149,10 @@ async function checkSpecialWinnerPopup() {
             document.getElementById("sw_r3_name").textContent = data.winners[2].name || "--";
             document.getElementById("sw_r3_pts").textContent = (data.winners[2].points || 0) + " pts";
             
+            // Set initial state of modal screens
+            document.getElementById("sw_reveal_screen").style.display = "flex";
+            document.getElementById("sw_winners_content").style.display = "none";
             document.getElementById("specialWinnerModal").style.display = "flex";
-            
-            // Trigger Confetti
-            if (window.confetti) {
-                var duration = 3 * 1000;
-                var animationEnd = Date.now() + duration;
-                var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10001 };
-
-                function randomInRange(min, max) {
-                    return Math.random() * (max - min) + min;
-                }
-
-                var interval = setInterval(function() {
-                    var timeLeft = animationEnd - Date.now();
-
-                    if (timeLeft <= 0) {
-                        return clearInterval(interval);
-                    }
-
-                    var particleCount = 50 * (timeLeft / duration);
-                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
-                }, 250);
-            }
-            
-            // Play Audio
-            const audio = document.getElementById("celebrationAudio");
-            if (audio) {
-                audio.volume = 0.5;
-                audio.play().catch(e => console.log("Audio autoplay prevented by browser:", e));
-            }
             
             // Mark as seen
             localStorage.setItem("specialWinnerSeen", configId);
@@ -182,6 +161,41 @@ async function checkSpecialWinnerPopup() {
         console.error("Failed to check special winner:", e);
     }
 }
+
+window.revealSpecialWinners = () => {
+    document.getElementById("sw_reveal_screen").style.display = "none";
+    document.getElementById("sw_winners_content").style.display = "flex";
+    
+    // Trigger Confetti
+    if (window.confetti) {
+        var duration = 3 * 1000;
+        var animationEnd = Date.now() + duration;
+        var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10001 };
+
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        var interval = setInterval(function() {
+            var timeLeft = animationEnd - Date.now();
+
+            if (timeLeft <= 0) {
+                return clearInterval(interval);
+            }
+
+            var particleCount = 50 * (timeLeft / duration);
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
+    }
+    
+    // Play Audio
+    const audio = document.getElementById("celebrationAudio");
+    if (audio) {
+        audio.volume = 0.5;
+        audio.play().catch(e => console.log("Audio autoplay prevented by browser:", e));
+    }
+};
 
 window.closeSpecialWinnerModal = () => {
     document.getElementById("specialWinnerModal").style.display = "none";
