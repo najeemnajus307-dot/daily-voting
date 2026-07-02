@@ -348,6 +348,45 @@
                         <button class="btn-secondary" onclick="loadResetHistory()" style="width: auto; font-size: 0.85rem; padding: 10px 20px; border-color: #9f1239; color: #9f1239;">📋 View Reset History</button>
                     </div>
                     
+                <!-- Season Closed Mode Section -->
+                <div class="panel" style="padding: 24px; margin-top: 25px; border-left: 4px solid var(--warning); background: #fffcf5;">
+                    <h3 class="font-serif" style="color: #b45309; margin-top: 0; margin-bottom: 8px; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">🏁 Season Closed Mode</h3>
+                    <p style="font-size: 0.8rem; color: #78350f; margin-bottom: 16px; line-height: 1.4;">
+                        When enabled, non-admin users will be completely locked out of the website and redirected to the Season Closed page. Admins will still have full access.
+                    </p>
+                    
+                    <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px; margin-bottom: 20px;">
+                        <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                            <input type="checkbox" id="seasonClosedToggle" style="opacity: 0; width: 0; height: 0;" onchange="toggleSeasonClosed()">
+                            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px;" class="slider"></span>
+                        </label>
+                        <span id="seasonClosedStatusText" style="font-size: 0.9rem; font-weight: 600; color: #4b5563;">Status: Active</span>
+                    </div>
+
+                    <div id="seasonClosedSettings" style="background: rgba(255,255,255,0.6); padding: 15px; border-radius: 8px; border: 1px solid #fde68a;">
+                        <h4 style="margin-top: 0; margin-bottom: 10px; color: #92400e; font-size: 0.9rem;">Customize Screen</h4>
+                        
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <label style="color: #92400e;">Custom Message (Text)</label>
+                            <textarea id="seasonClosedMsg" placeholder="E.g., Our admin team is verifying results..." style="width: 100%; border: 1px solid #fcd34d; border-radius: 8px; padding: 10px; min-height: 80px; resize: vertical;"></textarea>
+                        </div>
+
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <label style="color: #92400e;">Upload Poster Image (Optional)</label>
+                            <input type="file" id="seasonClosedPosterInput" accept="image/*" style="width: 100%; border: 1px dashed #fcd34d; padding: 10px; background: white; border-radius: 8px;">
+                            <div id="seasonClosedPosterPreview" style="margin-top: 10px; max-width: 200px; max-height: 200px; display: none;"></div>
+                        </div>
+
+                        <button class="btn-primary" onclick="saveSeasonClosedContent()" style="background: var(--warning); color: #fff; width: auto; font-size: 0.85rem; padding: 8px 16px;">Save Custom Content</button>
+                        <span id="seasonClosedSaveStatus" style="margin-left: 10px; font-size: 0.8rem; color: var(--success);"></span>
+                    </div>
+
+                    <style>
+                        #seasonClosedToggle:checked + .slider { background-color: var(--warning); }
+                        #seasonClosedToggle:focus + .slider { box-shadow: 0 0 1px var(--warning); }
+                        #seasonClosedToggle:checked + .slider:before { transform: translateX(26px); }
+                        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+                    </style>
                 </div>
             </section>
 

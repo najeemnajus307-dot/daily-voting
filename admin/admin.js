@@ -1418,6 +1418,11 @@ window.settingsLoad = async () => {
 
     const nameMap = {};
     usersSnap.forEach(u => nameMap[u.data().phone] = u.data().name);
+    
+    // Load Season Closed toggle status
+    if (typeof window.loadSeasonClosedStatus === "function") {
+        window.loadSeasonClosedStatus();
+    }
 
     const pointMap = {};
     votesSnap.forEach(v => {
@@ -2742,4 +2747,158 @@ window.saveSpecialWinnerConfig = async () => {
     }
 };
 
+
+
+// --- Season Closed Mode Functions ---
+window.loadSeasonClosedStatus = async () => {
+    try {
+        const settingsRef = doc(db, "settings", "system");
+        const docSnap = await getDoc(settingsRef);
+        const toggle = document.getElementById("seasonClosedToggle");
+        const statusText = document.getElementById("seasonClosedStatusText");
+        
+        if (docSnap.exists() && docSnap.data().seasonClosed === true) {
+            if (toggle) toggle.checked = true;
+            if (statusText) {
+                statusText.textContent = "Status: Active";
+                statusText.style.color = "#dc2626"; // Red warning
+            }
+        } else {
+            if (toggle) toggle.checked = false;
+            if (statusText) {
+                statusText.textContent = "Status: Inactive";
+                statusText.style.color = "#4b5563"; // Gray
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load season closed status:", e);
+    }
+};
+
+window.toggleSeasonClosed = async () => {
+    if (currentAdminPerms.admin_view_only || (currentAdminPerms.admin_task_only && !currentAdminPerms.admin_settings_only)) {
+        alert("You do not have permission to change this setting.");
+        loadSeasonClosedStatus(); // Revert toggle visually
+        return;
+    }
+
+    const toggle = document.getElementById("seasonClosedToggle");
+    const isActive = toggle.checked;
+    
+    if (isActive) {
+        if(!confirm("WARNING: Turning this ON will lock out all non-admin users from the website. Are you sure?")) {
+            toggle.checked = false;
+            return;
+        }
+    }
+    
+    try {
+        const settingsRef = doc(db, "settings", "system");
+        await setDoc(settingsRef, { seasonClosed: isActive }, { merge: true });
+        
+        await logAdminAction("Season Closed Toggled", \Season Closed Mode is now \\);
+        
+        loadSeasonClosedStatus();
+    } catch (e) {
+        console.error("Error toggling season closed mode:", e);
+        alert("Failed to update setting: " + e.message);
+        loadSeasonClosedStatus(); // Revert toggle visually
+    }
+};
+
+window.saveSeasonClosedContent = async () => {
+    if (currentAdminPerms.admin_view_only || (currentAdminPerms.admin_task_only && !currentAdminPerms.admin_settings_only)) {
+        alert(""You do not have permission to change this setting."");
+        return;
+    }
+
+    const msgInput = document.getElementById(""seasonClosedMsg"").value;
+    const fileInput = document.getElementById(""seasonClosedPosterInput"");
+    const statusSpan = document.getElementById(""seasonClosedSaveStatus"");
+    
+    statusSpan.textContent = ""Saving..."";
+    statusSpan.style.color = ""#f59e0b"";
+
+    try {
+        let posterUrl = null;
+
+        // If file is selected, upload it
+        if (fileInput.files.length > 0) {
+            statusSpan.textContent = ""Uploading image..."";
+            const file = fileInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const storageRef = ref(storage, \season_closed/poster_\.\\);
+            const uploadResult = await uploadBytes(storageRef, file);
+            posterUrl = await getDownloadURL(uploadResult.ref);
+        }
+
+        const settingsRef = doc(db, ""settings"", ""system"");
+        
+        // Fetch current to keep existing poster if no new one is uploaded
+        const docSnap = await getDoc(settingsRef);
+        const currentData = docSnap.exists() ? docSnap.data() : {};
+        
+        const updateData = {
+            seasonClosedMessage: msgInput
+        };
+        
+        if (posterUrl) {
+            updateData.seasonClosedPoster = posterUrl;
+        } else if (currentData.seasonClosedPoster) {
+            updateData.seasonClosedPoster = currentData.seasonClosedPoster; // keep existing
+        }
+
+        await setDoc(settingsRef, updateData, { merge: true });
+        
+        await logAdminAction(""Update Season Closed Content"", ""Updated the custom message/poster for the season closed screen."");
+        
+        statusSpan.textContent = ""Saved successfully!"";
+        statusSpan.style.color = ""var(--success)"";
+        
+        setTimeout(() => { statusSpan.textContent = """"; }, 3000);
+        
+    } catch (error) {
+        console.error(""Error saving season closed content:"", error);
+        statusSpan.textContent = ""Error saving!"";
+        statusSpan.style.color = ""var(--error)"";
+        alert(""Failed to save: "" + error.message);
+    }
+};
+
+// Also modify loadSeasonClosedStatus to load these values
+const originalLoadSeasonClosed = window.loadSeasonClosedStatus;
+window.loadSeasonClosedStatus = async () => {
+    await originalLoadSeasonClosed();
+    try {
+        const settingsRef = doc(db, ""settings"", ""system"");
+        const docSnap = await getDoc(settingsRef);
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.seasonClosedMessage) {
+                document.getElementById(""seasonClosedMsg"").value = data.seasonClosedMessage;
+            }
+            if (data.seasonClosedPoster) {
+                const preview = document.getElementById(""seasonClosedPosterPreview"");
+                preview.innerHTML = \<img src=""\"" style=""max-width:100%; border-radius:8px;"">\;
+                preview.style.display = ""block"";
+            }
+        }
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+// Add image preview logic
+document.getElementById(""seasonClosedPosterInput"")?.addEventListener(""change"", function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById(""seasonClosedPosterPreview"");
+            preview.innerHTML = \<img src=""\"" style=""max-width:100%; border-radius:8px;"">\;
+            preview.style.display = ""block"";
+        }
+        reader.readAsDataURL(file);
+    }
+});
 
