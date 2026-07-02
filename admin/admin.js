@@ -2902,3 +2902,56 @@ if(document.getElementById('seasonClosedPosterInput')) {
         }
     });
 }
+
+
+
+window.triggerGlobalReset = async () => {
+    if (currentAdminPerms.admin_view_only || (currentAdminPerms.admin_task_only && !currentAdminPerms.admin_settings_only)) {
+        alert('You do not have permission to perform this action.');
+        return;
+    }
+
+    const pw = prompt('ENTER MASTER PASSWORD TO RESET ALL POINTS TO ZERO:');
+    if (pw !== 'najeem @123') {
+        if (pw !== null) alert('Incorrect password. Reset cancelled.');
+        return;
+    }
+
+    const doubleConfirm = confirm('FINAL WARNING: Are you absolutely sure you want to wipe ALL user points? This cannot be undone.');
+    if (!doubleConfirm) return;
+
+    const btn = document.getElementById('globalResetBtn');
+    const status = document.getElementById('globalResetStatus');
+    if (btn) { btn.disabled = true; btn.textContent = '? Resetting...'; }
+    
+    try {
+        const usersSnap = await getDocs(collection(db, 'users'));
+        
+        let updateCount = 0;
+        const updatePromises = [];
+        usersSnap.forEach(u => {
+            updatePromises.push(updateDoc(doc(db, 'users', u.id), { points: 0 }));
+            updateCount++;
+        });
+
+        await Promise.all(updatePromises);
+        
+        await logAdminAction('Global Points Reset', 'Wiped points for ' + updateCount + ' users using master password.');
+        
+        if (status) {
+            status.textContent = 'Successfully reset ' + updateCount + ' users.';
+            status.style.color = 'var(--success)';
+        }
+        alert('All user points have been successfully reset to 0.');
+        
+    } catch (error) {
+        console.error('Error resetting points:', error);
+        if (status) {
+            status.textContent = 'Error occurred.';
+            status.style.color = 'var(--error)';
+        }
+        alert('Failed to reset points: ' + error.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '?? Reset All Points'; }
+    }
+};
