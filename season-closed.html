@@ -220,8 +220,19 @@
         </div>
     </div>
 
-    <a href="admin/admin.html" class="admin-link">Admin Access</a>
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="admin/admin.html" class="admin-link" style="margin-top:0;">Admin Access</a>
+        <span style="color: rgba(255,255,255,0.2); margin: 0 10px;">|</span>
+        <a href="#" onclick="logoutUser()" class="admin-link" style="margin-top:0; color: #ff9800;">Logout</a>
+    </div>
 
+    <script>
+        function logoutUser() {
+            localStorage.removeItem("userPhone");
+            localStorage.removeItem("userName");
+            window.location.replace("index.html");
+        }
+    </script>
     <script type="module">
         import { db } from "./firebase.js";
         import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
