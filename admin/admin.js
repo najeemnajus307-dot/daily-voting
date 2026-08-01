@@ -2917,32 +2917,34 @@ window.triggerGlobalReset = async () => {
         return;
     }
 
-    const doubleConfirm = confirm('FINAL WARNING: Are you absolutely sure you want to wipe ALL user points? This cannot be undone.');
+    const doubleConfirm = confirm('FINAL WARNING: Are you absolutely sure you want to wipe ALL user points and votes? This cannot be undone.');
     if (!doubleConfirm) return;
 
     const btn = document.getElementById('globalResetBtn');
     const status = document.getElementById('globalResetStatus');
-    if (btn) { btn.disabled = true; btn.textContent = '? Resetting...'; }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Resetting...'; }
     
     try {
         const usersSnap = await getDocs(collection(db, 'users'));
+        const votesSnap = await getDocs(collection(db, 'votes'));
         
         let updateCount = 0;
-        const updatePromises = [];
-        usersSnap.forEach(u => {
-            updatePromises.push(updateDoc(doc(db, 'users', u.id), { points: 0 }));
+        const updatePromises = usersSnap.docs.map(u => {
             updateCount++;
+            return updateDoc(doc(db, 'users', u.id), { points: 0 });
         });
 
-        await Promise.all(updatePromises);
+        const deletePromises = votesSnap.docs.map(v => deleteDoc(v.ref));
+
+        await Promise.all([...updatePromises, ...deletePromises]);
         
-        await logAdminAction('Global Points Reset', 'Wiped points for ' + updateCount + ' users using master password.');
+        await logAdminAction('Global Points Reset', 'Wiped points for ' + updateCount + ' users and deleted ' + votesSnap.size + ' votes using master password.');
         
         if (status) {
-            status.textContent = 'Successfully reset ' + updateCount + ' users.';
+            status.textContent = 'Successfully reset ' + updateCount + ' users and cleared ' + votesSnap.size + ' votes.';
             status.style.color = 'var(--success)';
         }
-        alert('All user points have been successfully reset to 0.');
+        alert('All user points and vote records have been successfully reset to 0.');
         
     } catch (error) {
         console.error('Error resetting points:', error);
@@ -2952,6 +2954,6 @@ window.triggerGlobalReset = async () => {
         }
         alert('Failed to reset points: ' + error.message);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '?? Reset All Points'; }
+        if (btn) { btn.disabled = false; btn.textContent = '🚨 Reset All Points'; }
     }
 };

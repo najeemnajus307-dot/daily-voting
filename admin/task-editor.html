@@ -116,6 +116,14 @@
                 </div>
             </div>
 
+            <!-- Hide Task Checkbox -->
+            <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; background: #fff5f5; padding: 12px 16px; border-radius: 10px; border: 1px solid #fecaca;">
+                <input type="checkbox" id="taskHidden" style="width: 18px; height: 18px; cursor: pointer;">
+                <label for="taskHidden" style="font-size: 0.88rem; font-weight: 700; color: #991b1b; cursor: pointer;">
+                    🙈 Temporarily Hide Task (Users cannot see or vote on this task while hidden)
+                </label>
+            </div>
+
             <button class="btn-primary" onclick="saveTask()">Save Task</button>
         </div>
 
@@ -222,19 +230,38 @@
                 let scheduleDetail = t.startDate ? `Dates: ${t.startDate} to ${t.endDate || 'ongoing'}` : `Days: ${(t.days || []).map(dayNum => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayNum]).join(', ')}`;
 
                 const hasQ = t.question ? `✅ Q: ${t.question}` : '';
+                const hideBadge = t.hidden 
+                    ? `<span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; margin-left:8px;">🙈 Hidden</span>`
+                    : `<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; margin-left:8px;">👁️ Visible</span>`;
+
                 div.innerHTML = `
-                    <div style="font-weight:700; color:var(--primary);">${t.text}</div>
+                    <div style="font-weight:700; color:var(--primary);">${t.text} ${hideBadge}</div>
                     <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
                         Points: ${t.points} | Time: ${timeStr} | ${scheduleDetail}
                         ${hasQ ? `<br><span style="color:#b45309; font-weight:600;">${hasQ} (${t.questionType})</span>` : ''}
                     </div>
                     <div class="task-actions">
-                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start || ''}', '${t.end || ''}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}', '${(t.question || '').replace(/'/g, "\\'")}', '${t.questionType || ''}', ${JSON.stringify(t.questionChoices || [])})" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Edit</button>
+                        <button class="btn-secondary btn-sm" style="color:${t.hidden ? '#166534' : '#d97706'}; border-color:${t.hidden ? '#166534' : '#d97706'}; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="toggleHideTask('${d.id}', ${!!t.hidden})" ${isViewOnly ? 'disabled' : ''}>${t.hidden ? '👁️ Unhide' : '🙈 Hide'}</button>
+                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start || ''}', '${t.end || ''}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}', '${(t.question || '').replace(/'/g, "\\'")}', '${t.questionType || ''}', ${JSON.stringify(t.questionChoices || [])}, ${!!t.hidden})" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Edit</button>
                         <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="deleteTask('${d.id}')" ${isViewOnly ? 'disabled' : ''}>Delete</button>
                     </div>`;
                 list.appendChild(div);
             });
         }
+
+        window.toggleHideTask = async (id, isHidden) => {
+            if (currentAdminPerms.admin_view_only) {
+                alert("Permission Denied: You have View-Only access.");
+                return;
+            }
+            try {
+                await updateDoc(doc(db, "tasks", id), { hidden: !isHidden });
+                loadTasks();
+            } catch (e) {
+                console.error("Failed to toggle task visibility:", e);
+                alert("Failed to change visibility: " + e.message);
+            }
+        };
 
         window.saveTask = async () => {
             if (currentAdminPerms.admin_view_only) {
@@ -246,6 +273,7 @@
             const points = Number(document.getElementById("taskPoints").value);
             const start = document.getElementById("startTime").value || null;
             const end = document.getElementById("endTime").value || null;
+            const hidden = document.getElementById("taskHidden").checked;
             
             const isRecurring = document.getElementById("typeRecurring").checked;
             let days = [];
@@ -284,7 +312,8 @@
                 startDate: startDate || null, endDate: endDate || null,
                 question: question || null,
                 questionType: questionType || null,
-                questionChoices: questionChoices.length ? questionChoices : []
+                questionChoices: questionChoices.length ? questionChoices : [],
+                hidden: hidden
             };
             if (editId) {
                 await updateDoc(doc(db, "tasks", editId), data);
@@ -296,7 +325,7 @@
             location.reload();
         };
 
-        window.editTask = (id, text, points, start, end, days, startDate, endDate, question, questionType, questionChoices) => {
+        window.editTask = (id, text, points, start, end, days, startDate, endDate, question, questionType, questionChoices, hidden) => {
             if (currentAdminPerms.admin_view_only) return;
             editId = id;
             document.getElementById("taskText").value = text;
@@ -305,6 +334,7 @@
             document.getElementById("endTime").value = end || "";
             document.getElementById("startDate").value = startDate || "";
             document.getElementById("endDate").value = endDate || "";
+            document.getElementById("taskHidden").checked = !!hidden;
 
             // Restore question fields
             document.getElementById("taskQuestion").value = question || "";
@@ -344,6 +374,7 @@
                 document.getElementById("endTime").disabled = true;
                 document.getElementById("startDate").disabled = true;
                 document.getElementById("endDate").disabled = true;
+                document.getElementById("taskHidden").disabled = true;
                 
                 const saveBtn = document.querySelector("button[onclick='saveTask()']");
                 if (saveBtn) {
