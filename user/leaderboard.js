@@ -1,5 +1,5 @@
 import { db } from "../firebase.js";
-import { collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, getDocs, query, orderBy, limit, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
     const myPhone = localStorage.getItem("userPhone");
@@ -11,6 +11,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const leaderboardList = document.getElementById("leaderboardList");
 
     try {
+        const sysSnap = await getDoc(doc(db, "settings", "system"));
+        if (sysSnap.exists() && sysSnap.data().hideLeaderboard === true) {
+            leaderboardList.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 600;">🏆 The Leaderboard is currently hidden by the administrator.</div>`;
+            return;
+        }
+
         const usersRef = collection(db, "users");
         // Get all users ordered by points descending
         const q = query(usersRef, orderBy("points", "desc"));

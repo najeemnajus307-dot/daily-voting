@@ -1122,6 +1122,19 @@ window.setLeaderboardRange = (range) => {
 };
 
 async function loadLeaderboard() {
+    try {
+        const sysSnap = await getDoc(doc(db, "settings", "system"));
+        if (sysSnap.exists() && sysSnap.data().hideLeaderboard === true) {
+            const body = document.getElementById("leaderboardBody");
+            if (body) {
+                body.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 600;">🏆 The Leaderboard is currently hidden by the administrator.</div>`;
+            }
+            return;
+        }
+    } catch (e) {
+        console.error("Check hideLeaderboard error:", e);
+    }
+    
     const uSnap = await getDocs(collection(db, "users"));
     const vSnap = await getDocs(collection(db, "votes"));
     

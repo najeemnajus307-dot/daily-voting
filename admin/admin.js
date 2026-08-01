@@ -1419,9 +1419,12 @@ window.settingsLoad = async () => {
     const nameMap = {};
     usersSnap.forEach(u => nameMap[u.data().phone] = u.data().name);
     
-    // Load Season Closed toggle status
+    // Load Season Closed and Hide Leaderboard toggle status
     if (typeof window.loadSeasonClosedStatus === "function") {
         window.loadSeasonClosedStatus();
+    }
+    if (typeof window.loadHideLeaderboardStatus === "function") {
+        window.loadHideLeaderboardStatus();
     }
 
     const pointMap = {};
@@ -2802,6 +2805,56 @@ window.toggleSeasonClosed = async () => {
         console.error('Error toggling season closed mode:', e);
         alert('Failed to update setting: ' + e.message);
         loadSeasonClosedStatus(); // Revert toggle visually
+    }
+};
+
+// --- Hide Leaderboard Functions ---
+window.loadHideLeaderboardStatus = async () => {
+    try {
+        const settingsRef = doc(db, 'settings', 'system');
+        const docSnap = await getDoc(settingsRef);
+        const toggle = document.getElementById('hideLeaderboardToggle');
+        const statusText = document.getElementById('hideLeaderboardStatusText');
+        
+        if (docSnap.exists() && docSnap.data().hideLeaderboard === true) {
+            if (toggle) toggle.checked = true;
+            if (statusText) {
+                statusText.textContent = 'Status: Hidden from Users';
+                statusText.style.color = '#dc2626';
+            }
+        } else {
+            if (toggle) toggle.checked = false;
+            if (statusText) {
+                statusText.textContent = 'Status: Visible to Users';
+                statusText.style.color = '#4b5563';
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load hide leaderboard status:', e);
+    }
+};
+
+window.toggleHideLeaderboard = async () => {
+    if (currentAdminPerms.admin_view_only || (currentAdminPerms.admin_task_only && !currentAdminPerms.admin_settings_only)) {
+        alert('You do not have permission to change this setting.');
+        loadHideLeaderboardStatus();
+        return;
+    }
+
+    const toggle = document.getElementById('hideLeaderboardToggle');
+    const isHidden = toggle.checked;
+    
+    try {
+        const settingsRef = doc(db, 'settings', 'system');
+        await setDoc(settingsRef, { hideLeaderboard: isHidden }, { merge: true });
+        
+        await logAdminAction('Hide Leaderboard Toggled', 'Hide Leaderboard is now ' + (isHidden ? 'ON (Hidden)' : 'OFF (Visible)'));
+        
+        loadHideLeaderboardStatus();
+    } catch (e) {
+        console.error('Error toggling hide leaderboard:', e);
+        alert('Failed to update setting: ' + e.message);
+        loadHideLeaderboardStatus();
     }
 };
 
