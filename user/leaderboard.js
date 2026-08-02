@@ -17,7 +17,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
         const sysSnap = await getDoc(doc(db, "settings", "system"));
         if (sysSnap.exists() && sysSnap.data().hideLeaderboard === true) {
-            leaderboardList.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 600;">🏆 The Leaderboard is currently hidden by the administrator.</div>`;
+            leaderboardList.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 50px 20px; font-weight: 700; font-size: 1.1rem; line-height: 1.6;">🏆 Ranks & Leaderboard are currently hidden by the Administrator.</div>`;
+            const tabWrapper = document.querySelector(".btn-level-tab")?.parentElement;
+            if (tabWrapper) tabWrapper.style.display = "none";
+            document.querySelectorAll('a[href*="leaderboard.html"]').forEach(el => el.style.display = 'none');
             return;
         }
 

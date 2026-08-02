@@ -1161,6 +1161,7 @@ async function loadLeaderboard() {
     try {
         const sysSnap = await getDoc(doc(db, "settings", "system"));
         if (sysSnap.exists() && sysSnap.data().hideLeaderboard === true) {
+            document.querySelectorAll('a[href*="leaderboard.html"]').forEach(el => el.style.display = 'none');
             const body = document.getElementById("leaderboardBody");
             if (body) {
                 body.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 600;">🏆 The Leaderboard is currently hidden by the administrator.</div>`;
