@@ -884,11 +884,13 @@ async function loadTasks() {
 
         const matchesTargetAudience = (t) => {
             // Level Filtering:
+            // - 'all' or undefined: Visible to everyone
+            // - '1' or '1_only': Visible ONLY to Level 1 users
+            // - '2' or '2_only': Visible ONLY to Level 2 users
             if (t.targetLevel && String(t.targetLevel) !== "all") {
                 const targetLvl = String(t.targetLevel);
-                if (targetLvl === "1_only" && userLevel != 1) return false;
-                if ((targetLvl === "2" || targetLvl === "2_only") && userLevel != 2) return false;
-                // If targetLvl === "1", it is a standard task visible to Level 1 and Level 2!
+                if ((targetLvl === "1" || targetLvl === "1_only") && Number(userLevel) !== 1) return false;
+                if ((targetLvl === "2" || targetLvl === "2_only") && Number(userLevel) !== 2) return false;
             }
 
             // Gender Filtering:
@@ -1499,8 +1501,8 @@ window.showCorrectionForm = async (date) => {
         const matchesTargetAudience = (t) => {
             if (t.targetLevel && String(t.targetLevel) !== "all") {
                 const targetLvl = String(t.targetLevel);
-                if (targetLvl === "1_only" && uLevel != 1) return false;
-                if ((targetLvl === "2" || targetLvl === "2_only") && uLevel != 2) return false;
+                if ((targetLvl === "1" || targetLvl === "1_only") && Number(uLevel) !== 1) return false;
+                if ((targetLvl === "2" || targetLvl === "2_only") && Number(uLevel) !== 2) return false;
             }
             if (t.targetGender && t.targetGender !== "all") {
                 if (uGender && t.targetGender.toLowerCase() !== uGender.toLowerCase()) return false;
