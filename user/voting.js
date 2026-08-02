@@ -883,15 +883,24 @@ async function loadTasks() {
         }
 
         const matchesTargetAudience = (t) => {
+            // Level Filtering:
             if (t.targetLevel && String(t.targetLevel) !== "all") {
-                if (String(t.targetLevel) !== String(userLevel)) return false;
+                const targetLvl = String(t.targetLevel);
+                if (targetLvl === "1_only" && userLevel != 1) return false;
+                if ((targetLvl === "2" || targetLvl === "2_only") && userLevel != 2) return false;
+                // If targetLvl === "1", it is a standard task visible to Level 1 and Level 2!
             }
+
+            // Gender Filtering:
             if (t.targetGender && t.targetGender !== "all") {
-                if (!userGender || t.targetGender.toLowerCase() !== userGender.toLowerCase()) return false;
+                if (userGender && t.targetGender.toLowerCase() !== userGender.toLowerCase()) return false;
             }
+
+            // Country Filtering:
             if (t.targetCountry && t.targetCountry !== "all") {
-                if (!userCountry || t.targetCountry.toLowerCase() !== userCountry.toLowerCase()) return false;
+                if (userCountry && t.targetCountry.toLowerCase() !== userCountry.toLowerCase()) return false;
             }
+
             return true;
         };
 
@@ -1489,13 +1498,15 @@ window.showCorrectionForm = async (date) => {
 
         const matchesTargetAudience = (t) => {
             if (t.targetLevel && String(t.targetLevel) !== "all") {
-                if (String(t.targetLevel) !== String(uLevel)) return false;
+                const targetLvl = String(t.targetLevel);
+                if (targetLvl === "1_only" && uLevel != 1) return false;
+                if ((targetLvl === "2" || targetLvl === "2_only") && uLevel != 2) return false;
             }
             if (t.targetGender && t.targetGender !== "all") {
-                if (!uGender || t.targetGender.toLowerCase() !== uGender.toLowerCase()) return false;
+                if (uGender && t.targetGender.toLowerCase() !== uGender.toLowerCase()) return false;
             }
             if (t.targetCountry && t.targetCountry !== "all") {
-                if (!uCountry || t.targetCountry.toLowerCase() !== uCountry.toLowerCase()) return false;
+                if (uCountry && t.targetCountry.toLowerCase() !== uCountry.toLowerCase()) return false;
             }
             return true;
         };
