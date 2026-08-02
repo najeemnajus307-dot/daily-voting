@@ -870,10 +870,35 @@ async function loadTasks() {
         const hrs = now.getHours();
         const todayStr = getVoteDate();
         
-        // 1. Fetch all tasks
+        // 1. Fetch user profile for target filtering
+        const userProfileSnap = await getDocsByPhone("users", phone);
+        let userLevel = 1;
+        let userGender = "";
+        let userCountry = "";
+        if (!userProfileSnap.empty) {
+            const uData = userProfileSnap.docs[0].data();
+            userLevel = uData.level || 1;
+            userGender = uData.gender || "";
+            userCountry = uData.country || "";
+        }
+
+        const matchesTargetAudience = (t) => {
+            if (t.targetLevel && String(t.targetLevel) !== "all") {
+                if (String(t.targetLevel) !== String(userLevel)) return false;
+            }
+            if (t.targetGender && t.targetGender !== "all") {
+                if (!userGender || t.targetGender.toLowerCase() !== userGender.toLowerCase()) return false;
+            }
+            if (t.targetCountry && t.targetCountry !== "all") {
+                if (!userCountry || t.targetCountry.toLowerCase() !== userCountry.toLowerCase()) return false;
+            }
+            return true;
+        };
+
+        // 2. Fetch all tasks
         const tasksSnap = await getDocs(collection(db, "tasks"));
         
-        // 2. Fetch user's votes for today's session
+        // 3. Fetch user's votes for today's session
         const votedSnap = await getDocsByPhone("votes", phone, [where("date", "==", todayStr)]);
         const votedTaskIds = new Set();
         votedSnap.forEach(d => {
@@ -881,12 +906,12 @@ async function loadTasks() {
             if (v.taskId) votedTaskIds.add(v.taskId);
         });
 
-        // 3. Find which tasks are currently active
+        // 4. Find which tasks are currently active and match target audience
         const activeTasks = [];
         tasksSnap.forEach(d => {
             const t = d.data();
             t.id = d.id; // Include firestore document ID
-            if (isTaskActive(t)) {
+            if (isTaskActive(t) && matchesTargetAudience(t)) {
                 activeTasks.push(t);
             }
         });
@@ -1451,6 +1476,30 @@ window.showCorrectionForm = async (date) => {
             if (v.taskId) votedTaskIds.add(v.taskId);
         });
 
+        const uProfileSnap = await getDocsByPhone("users", phone);
+        let uLevel = 1;
+        let uGender = "";
+        let uCountry = "";
+        if (!uProfileSnap.empty) {
+            const uData = uProfileSnap.docs[0].data();
+            uLevel = uData.level || 1;
+            uGender = uData.gender || "";
+            uCountry = uData.country || "";
+        }
+
+        const matchesTargetAudience = (t) => {
+            if (t.targetLevel && String(t.targetLevel) !== "all") {
+                if (String(t.targetLevel) !== String(uLevel)) return false;
+            }
+            if (t.targetGender && t.targetGender !== "all") {
+                if (!uGender || t.targetGender.toLowerCase() !== uGender.toLowerCase()) return false;
+            }
+            if (t.targetCountry && t.targetCountry !== "all") {
+                if (!uCountry || t.targetCountry.toLowerCase() !== uCountry.toLowerCase()) return false;
+            }
+            return true;
+        };
+
         const tasksSnap = await getDocs(collection(db, "tasks"));
         let taskCheckboxes = "";
         
@@ -1460,6 +1509,7 @@ window.showCorrectionForm = async (date) => {
 
         tasksSnap.forEach(tDoc => {
             const t = tDoc.data();
+            if (!matchesTargetAudience(t)) return;
             
             // Prevent task from showing before its creation or start date
             if (t.createdAt) {

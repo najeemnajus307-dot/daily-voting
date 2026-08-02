@@ -15,6 +15,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Elements
     const nameInput = document.getElementById("name");
     const phoneInput = document.getElementById("phone");
+    const genderSelect = document.getElementById("gender");
+    const countrySelect = document.getElementById("country");
     const ageInput = document.getElementById("age");
     const weightInput = document.getElementById("weight");
     const photoUrlInput = document.getElementById("profilePhotoUrl");
@@ -22,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const displayHeaderName = document.getElementById("displayHeaderName");
     const displayHeaderPhone = document.getElementById("displayHeaderPhone");
     const profileInitial = document.getElementById("profileInitial");
+    const userLevelBadge = document.getElementById("userLevelBadge");
 
     // Fetch user data
     try {
@@ -34,15 +37,24 @@ document.addEventListener("DOMContentLoaded", async () => {
             // Populate form
             nameInput.value = data.name || "";
             phoneInput.value = data.phone || myPhone;
+            if (genderSelect) genderSelect.value = data.gender || "";
+            if (countrySelect) countrySelect.value = data.country || "";
             ageInput.value = data.age || "";
             weightInput.value = data.weight || "";
             photoUrlInput.value = data.profilePhoto || "";
 
-            // Populate header
+            // Populate header & badge
             const displayName = data.name || "User";
             displayHeaderName.textContent = displayName;
             displayHeaderPhone.textContent = data.phone || myPhone;
             profileInitial.textContent = displayName.charAt(0).toUpperCase();
+
+            const userLevel = data.level || 1;
+            if (userLevelBadge) {
+                userLevelBadge.textContent = userLevel == 2 ? "🌟 Level 2 User" : "⭐ Level 1 User";
+                userLevelBadge.style.background = userLevel == 2 ? "rgba(245, 158, 11, 0.2)" : "rgba(99, 102, 241, 0.15)";
+                userLevelBadge.style.color = userLevel == 2 ? "#d97706" : "var(--primary)";
+            }
 
             // If photo exists, we could display it here
             if (data.profilePhoto) {
@@ -66,6 +78,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             const userRef = doc(db, "users", myPhone);
             await updateDoc(userRef, {
                 name: nameInput.value.trim(),
+                gender: genderSelect ? genderSelect.value : "",
+                country: countrySelect ? countrySelect.value : "",
                 age: ageInput.value.trim(),
                 weight: weightInput.value.trim(),
                 profilePhoto: photoUrlInput.value.trim()

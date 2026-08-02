@@ -91,6 +91,47 @@
                 </div>
             </div>
 
+            <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 20px 0;">
+
+            <!-- Target Audience Settings -->
+            <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--primary); margin-bottom: 5px;">🎯 Target Audience Filters</h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">Specify which users can view and vote on this task.</p>
+            
+            <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom: 25px;">
+                <div class="input-group" style="flex:1; min-width: 150px;">
+                    <label>Target Level</label>
+                    <select id="targetLevel" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd; font-family:inherit; font-size:0.9rem;">
+                        <option value="all">🌐 All Levels</option>
+                        <option value="1">⭐ Level 1 Only</option>
+                        <option value="2">🌟 Level 2 Only</option>
+                    </select>
+                </div>
+
+                <div class="input-group" style="flex:1; min-width: 150px;">
+                    <label>Target Gender</label>
+                    <select id="targetGender" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd; font-family:inherit; font-size:0.9rem;">
+                        <option value="all">👥 All Genders</option>
+                        <option value="male">👨 Male Only</option>
+                        <option value="female">👩 Female Only</option>
+                    </select>
+                </div>
+
+                <div class="input-group" style="flex:1; min-width: 150px;">
+                    <label>Target Country</label>
+                    <select id="targetCountry" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd; font-family:inherit; font-size:0.9rem;">
+                        <option value="all">🌍 All Countries</option>
+                        <option value="India">🇮🇳 India</option>
+                        <option value="UAE">🇦🇪 UAE</option>
+                        <option value="Saudi Arabia">🇸🇦 Saudi Arabia</option>
+                        <option value="Qatar">🇶🇦 Qatar</option>
+                        <option value="Oman">🇴🇲 Oman</option>
+                        <option value="Kuwait">🇰🇼 Kuwait</option>
+                        <option value="Bahrain">🇧🇭 Bahrain</option>
+                        <option value="Other">🌐 Other</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- Special Task Question Section -->
             <div id="questionSection" style="display: none; margin-bottom: 20px; background: #fffbeb; border: 1.5px dashed #fcd34d; border-radius: 14px; padding: 18px;">
                 <h3 style="font-size: 0.9rem; font-weight: 800; color: #b45309; margin-bottom: 4px;">🌟 Special Task Question (Optional)</h3>
@@ -234,15 +275,21 @@
                     ? `<span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; margin-left:8px;">🙈 Hidden</span>`
                     : `<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; margin-left:8px;">👁️ Visible</span>`;
 
+                let targetBadge = [];
+                if (t.targetLevel && String(t.targetLevel) !== 'all') targetBadge.push(`⭐ Level ${t.targetLevel}`);
+                if (t.targetGender && t.targetGender !== 'all') targetBadge.push(t.targetGender === 'male' ? '👨 Male' : '👩 Female');
+                if (t.targetCountry && t.targetCountry !== 'all') targetBadge.push(`🌍 ${t.targetCountry}`);
+                let targetStr = targetBadge.length ? `<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; margin-left:6px;">🎯 ${targetBadge.join(', ')}</span>` : '';
+
                 div.innerHTML = `
-                    <div style="font-weight:700; color:var(--primary);">${t.text} ${hideBadge}</div>
+                    <div style="font-weight:700; color:var(--primary);">${t.text} ${hideBadge} ${targetStr}</div>
                     <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
                         Points: ${t.points} | Time: ${timeStr} | ${scheduleDetail}
                         ${hasQ ? `<br><span style="color:#b45309; font-weight:600;">${hasQ} (${t.questionType})</span>` : ''}
                     </div>
                     <div class="task-actions">
                         <button class="btn-secondary btn-sm" style="color:${t.hidden ? '#166534' : '#d97706'}; border-color:${t.hidden ? '#166534' : '#d97706'}; ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="toggleHideTask('${d.id}', ${!!t.hidden})" ${isViewOnly ? 'disabled' : ''}>${t.hidden ? '👁️ Unhide' : '🙈 Hide'}</button>
-                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start || ''}', '${t.end || ''}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}', '${(t.question || '').replace(/'/g, "\\'")}', '${t.questionType || ''}', ${JSON.stringify(t.questionChoices || [])}, ${!!t.hidden})" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Edit</button>
+                        <button class="btn-secondary btn-sm" onclick="editTask('${d.id}', '${t.text.replace(/'/g, "\\'")}', ${t.points}, '${t.start || ''}', '${t.end || ''}', ${JSON.stringify(t.days || [])}, '${t.startDate || ''}', '${t.endDate || ''}', '${(t.question || '').replace(/'/g, "\\'")}', '${t.questionType || ''}', ${JSON.stringify(t.questionChoices || [])}, ${!!t.hidden}, '${t.targetLevel || 'all'}', '${t.targetGender || 'all'}', '${t.targetCountry || 'all'}')" ${isViewOnly ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Edit</button>
                         <button class="btn-secondary btn-sm" style="color:var(--error); border-color:var(--error); ${isViewOnly ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="deleteTask('${d.id}')" ${isViewOnly ? 'disabled' : ''}>Delete</button>
                     </div>`;
                 list.appendChild(div);
@@ -274,6 +321,9 @@
             const start = document.getElementById("startTime").value || null;
             const end = document.getElementById("endTime").value || null;
             const hidden = document.getElementById("taskHidden").checked;
+            const targetLevel = document.getElementById("targetLevel").value || "all";
+            const targetGender = document.getElementById("targetGender").value || "all";
+            const targetCountry = document.getElementById("targetCountry").value || "all";
             
             const isRecurring = document.getElementById("typeRecurring").checked;
             let days = [];
@@ -313,7 +363,10 @@
                 question: question || null,
                 questionType: questionType || null,
                 questionChoices: questionChoices.length ? questionChoices : [],
-                hidden: hidden
+                hidden: hidden,
+                targetLevel: targetLevel,
+                targetGender: targetGender,
+                targetCountry: targetCountry
             };
             if (editId) {
                 await updateDoc(doc(db, "tasks", editId), data);
@@ -325,7 +378,7 @@
             location.reload();
         };
 
-        window.editTask = (id, text, points, start, end, days, startDate, endDate, question, questionType, questionChoices, hidden) => {
+        window.editTask = (id, text, points, start, end, days, startDate, endDate, question, questionType, questionChoices, hidden, targetLevel, targetGender, targetCountry) => {
             if (currentAdminPerms.admin_view_only) return;
             editId = id;
             document.getElementById("taskText").value = text;
@@ -335,6 +388,9 @@
             document.getElementById("startDate").value = startDate || "";
             document.getElementById("endDate").value = endDate || "";
             document.getElementById("taskHidden").checked = !!hidden;
+            document.getElementById("targetLevel").value = targetLevel || "all";
+            document.getElementById("targetGender").value = targetGender || "all";
+            document.getElementById("targetCountry").value = targetCountry || "all";
 
             // Restore question fields
             document.getElementById("taskQuestion").value = question || "";
@@ -375,6 +431,9 @@
                 document.getElementById("startDate").disabled = true;
                 document.getElementById("endDate").disabled = true;
                 document.getElementById("taskHidden").disabled = true;
+                document.getElementById("targetLevel").disabled = true;
+                document.getElementById("targetGender").disabled = true;
+                document.getElementById("targetCountry").disabled = true;
                 
                 const saveBtn = document.querySelector("button[onclick='saveTask()']");
                 if (saveBtn) {

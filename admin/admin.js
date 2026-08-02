@@ -704,6 +704,9 @@ window.openAdminUserModal = (phone) => {
     document.getElementById("adminEditAge").value = r.age || "";
     document.getElementById("adminEditHeight").value = r.height || "";
     document.getElementById("adminEditWeight").value = r.weight || "";
+    document.getElementById("adminEditLevel").value = r.level || 1;
+    document.getElementById("adminEditGender").value = r.gender || "";
+    document.getElementById("adminEditCountry").value = r.country || "";
     
     // Bind granular permissions
     document.getElementById("adminEditPermViewOnly").checked = r.admin_view_only || false;
@@ -718,6 +721,9 @@ window.openAdminUserModal = (phone) => {
     document.getElementById("adminEditAge").disabled = isViewOnly;
     document.getElementById("adminEditHeight").disabled = isViewOnly;
     document.getElementById("adminEditWeight").disabled = isViewOnly;
+    document.getElementById("adminEditLevel").disabled = isViewOnly;
+    document.getElementById("adminEditGender").disabled = isViewOnly;
+    document.getElementById("adminEditCountry").disabled = isViewOnly;
     document.getElementById("adminEditRole").disabled = isViewOnly;
     document.getElementById("adminEditPermViewOnly").disabled = isViewOnly;
     document.getElementById("adminEditPermSettingsOnly").disabled = isViewOnly;
@@ -788,6 +794,10 @@ window.saveAdminUserChanges = async () => {
     const weightVal = document.getElementById("adminEditWeight").value;
     const weight = weightVal !== "" ? Number(weightVal) : null;
 
+    const level = Number(document.getElementById("adminEditLevel").value) || 1;
+    const gender = document.getElementById("adminEditGender").value || "";
+    const country = document.getElementById("adminEditCountry").value || "";
+
     const admin_view_only = role === "admin" ? document.getElementById("adminEditPermViewOnly").checked : false;
     const admin_settings_only = role === "admin" ? document.getElementById("adminEditPermSettingsOnly").checked : false;
     const admin_task_only = role === "admin" ? document.getElementById("adminEditPermTaskOnly").checked : false;
@@ -845,6 +855,9 @@ window.saveAdminUserChanges = async () => {
             age,
             height,
             weight,
+            level,
+            gender,
+            country,
             admin_view_only,
             admin_settings_only,
             admin_task_only

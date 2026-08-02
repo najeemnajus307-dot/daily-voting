@@ -695,6 +695,39 @@
                     </div>
                 </div>
 
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                    <div>
+                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">USER LEVEL</label>
+                        <select id="adminEditLevel" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; background: white;">
+                            <option value="1">⭐ Level 1</option>
+                            <option value="2">🌟 Level 2</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">GENDER</label>
+                        <select id="adminEditGender" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; background: white;">
+                            <option value="">None</option>
+                            <option value="male">👨 Male</option>
+                            <option value="female">👩 Female</option>
+                            <option value="other">🌐 Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">COUNTRY</label>
+                        <select id="adminEditCountry" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; background: white;">
+                            <option value="">None</option>
+                            <option value="India">🇮🇳 India</option>
+                            <option value="UAE">🇦🇪 UAE</option>
+                            <option value="Saudi Arabia">🇸🇦 KSA</option>
+                            <option value="Qatar">🇶🇦 Qatar</option>
+                            <option value="Oman">🇴🇲 Oman</option>
+                            <option value="Kuwait">🇰🇼 Kuwait</option>
+                            <option value="Bahrain">🇧🇭 Bahrain</option>
+                            <option value="Other">🌐 Other</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div>
                     <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px; letter-spacing: 0.5px;">ADMIN ROLE</label>
                     <select id="adminEditRole" style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; font-size: 0.95rem; font-family: inherit; background: white; transition: border-color 0.2s; box-sizing: border-box;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e2e8f0'">

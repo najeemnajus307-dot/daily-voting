@@ -93,6 +93,7 @@
             </div>
             <h2 class="profile-name" id="displayHeaderName">Loading...</h2>
             <p class="profile-phone" id="displayHeaderPhone">...</p>
+            <div id="userLevelBadge" style="margin-top: 8px; display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; background: rgba(99, 102, 241, 0.15); color: var(--primary);">⭐ Level 1 User</div>
         </div>
 
         <div class="profile-form glass-panel animate-fade-in" style="animation-delay: 0.2s;">
@@ -105,6 +106,32 @@
                 <div class="input-group">
                     <label for="phone">Phone Number</label>
                     <input type="tel" id="phone" disabled style="opacity: 0.7;">
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="gender">Gender</label>
+                        <select id="gender" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border-light); background:var(--bg-card); color:var(--text-primary); font-family:inherit; font-size:0.9rem;">
+                            <option value="">Select Gender</option>
+                            <option value="male">👨 Male</option>
+                            <option value="female">👩 Female</option>
+                            <option value="other">🌐 Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="country">Country</label>
+                        <select id="country" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border-light); background:var(--bg-card); color:var(--text-primary); font-family:inherit; font-size:0.9rem;">
+                            <option value="">Select Country</option>
+                            <option value="India">🇮🇳 India</option>
+                            <option value="UAE">🇦🇪 UAE</option>
+                            <option value="Saudi Arabia">🇸🇦 Saudi Arabia</option>
+                            <option value="Qatar">🇶🇦 Qatar</option>
+                            <option value="Oman">🇴🇲 Oman</option>
+                            <option value="Kuwait">🇰🇼 Kuwait</option>
+                            <option value="Bahrain">🇧🇭 Bahrain</option>
+                            <option value="Other">🌐 Other</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-row">
