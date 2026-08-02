@@ -478,6 +478,9 @@ window.dashLoad = async () => {
                 role: d.role || "user", 
                 password: d.password || "",
                 points: Number(d.points || 0),
+                level: Number(d.level || 1),
+                gender: d.gender || "",
+                country: d.country || "",
                 age: d.age || "",
                 height: d.height || "",
                 weight: d.weight || "",
@@ -496,13 +499,31 @@ window.dashLoad = async () => {
     }
 };
 
+window.currentDashLevelFilter = '1';
+
+window.switchDashLevelTab = (lvl) => {
+    window.currentDashLevelFilter = lvl;
+    document.querySelectorAll(".dash-subtab").forEach(tab => {
+        tab.style.background = "transparent";
+        tab.style.color = "var(--text-secondary)";
+    });
+    const targetId = lvl === '1' ? 'dash-subtab-level1' : (lvl === '2' ? 'dash-subtab-level2' : 'dash-subtab-all');
+    const activeTab = document.getElementById(targetId);
+    if (activeTab) {
+        activeTab.style.background = "var(--primary)";
+        activeTab.style.color = "white";
+    }
+    renderDashTable();
+};
+
 window.renderDashTable = () => {
     const term = (document.getElementById("d_search")?.value || "").toLowerCase();
     const roleFilter = document.getElementById("d_role_filter")?.value || "all";
     if (!window.allUsersRows) return;
     const rows = window.allUsersRows.filter(r => 
         ((r.name || "").toLowerCase().includes(term) || String(r.phone || "").includes(term)) &&
-        (roleFilter === "all" || r.role === roleFilter)
+        (roleFilter === "all" || r.role === roleFilter) &&
+        (window.currentDashLevelFilter === "all" || String(r.level || 1) === String(window.currentDashLevelFilter))
     );
 
     rows.sort((a, b) => b.total - a.total);
@@ -516,11 +537,16 @@ window.renderDashTable = () => {
         prev = r.total; sl++;
         const tr = document.createElement("tr");
         if (rank <= 3) tr.className = `rank-${rank}`;
+        const lvlBadge = Number(r.level || 1) === 2 
+            ? '<span style="background: rgba(245, 158, 11, 0.15); color: #d97706; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; margin-left: 4px;">🌟 L2</span>'
+            : '<span style="background: rgba(99, 102, 241, 0.15); color: var(--primary); padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; margin-left: 4px;">⭐ L1</span>';
+
         tr.innerHTML = `
             <td onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer; font-weight: 500;">${sl}</td>
             <td onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer; font-weight: 500;">${rank}</td>
             <td onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer;">
                 <span style="font-weight: 700; color: var(--primary); text-decoration: underline;" onmouseover="this.style.color='var(--secondary)'" onmouseout="this.style.color='var(--primary)'">${r.name}</span>
+                ${lvlBadge}
                 ${r.role === 'admin' ? '👑' : ''}
             </td>
             <td onclick="openAdminUserModal('${r.phone}')" style="cursor: pointer;">${r.phone}</td>
